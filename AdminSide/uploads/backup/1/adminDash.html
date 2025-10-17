@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter&display=swap" rel="stylesheet"/>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Inter', sans-serif;
+    }
+
+    body {
+      display: flex;
+      min-height: 100vh;
+      background-color: #f4f4f4;
+    }
+
+    .sidebar {
+      width: 250px;
+      background-color: #a93226;
+      color: white;
+      padding-top: 20px;
+    }
+
+    .sidebar .section {
+      padding: 0 20px;
+    }
+
+    .sidebar .section-title {
+      padding: 10px 0;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .sidebar .submenu {
+      list-style: none;
+      padding-left: 15px;
+      display: none;
+    }
+
+    .sidebar .submenu li {
+      padding: 8px 0;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .sidebar .submenu li:hover {
+      text-decoration: underline;
+    }
+
+    .sidebar .active {
+      background-color: #a93226;
+    }
+
+    .main {
+      flex: 1;
+      background-color: #f9f9f9;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #fff;
+      padding: 10px 20px;
+      border-bottom: 1px solid #ccc;
+    }
+
+    .topbar .logout-btn {
+      background-color: #e57373;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .content {
+      padding: 30px;
+    }
+
+    .content h2 {
+      margin-bottom: 20px;
+    }
+
+    .stats {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+
+    .card {
+      flex: 1;
+      background-color: white;
+      padding: 20px;
+      border-radius: 8px;
+      text-align: center;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .card h3 {
+      margin-bottom: 10px;
+      font-size: 16px;
+    }
+
+    .card span {
+      font-size: 32px;
+      font-weight: bold;
+    }
+
+    .traffic {
+      background-color: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .traffic-buttons {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .traffic-buttons button {
+      padding: 6px 12px;
+      border: 1px solid #ccc;
+      background-color: white;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+
+    .traffic-buttons button:hover {
+      background-color: #eee;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="section">
+      <div class="section-title active">Dashboard</div>
+    </div>
+
+    <div class="section">
+      <div class="section-title" onclick="toggleMenu('admin-controls')">Admin Controls ▾</div>
+      <ul class="submenu" id="admin-controls">
+        <li>Reservations</li>
+        <li>Ongoing List</li>
+        <li>Completed List</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <div class="section-title" onclick="toggleMenu('page-settings')">Page Settings ▾</div>
+      <ul class="submenu" id="page-settings">
+        <li>Home Page</li>
+        <li>Reservation Page</li>
+        <li>Contact Page</li>
+        <li>About Page</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <div class="section-title" onclick="toggleMenu('activity-logs')">Activity Logs ▾</div>
+      <ul class="submenu" id="activity-logs">
+        <li>Page Edits</li>
+        <li>Confirmed Logs</li>
+        <li>Ongoing Logs</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main">
+    <div class="topbar">
+      <div class="logo">☰</div>
+      <button class="logout-btn">Logout</button>
+    </div>
+    <div class="content">
+      <h2>Dashboard</h2>
+      <p>Statistics for today</p>
+
+      <div class="stats">
+        <div class="card">
+          <h3>Reservations</h3>
+          <span>19</span>
+        </div>
+        <div class="card">
+          <h3>Ongoing Tests</h3>
+          <span>3</span>
+        </div>
+        <div class="card">
+          <h3>Completed</h3>
+          <span>12</span>
+        </div>
+      </div>
+
+      <div class="traffic">
+        <h3>Traffic</h3>
+        <div class="traffic-buttons">
+          <button>Day</button>
+          <button>Month</button>
+          <button>Year</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- JavaScript for dropdown toggles -->
+  <script>
+    function toggleMenu(id) {
+      const menu = document.getElementById(id);
+      const isVisible = menu.style.display === 'block';
+      menu.style.display = isVisible ? 'none' : 'block';
+    }
+  </script>
+</body>
+</html>
