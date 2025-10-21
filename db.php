@@ -1,28 +1,15 @@
 <?php
-// Production vs Local environment detection
-$isProduction = (strpos($_SERVER['HTTP_HOST'], 'railway.app') !== false);
 
-if ($isProduction) {
-    // Production settings (Railway)
-    $servername = getenv('MYSQLHOST');
-    $username = getenv('MYSQLUSER');
-    $password = getenv('MYSQLPASSWORD');
-    $dbname = getenv('MYSQLDATABASE');
-    $port = getenv('MYSQLPORT') ?: '3306';
-} else {
-    // Local XAMPP settings
-    $servername = 'localhost';
-    $username = 'root';
-    $password = '';
-    $dbname = 'railway';
-    $port = '3306';
-}
+$servername = getenv('MYSQLHOST') ?: 'localhost';
+$username = getenv('MYSQLUSER') ?: 'root';
+$password = getenv('MYSQLPASSWORD') ?: '';
+$dbname = getenv('MYSQLDATABASE') ?: 'autotec';
+$port = getenv('MYSQLPORT') ?: '3306';
 
 $conn = new mysqli($servername, $username, $password, $dbname, $port);
 
 if ($conn->connect_error) {
-    error_log("Database connection failed: " . $conn->connect_error);
-    die("Unable to connect to database. Please try again later.");
+    die("Connection failed: " . $conn->connect_error);
 }
 
 $conn->set_charset("utf8mb4");
