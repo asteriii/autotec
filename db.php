@@ -1,16 +1,18 @@
 <?php
+$host = getenv('MYSQLHOST');
+$user = getenv('MYSQLUSER');
+$password = getenv('MYSQLPASSWORD');
+$database = getenv('MYSQLDATABASE');
+$port = getenv('MYSQLPORT');
 
-$servername = getenv('MYSQLHOST') ?: 'mysql.railway.internal';
-$username = getenv('MYSQLUSER') ?: 'root';
-$password = getenv('MYSQLPASSWORD') ?: '';
-$dbname = getenv('MYSQLDATABASE') ?: 'railway';
-$port = getenv('MYSQLPORT') ?: '3306';
-
-$conn = new mysqli($servername, $username, $password, $dbname, $port);
+$conn = new mysqli($host, $user, $password, $database, $port);
 
 if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
-$conn->set_charset("utf8mb4");
+echo "Host: $host<br>";
+echo "User: $user<br>";
+echo "Database: $database<br>";
+echo "Port: $port<br>";
 ?>
