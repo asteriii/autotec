@@ -1,6 +1,6 @@
 <?php
 session_start();
-include 'C:\xampp\htdocs\autotec\db.php';
+require_once 'db.php'; 
 
 // Get form values
 $identifier = $_POST['email']; // This may be email OR username
