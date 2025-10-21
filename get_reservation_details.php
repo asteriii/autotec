@@ -1,22 +1,7 @@
 <?php
 header('Content-Type: application/json');
 
-// Database connection
-$servername = "localhost";
-$username = "root";
-$password = "";
-$dbname = "autotec";
-
-$conn = new mysqli($servername, $username, $password, $dbname);
-
-// Check connection
-if ($conn->connect_error) {
-    echo json_encode([
-        'success' => false,
-        'error' => 'Database connection failed: ' . $conn->connect_error
-    ]);
-    exit;
-}
+include 'db.php';
 
 // Validate input
 if (!isset($_POST['reservation_id']) || empty($_POST['reservation_id'])) {
