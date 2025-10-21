@@ -2,6 +2,13 @@
 // Database connection
 require_once 'db.php';
 
+echo "Host: " . getenv('MYSQLHOST') . "<br>";
+echo "User: " . getenv('MYSQLUSER') . "<br>";
+echo "Database: " . getenv('MYSQLDATABASE') . "<br>";
+echo "Port: " . getenv('MYSQLPORT') . "<br>";
+exit;
+
+
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
