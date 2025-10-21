@@ -1,6 +1,6 @@
 <?php
 
-$servername = getenv('MYSQLHOST') ?: 'localhost';
+$servername = getenv('MYSQLHOST') ?: 'mysql.railway.internal';
 $username = getenv('MYSQLUSER') ?: 'root';
 $password = getenv('MYSQLPASSWORD') ?: '';
 $dbname = getenv('MYSQLDATABASE') ?: 'railway';
