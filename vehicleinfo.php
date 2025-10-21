@@ -1,13 +1,6 @@
 <?php
 // Database connection
-include 'db.php';
-
-$conn = new mysqli($servername, $username, $password, $dbname);
-
-// Check connection
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
+require_once 'db.php';
 
 // Fetch branches from about_us table
 $branches_query = "SELECT AboutID, BranchName, Description, MapLink FROM about_us ORDER BY BranchName";
