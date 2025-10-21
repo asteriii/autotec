@@ -1,13 +1,16 @@
 <?php
 
-    $servername = "localhost";
-    $username = "root";
-    $password = "";
-    $dbname = "autotec";
+$servername = getenv('MYSQLHOST') ?: 'localhost';
+$username = getenv('MYSQLUSER') ?: 'root';
+$password = getenv('MYSQLPASSWORD') ?: '';
+$dbname = getenv('MYSQLDATABASE') ?: 'autotec';
+$port = getenv('MYSQLPORT') ?: '3306';
 
-    $conn = mysqli_connect($servername, $username, $password, $dbname);
+$conn = new mysqli($servername, $username, $password, $dbname, $port);
 
-    if ($conn == false){
-        die("Connection failed: ". mysqli_connect_error());
-    }
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
+}
+
+$conn->set_charset("utf8mb4");
 ?>
