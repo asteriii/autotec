@@ -3,7 +3,7 @@
 $servername = getenv('MYSQLHOST') ?: 'localhost';
 $username = getenv('MYSQLUSER') ?: 'root';
 $password = getenv('MYSQLPASSWORD') ?: '';
-$dbname = getenv('MYSQLDATABASE') ?: 'autotec';
+$dbname = getenv('MYSQLDATABASE') ?: 'railway';
 $port = getenv('MYSQLPORT') ?: '3306';
 
 $conn = new mysqli($servername, $username, $password, $dbname, $port);
