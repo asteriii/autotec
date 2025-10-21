@@ -2,6 +2,10 @@
 // Database connection
 require_once 'db.php';
 
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 // Fetch branches from about_us table
 $branches_query = "SELECT AboutID, BranchName, Description, MapLink FROM about_us ORDER BY BranchName";
 $branches_result = $conn->query($branches_query);
