@@ -2,7 +2,7 @@
 session_start();
 
 require_once '../db.php';
-require_once 'autotec/process/check.php';
+
 
 // Check if already logged in
 if (isset($_SESSION['isAdmin']) && $_SESSION['isAdmin'] === true) {
