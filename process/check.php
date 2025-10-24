@@ -7,7 +7,7 @@ $identifier = $_POST['email']; // This may be email OR username
 $password = $_POST['password'];
 
 // Admin login check (Email only)
-$sqlAdmin = "SELECT * FROM admin WHERE (Email = ? OR Username = ?) AND password = ?";
+$sqlAdmin = "SELECT * FROM admin WHERE Email = ? AND password = ?";
 $stmtAdmin = $conn->prepare($sqlAdmin);
 $stmtAdmin->bind_param("ss", $identifier, $password);
 $stmtAdmin->execute();
