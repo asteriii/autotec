@@ -7,7 +7,7 @@ $identifier = $_POST['email']; // This may be email OR username
 $password = $_POST['password'];
 
 // Admin login check (Email only)
-$sqlAdmin = "SELECT * FROM admin WHERE Email = ? AND password = ?";
+$sqlAdmin = "SELECT * FROM admin WHERE (Email = ? OR Username = ?) AND password = ?";
 $stmtAdmin = $conn->prepare($sqlAdmin);
 $stmtAdmin->bind_param("ss", $identifier, $password);
 $stmtAdmin->execute();
@@ -23,7 +23,7 @@ $resultUser = $stmtUser->get_result();
 if ($resultAdmin->num_rows > 0) {
     $_SESSION['isAdmin'] = true;
     echo '<script>alert("Admin login successful, Welcome!")</script>';
-    echo "<script>window.location = '../admin.php';</script>";
+    echo "<script>window.location = '../adminDash.php';</script>";
 } elseif ($resultUser->num_rows > 0) {
     $user = $resultUser->fetch_assoc();
     $_SESSION['user_id'] = $user['UserID'];
