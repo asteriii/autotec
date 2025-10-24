@@ -81,11 +81,409 @@ $monthly_revenue = $revenue_stmt->fetch(PDO::FETCH_ASSOC)['total_revenue'] ?? 0;
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <link rel="stylesheet<link rel="stylesheet" href="/autotec/AdminSide/css/admindash.css">
     <title>Admin Dashboard - AutoTec</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet"/>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            display: flex;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        }
+
+        .sidebar {
+            width: 280px;
+            background: linear-gradient(180deg, #a4133c 0%, #ff4d6d 100%);
+            color: white;
+            padding-top: 20px;
+            box-shadow: 4px 0 15px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .sidebar::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.03)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.03)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+            opacity: 0.3;
+        }
+
+        .sidebar .section {
+            padding: 0 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .section-title {
+            padding: 15px 0;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 16px;
+            border-radius: 8px;
+            margin: 5px 0;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .section-title:hover {
+            background-color: rgba(255,255,255,0.1);
+            padding-left: 10px;
+        }
+
+        .section-title.active {
+            background-color: rgba(255,255,255,0.15);
+            font-weight: 600;
+            padding-left: 10px;
+        }
+
+        .submenu {
+            list-style: none;
+            padding-left: 15px;
+            display: none;
+            animation: slideDown 0.3s ease;
+        }
+
+        .submenu.show {
+            display: block;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .submenu li {
+            padding: 12px 0;
+            font-size: 14px;
+            cursor: pointer;
+            border-radius: 6px;
+            margin: 2px 0;
+            transition: all 0.3s ease;
+        }
+
+        .submenu li:hover {
+            background-color: rgba(255,255,255,0.1);
+            padding-left: 10px;
+        }
+
+        .submenu li a {
+            color: white;
+            text-decoration: none;
+            display: block;
+        }
+
+        .main {
+            flex: 1;
+            background-color: #f8fafc;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+            padding: 15px 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .logo {
+            font-size: 24px;
+            color: #c0392b;
+            font-weight: 600;
+        }
+
+        .logout-btn {
+            background: linear-gradient(135deg, #a4133c, #ff4d6d);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3);
+        }
+
+        .logout-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4);
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .content h2 {
+            margin-bottom: 10px;
+            color: #2d3748;
+            font-weight: 700;
+            font-size: 32px;
+        }
+
+        .content .subtitle {
+            color: #718096;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border: 1px solid #e2e8f0;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+        }
+
+        .stat-card.reservations::before { background: linear-gradient(180deg, #3182ce, #2c5282); }
+        .stat-card.today::before { background: linear-gradient(180deg, #38a169, #2f855a); }
+        .stat-card.month::before { background: linear-gradient(180deg, #d69e2e, #b7791f); }
+        .stat-card.revenue::before { background: linear-gradient(180deg, #c0392b, #a93226); }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+        }
+
+        .stat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .stat-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #718096;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: white;
+        }
+
+        .stat-icon.reservations { background: linear-gradient(135deg, #3182ce, #2c5282); }
+        .stat-icon.today { background: linear-gradient(135deg, #38a169, #2f855a); }
+        .stat-icon.month { background: linear-gradient(135deg, #d69e2e, #b7791f); }
+        .stat-icon.revenue { background: linear-gradient(135deg, #c0392b, #a93226); }
+
+        .stat-value {
+            font-size: 36px;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 5px;
+        }
+
+        .stat-change {
+            font-size: 12px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .stat-change.positive { color: #38a169; }
+        .stat-change.negative { color: #e53e3e; }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border: 1px solid #e2e8f0;
+            height: 400px;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .chart-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .chart-filters {
+            display: flex;
+            gap: 10px;
+        }
+
+        .filter-btn {
+            padding: 4px 8px;
+            border: 1px solid #e2e8f0;
+            background: white;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 500;
+            color: #4a5568;
+            transition: all 0.3s ease;
+        }
+
+        .filter-btn:hover,
+        .filter-btn.active {
+            background: #a4133c;
+            color: white;
+            border-color: #a4133c;
+        }
+
+        .vehicle-types {
+            background: white;
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border: 1px solid #e2e8f0;
+        }
+
+        .vehicle-type-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .vehicle-type-item:last-child {
+            border-bottom: none;
+        }
+
+        .vehicle-name {
+            font-weight: 500;
+            color: #2d3748;
+            font-size: 14px;
+        }
+
+        .vehicle-count {
+            background: #f7fafc;
+            padding: 4px 10px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #4a5568;
+        }
+
+        .recent-reservations {
+            background: white;
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border: 1px solid #e2e8f0;
+        }
+
+        .reservation-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .reservation-item:last-child {
+            border-bottom: none;
+        }
+
+        .reservation-info {
+            flex: 1;
+        }
+
+        .customer-name {
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 4px;
+            font-size: 14px;
+        }
+
+        .reservation-details {
+            font-size: 11px;
+            color: #718096;
+        }
+
+        .reservation-date {
+            text-align: right;
+            font-size: 11px;
+            color: #718096;
+        }
+
+        @media (max-width: 1024px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                position: fixed;
+                z-index: 1000;
+                height: 100vh;
+            }
+
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .content {
+                padding: 20px;
+            }
+        }
+    </style>
 </head>
 <body>
     <!-- Sidebar -->
