@@ -1,19 +1,8 @@
 <?php
 session_start();
 
-// Database configuration
-$host = 'localhost';
-$database = 'autotec';
-$db_username = 'root'; // Change this to your database username
-$db_password = '';     // Change this to your database password
-
-// Check if user is already logged in
-if (isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true) {
-    header('Location: adminDash.php');
-    exit();
-}
-
-$error_message = '';
+require_once '../db.php';
+require_once '../check.php';
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
