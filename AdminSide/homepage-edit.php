@@ -1,5 +1,5 @@
 <?php
-include 'db.php';
+require_once '../db.php';
 
 $sql = "SELECT title, header, operate, location, contact, service1_img, service2_img, service3_img, announcement_img FROM homepage WHERE id = 1";
 $result = $conn->query($sql);
