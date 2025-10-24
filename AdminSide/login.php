@@ -35,8 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     } else {
         try {
             // Create database connection
-            $pdo = new PDO("mysql:host=$servername;dbname=$dbname;port=$port;charset=utf8mb4", $db_username, $db_password, [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            $pdo = new PDO("mysql:host=$servername;dbname=$dbname;port=$port;charset=utf8mb4", $username, $password, [
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                 PDO::ATTR_EMULATE_PREPARES => false,
             ]);
@@ -106,9 +105,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">4
+    <link rel="stylesheet<link rel="stylesheet" href="/autotec/AdminSide/css/login.css">
     <title>Admin Dashboard - Login</title>
-    <link rel="stylesheet" href="AdminSide/css/login.css">
+    
 </head>
 <body>
     <div class="login-container">
