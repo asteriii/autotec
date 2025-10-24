@@ -1,25 +1,5 @@
 <?php
-    $servername = "localhost";
-    $username = "root";
-    $password = "";
-    $dbname = "autotec";
-
-try {
-    $pdo = new PDO("mysql:host=$servername;dbname=$dbname", $username, $password);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-} catch(PDOException $e) {
-    die("Connection failed: " . $e->getMessage());
-}
-
-// Add status column if it doesn't exist
-try {
-    $check_column = $pdo->query("SHOW COLUMNS FROM contact_us LIKE 'status'");
-    if ($check_column->rowCount() == 0) {
-        $pdo->exec("ALTER TABLE contact_us ADD COLUMN status ENUM('unread', 'read') DEFAULT 'unread'");
-    }
-} catch(PDOException $e) {
-    // Column might already exist, continue
-}
+require_once '../db.php';
 
 // Handle status updates
 if (isset($_POST['action']) && $_POST['action'] == 'mark_read' && isset($_POST['message_id'])) {
