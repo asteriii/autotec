@@ -11,7 +11,7 @@
 <header>
     <nav>
         <div class="logo">
-            <img src="/autotec/pictures/logo/autoteclogo.png" alt="Autotec Logo" style="height: 50px;">
+            <img src="C:\xampp\htdocs\autotec\pictures\logo\autoteclogo.png" alt="Autotec Logo" style="height: 50px;">
         </div>
         <ul class="nav-links">
             <li><a href="<?= isset($_SESSION['user_id']) ? 'homepage.php' : 'index.php' ?>">Home</a></li>
