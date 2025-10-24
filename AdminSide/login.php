@@ -2,7 +2,7 @@
 session_start();
 
 require_once '../db.php';
-require_once '../check.php';
+require_once 'autotec/process/check.php';
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
