@@ -4,85 +4,18 @@ session_start();
 require_once '../db.php';
 require_once 'autotec/process/check.php';
 
-// Handle form submission
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $username = trim($_POST['username']);
-    $password = trim($_POST['password']);
-    $remember = isset($_POST['remember']);
-    
-    // Basic validation
-    if (empty($username) || empty($password)) {
-        $error_message = 'Please enter both username and password.';
-    } else {
-        try {
-            // Create database connection
-            $pdo = new PDO("mysql:host=$host;dbname=$database;charset=utf8mb4", $db_username, $db_password, [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                PDO::ATTR_EMULATE_PREPARES => false,
-            ]);
-            
-            // Prepare and execute query to find admin user
-            $stmt = $pdo->prepare("SELECT admin_id, username, Email, password, BranchName FROM admin WHERE username = ? OR Email = ?");
-            $stmt->execute([$username, $username]);
-            $admin = $stmt->fetch();
-            
-            // Debug: Check if user exists (remove after testing)
-            if (!$admin) {
-                $error_message = "No user found with username/email: $username";
-            } else {
-                // Debug: Check password verification (remove after testing)
-                if (!password_verify($password, $admin['password'])) {
-                    // Check if password is stored as plain text (not recommended for production)
-                    if ($password === $admin['password']) {
-                        $error_message = "Password matches but stored as plain text. Please hash your passwords!";
-                        // For now, allow login but recommend fixing this
-                        $admin['password_verified'] = true;
-                    } else {
-                        $error_message = "Password verification failed. Check if passwords are properly hashed.";
-                        // Debug info (remove after testing):
-                        $error_message .= " Password length in DB: " . strlen($admin['password']);
-                    }
-                } else {
-                    $admin['password_verified'] = true;
-                }
-                
-                if (isset($admin['password_verified']) && $admin['password_verified']) {
-                    // Login successful
-                    $_SESSION['admin_logged_in'] = true;
-                    $_SESSION['admin_id'] = $admin['admin_id'];
-                    $_SESSION['admin_username'] = $admin['username'];
-                    $_SESSION['admin_email'] = $admin['Email'];
-                    $_SESSION['admin_branch'] = $admin['BranchName'];
-                    $_SESSION['login_time'] = time();
-                    
-                    // Set remember me cookie if checked (optional)
-                    if ($remember) {
-                        $cookie_token = bin2hex(random_bytes(32));
-                        setcookie('admin_remember', $cookie_token, time() + (86400 * 30), '/', '', false, true); // 30 days - set secure to false for local testing
-                    }
-                    
-                    // Update last login time (optional) - first check if column exists
-                    try {
-                        $update_stmt = $pdo->prepare("UPDATE admin SET last_login = NOW() WHERE admin_id = ?");
-                        $update_stmt->execute([$admin['admin_id']]);
-                    } catch (PDOException $e) {
-                        // Column might not exist, ignore this error
-                        error_log("Last login update failed: " . $e->getMessage());
-                    }
-                    
-                    // Redirect to dashboard - Fixed redirect path
-                    header('Location: adminDash.php'); // Changed from dashboard.php to match the redirect check at top
-                    exit();
-                }
-            }
-            
-        } catch (PDOException $e) {
-            // Log the error (don't show sensitive database errors to users)
-            error_log("Database error: " . $e->getMessage());
-            $error_message = 'Database connection failed: ' . $e->getMessage(); // Temporarily show error for debugging
-        }
-    }
+// Check if already logged in
+if (isset($_SESSION['isAdmin']) && $_SESSION['isAdmin'] === true) {
+    header('Location: adminDash.php');
+    exit();
+}
+
+// Initialize error message
+$error_message = '';
+
+// Check if there's an error from check.php redirect
+if (isset($_GET['error'])) {
+    $error_message = 'Login failed. Please check your credentials.';
 }
 ?>
 
@@ -291,7 +224,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             </div>
         <?php endif; ?>
 
-        <form method="POST" action="" id="loginForm">
+          <form method="POST" action="../process/check.php" id="loginForm">
             <div class="form-group">
                 <label for="username">Username or Email</label>
                 <input type="text" 
