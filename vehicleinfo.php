@@ -29,11 +29,7 @@ $vehicle_categories_query = "SELECT CategoryID, Name FROM vehicle_categories ORD
 $vehicle_categories_result = $conn->query($vehicle_categories_query);
 ?>
 
-<?php 
-// Check if session is not already started before calling session_start()
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+
 ?>
 <!DOCTYPE html>
 <html lang="en">

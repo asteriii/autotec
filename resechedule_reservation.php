@@ -13,6 +13,7 @@ if (!isset($_SESSION['user_id'])) {
 
 include 'db.php';
 
+
 try {
     // Get form data
     $reservationId = $_POST['reservationId'] ?? null;
