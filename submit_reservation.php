@@ -1,18 +1,7 @@
 <?php
 header('Content-Type: application/json');
 
-$servername = "localhost";
-$username = "root";
-$password = "";
-$dbname = "autotec";
-
-$conn = new mysqli($servername, $username, $password, $dbname);
-
-// Check connection
-if ($conn->connect_error) {
-    echo json_encode(['success' => false, 'message' => "Connection failed: " . $conn->connect_error]);
-    exit;
-}
+require_once 'db.php';
 
 try {
     // Map the field names from JavaScript to PHP expected names
@@ -27,8 +16,8 @@ try {
         'contactNumber' => 'contactNumber',
         'email' => 'email',
         'address' => 'address',
-        'scheduleDate' => 'date',  // JavaScript sends 'scheduleDate', PHP expects 'date'
-        'scheduleTime' => 'time'   // JavaScript sends 'scheduleTime', PHP expects 'time'
+        'scheduleDate' => 'date',
+        'scheduleTime' => 'time'
     ];
 
     // Remap the POST data
@@ -43,7 +32,7 @@ try {
     $_POST = array_merge($_POST, $mapped_post);
 
     // Validate that required fields are present
-    $required_fields = ['plateNumber', 'brand', 'vehicleType', 'vehicleCategory', 'firstName', 'lastName', 'contactNumber', 'email', 'date', 'time', 'address'];
+    $required_fields = ['plateNumber', 'brand', 'vehicleType', 'vehicleCategory', 'firstName', 'lastName', 'contactNumber', 'email', 'date', 'time', 'address', 'paymentMethod'];
     $missing_fields = [];
 
     foreach ($required_fields as $field) {
@@ -69,10 +58,22 @@ try {
     $address = trim($_POST['address']);
     $date = trim($_POST['date']);
     $time = trim($_POST['time']);
+    $paymentMethod = trim($_POST['paymentMethod']);
+    $price = isset($_POST['price']) ? floatval($_POST['price']) : null;
 
-    // Get UserID from session (assuming user is logged in)
-    session_start();
-    $userID = isset($_SESSION['user_id']) ? $_SESSION['user_id'] : null;
+    // Get UserID from session - CHECK BOTH POSSIBLE SESSION NAMES
+    $userID = null;
+    if (isset($_SESSION['user_id'])) {
+        $userID = $_SESSION['user_id'];
+    } elseif (isset($_SESSION['UserID'])) {
+        $userID = $_SESSION['UserID'];
+    } elseif (isset($_SESSION['userid'])) {
+        $userID = $_SESSION['userid'];
+    }
+    
+    // Debug: Log session info (remove this after fixing)
+    error_log("Session data: " . print_r($_SESSION, true));
+    error_log("UserID value: " . ($userID ?? 'NULL'));
 
     // Validate email format
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -92,6 +93,11 @@ try {
     // Add seconds if not provided
     if (!preg_match('/^\d{2}:\d{2}:\d{2}$/', $time)) {
         $time .= ':00';
+    }
+
+    // Validate payment method
+    if (!in_array($paymentMethod, ['gcash', 'onsite'])) {
+        throw new Exception("Invalid payment method");
     }
 
     // Get TypeID from vehicle_types table
@@ -124,30 +130,6 @@ try {
     $categoryID = $category_row['CategoryID'];
     $category_stmt->close();
 
-    // Check if plate number already exists for the same date
-    $check_stmt = $conn->prepare("SELECT ReservationID FROM reservations WHERE PlateNo = ? AND Date = ?");
-    $check_stmt->bind_param("ss", $plateNo, $date);
-    $check_stmt->execute();
-    $result = $check_stmt->get_result();
-
-    if ($result->num_rows > 0) {
-        $check_stmt->close();
-        throw new Exception("A reservation already exists for this plate number on the selected date");
-    }
-    $check_stmt->close();
-
-    // Check if there's already a booking for the same date and time (prevent double booking)
-    $time_check_stmt = $conn->prepare("SELECT ReservationID FROM reservations WHERE Date = ? AND Time = ?");
-    $time_check_stmt->bind_param("ss", $date, $time);
-    $time_check_stmt->execute();
-    $time_result = $time_check_stmt->get_result();
-
-    if ($time_result->num_rows > 0) {
-        $time_check_stmt->close();
-        throw new Exception("This time slot is already booked for the selected date. Please choose a different time.");
-    }
-    $time_check_stmt->close();
-
     // Set BranchName if branchId is provided
     $branchName = null;
     if (isset($_POST['branchId']) && !empty($_POST['branchId'])) {
@@ -163,23 +145,91 @@ try {
         $branch_stmt->close();
     }
 
-    // Prepare and bind - updated to include BranchName
-    $stmt = $conn->prepare("INSERT INTO reservations (UserID, PlateNo, Brand, TypeID, CategoryID, Fname, Lname, Mname, PhoneNum, Email, Date, Time, Address, BranchName) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    $stmt->bind_param("issiisssssssss", $userID, $plateNo, $brand, $typeID, $categoryID, $firstName, $lastName, $middleName, $contactNumber, $email, $date, $time, $address, $branchName);
+    // Check if plate number already exists for the same date
+    $check_stmt = $conn->prepare("SELECT ReservationID FROM reservations WHERE PlateNo = ? AND Date = ?");
+    $check_stmt->bind_param("ss", $plateNo, $date);
+    $check_stmt->execute();
+    $result = $check_stmt->get_result();
+
+    if ($result->num_rows > 0) {
+        $check_stmt->close();
+        throw new Exception("A reservation already exists for this plate number on the selected date");
+    }
+    $check_stmt->close();
+
+    // Check if there's already a booking for the same date, time, and branch (prevent double booking)
+    $time_check_stmt = $conn->prepare("SELECT ReservationID FROM reservations WHERE Date = ? AND Time = ? AND BranchName = ?");
+    $time_check_stmt->bind_param("sss", $date, $time, $branchName);
+    $time_check_stmt->execute();
+    $time_result = $time_check_stmt->get_result();
+
+    if ($time_result->num_rows > 0) {
+        $time_check_stmt->close();
+        throw new Exception("This time slot is already booked for the selected date at this branch. Please choose a different time.");
+    }
+    $time_check_stmt->close();
+
+    // Handle payment receipt upload for GCash
+    $paymentReceiptPath = null;
+    if ($paymentMethod === 'gcash' && isset($_FILES['paymentReceipt'])) {
+        $file = $_FILES['paymentReceipt'];
+        
+        // Validate file
+        $allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+        $fileType = strtolower($file['type']);
+        
+        if (!in_array($fileType, $allowedTypes)) {
+            throw new Exception('Invalid file type. Please upload an image (JPEG, PNG, or GIF).');
+        }
+        
+        // Check file size (max 5MB)
+        if ($file['size'] > 5 * 1024 * 1024) {
+            throw new Exception('File size too large. Maximum size is 5MB.');
+        }
+        
+        // Create upload directory if it doesn't exist
+        $uploadDir = 'uploads/payment_receipts/';
+        if (!file_exists($uploadDir)) {
+            mkdir($uploadDir, 0777, true);
+        }
+        
+        // Generate unique filename
+        $fileExtension = pathinfo($file['name'], PATHINFO_EXTENSION);
+        $fileName = time() . '_' . uniqid() . '.' . $fileExtension;
+        $uploadPath = $uploadDir . $fileName;
+        
+        // Move uploaded file
+        if (!move_uploaded_file($file['tmp_name'], $uploadPath)) {
+            throw new Exception('Failed to upload payment receipt. Please try again.');
+        }
+        
+        $paymentReceiptPath = $uploadPath;
+    } elseif ($paymentMethod === 'gcash' && !isset($_FILES['paymentReceipt'])) {
+        throw new Exception('Payment receipt is required for GCash payment.');
+    }
+
+    // Set payment status based on payment method
+    $paymentStatus = ($paymentMethod === 'gcash') ? 'paid' : 'pending';
+
+    // Generate reference number
+    $referenceNumber = 'AT-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -6));
+
+    // Prepare and bind - updated to include payment fields
+    $stmt = $conn->prepare("INSERT INTO reservations (UserID, PlateNo, Brand, TypeID, CategoryID, Fname, Lname, Mname, PhoneNum, Email, Date, Time, Address, BranchName, PaymentMethod, PaymentStatus, PaymentReceipt, Price, ReferenceNumber) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt->bind_param("issiissssssssssssds", $userID, $plateNo, $brand, $typeID, $categoryID, $firstName, $lastName, $middleName, $contactNumber, $email, $date, $time, $address, $branchName, $paymentMethod, $paymentStatus, $paymentReceiptPath, $price, $referenceNumber);
 
     // Execute the statement
     if ($stmt->execute()) {
         $reservation_id = $stmt->insert_id;
-        
-        // Generate reference number based on reservation ID
-        $referenceNumber = 'ATE-' . date('Ymd') . '-' . str_pad($reservation_id, 4, '0', STR_PAD_LEFT);
         
         // Success response in JSON format
         echo json_encode([
             'success' => true,
             'message' => 'Registration successful',
             'referenceNumber' => $referenceNumber,
-            'reservationId' => $reservation_id
+            'reservationId' => $reservation_id,
+            'paymentMethod' => $paymentMethod,
+            'paymentStatus' => $paymentStatus
         ]);
     } else {
         throw new Exception("Error creating reservation: " . $stmt->error);
@@ -196,5 +246,44 @@ try {
     ]);
 } finally {
     $conn->close();
+}
+
+// Optional: Email confirmation function
+function sendConfirmationEmail($email, $refNumber, $firstName, $lastName, $date, $time, $branch) {
+    $to = $email;
+    $subject = "AutoTEC Appointment Confirmation - " . $refNumber;
+    
+    $message = "
+    <html>
+    <head>
+        <title>Appointment Confirmation</title>
+    </head>
+    <body>
+        <h2>Thank you for your reservation!</h2>
+        <p>Dear $firstName $lastName,</p>
+        <p>Your appointment has been successfully scheduled.</p>
+        
+        <h3>Appointment Details:</h3>
+        <ul>
+            <li><strong>Reference Number:</strong> $refNumber</li>
+            <li><strong>Branch:</strong> $branch</li>
+            <li><strong>Date:</strong> $date</li>
+            <li><strong>Time:</strong> $time</li>
+        </ul>
+        
+        <p>Please bring this reference number and your vehicle documents on your appointment date.</p>
+        
+        <p>Best regards,<br>AutoTEC Team</p>
+    </body>
+    </html>
+    ";
+    
+    // Headers for HTML email
+    $headers = "MIME-Version: 1.0" . "\r\n";
+    $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
+    $headers .= "From: noreply@autotec.com" . "\r\n";
+    
+    // Send email
+    mail($to, $subject, $message, $headers);
 }
 ?>

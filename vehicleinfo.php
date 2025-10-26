@@ -6,9 +6,19 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-// Fetch branches from about_us table
-$branches_query = "SELECT AboutID, BranchName, Description, MapLink FROM about_us ORDER BY BranchName";
+// Fetch branches from about_us table (now including QR codes)
+$branches_query = "SELECT AboutID, BranchName, Description, MapLink, GCashQR FROM about_us ORDER BY BranchName";
 $branches_result = $conn->query($branches_query);
+
+// Store branch data in array for later use
+$branches_data = [];
+if ($branches_result->num_rows > 0) {
+    $branches_result->data_seek(0); // Reset pointer
+    while($row = $branches_result->fetch_assoc()) {
+        $branches_data[] = $row;
+    }
+    $branches_result->data_seek(0); // Reset pointer again for the HTML loop
+}
 
 // Fetch vehicle types with their prices
 $vehicle_types_query = "SELECT VehicleTypeID, Name, Price FROM vehicle_types ORDER BY Name";
@@ -19,11 +29,7 @@ $vehicle_categories_query = "SELECT CategoryID, Name FROM vehicle_categories ORD
 $vehicle_categories_result = $conn->query($vehicle_categories_query);
 ?>
 
-<?php 
-// Check if session is not already started before calling session_start()
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -110,6 +116,165 @@ if (session_status() === PHP_SESSION_NONE) {
         .map-toggle:hover {
             background: #8a1132;
         }
+
+        /* Payment Options Styles */
+        .payment-options {
+            margin: 30px 0;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 10px;
+        }
+
+        .payment-options h3 {
+            color: #a4133c;
+            margin-bottom: 20px;
+        }
+
+        .payment-method-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .payment-card {
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: white;
+            text-align: center;
+        }
+
+        .payment-card:hover {
+            border-color: #a4133c;
+            box-shadow: 0 4px 12px rgba(164, 19, 60, 0.1);
+        }
+
+        .payment-card.selected {
+            border-color: #a4133c;
+            background: #fff5f7;
+            box-shadow: 0 4px 12px rgba(164, 19, 60, 0.15);
+        }
+
+        .payment-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        .payment-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #a4133c;
+            margin-bottom: 5px;
+        }
+
+        .payment-description {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .gcash-section {
+            display: none;
+            margin-top: 20px;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            border: 2px solid #a4133c;
+        }
+
+        .gcash-section.active {
+            display: block;
+        }
+
+        .qr-code-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .qr-code-image {
+            max-width: 300px;
+            height: auto;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 10px;
+            background: white;
+        }
+
+        .upload-section {
+            margin-top: 20px;
+        }
+
+        .file-upload-wrapper {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-upload-input {
+            display: none;
+        }
+
+        .file-upload-label {
+            display: block;
+            padding: 15px;
+            background: #a4133c;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            text-align: center;
+            transition: background 0.3s;
+        }
+
+        .file-upload-label:hover {
+            background: #8a1132;
+        }
+
+        .file-preview {
+            margin-top: 15px;
+            text-align: center;
+        }
+
+        .file-preview img {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 10px;
+            border: 2px solid #e0e0e0;
+        }
+
+        .file-name {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .onsite-message {
+            display: none;
+            padding: 20px;
+            background: #fff5f7;
+            border-radius: 10px;
+            border-left: 4px solid #a4133c;
+            margin-top: 20px;
+        }
+
+        .onsite-message.active {
+            display: block;
+        }
+
+        .onsite-message h4 {
+            color: #a4133c;
+            margin-bottom: 10px;
+        }
+
+        .onsite-message ul {
+            margin-left: 20px;
+            color: #666;
+        }
+
+        .onsite-message li {
+            margin-bottom: 8px;
+        }
         
         @media (min-width: 768px) {
             .branch-selection {
@@ -166,7 +331,8 @@ if (session_status() === PHP_SESSION_NONE) {
                     <?php
                     if ($branches_result->num_rows > 0) {
                         while($branch = $branches_result->fetch_assoc()) {
-                            echo '<div class="branch-card" onclick="selectBranch(this, ' . $branch['AboutID'] . ', \'' . htmlspecialchars($branch['BranchName']) . '\')">';
+                            $gcashQR = $branch['GCashQR'] ?? '';
+                            echo '<div class="branch-card" onclick="selectBranch(this, ' . $branch['AboutID'] . ', \'' . htmlspecialchars($branch['BranchName']) . '\', \'' . htmlspecialchars($gcashQR) . '\')">';
                             echo '<div class="branch-card-header">';
                             echo '<div class="branch-name">' . htmlspecialchars($branch['BranchName']) . '</div>';
                             echo '<input type="radio" name="selectedBranch" value="' . $branch['AboutID'] . '" class="branch-radio">';
@@ -348,10 +514,10 @@ if (session_status() === PHP_SESSION_NONE) {
                 </div>
             </div>
 
-            <!-- Step 5: Confirmation -->
+            <!-- Step 5: Confirmation & Payment -->
             <div class="form-step" id="step5">
-                <h2>Confirmation</h2>
-                <p>Please review your registration details before submitting</p>
+                <h2>Confirmation & Payment</h2>
+                <p>Please review your registration details and choose your payment method</p>
 
                 <div class="confirmation-summary">
                     <div class="summary-item">
@@ -384,8 +550,57 @@ if (session_status() === PHP_SESSION_NONE) {
                     </div>
                 </div>
 
-                <div style="background: #ffb3c1; padding: 15px; border-radius: 5px; border-left: 4px solid #a4133c;">
-                    <strong>Note:</strong> Please bring your ticket to the testing center.
+                <!-- Payment Options -->
+                <div class="payment-options">
+                    <h3>Choose Payment Method</h3>
+                    <div class="payment-method-cards">
+                        <div class="payment-card" onclick="selectPaymentMethod('gcash')">
+                            <div class="payment-icon">💳</div>
+                            <div class="payment-title">GCash Payment</div>
+                            <div class="payment-description">Pay now via GCash and upload receipt</div>
+                        </div>
+                        <div class="payment-card" onclick="selectPaymentMethod('onsite')">
+                            <div class="payment-icon">🏢</div>
+                            <div class="payment-title">Pay On-Site</div>
+                            <div class="payment-description">Pay at the testing center</div>
+                        </div>
+                    </div>
+
+                    <!-- GCash Payment Section -->
+                    <div class="gcash-section" id="gcashSection">
+                        <h4 style="color: #a4133c; margin-bottom: 15px;">Scan QR Code to Pay</h4>
+                        <div class="qr-code-container">
+                            <img src="" alt="GCash QR Code" class="qr-code-image" id="qrCodeImage">
+                            <p style="margin-top: 10px; color: #666;">Scan this QR code with your GCash app</p>
+                        </div>
+                        
+                        <div class="upload-section">
+                            <h4 style="color: #a4133c; margin-bottom: 10px;">Upload Payment Receipt</h4>
+                            <p style="color: #666; margin-bottom: 15px;">Please upload a screenshot of your payment confirmation</p>
+                            <div class="file-upload-wrapper">
+                                <input type="file" id="paymentReceipt" class="file-upload-input" accept="image/*" onchange="previewReceipt(this)">
+                                <label for="paymentReceipt" class="file-upload-label">
+                                    📤 Choose File to Upload
+                                </label>
+                            </div>
+                            <div class="file-preview" id="receiptPreview"></div>
+                        </div>
+                    </div>
+
+                    <!-- On-Site Payment Message -->
+                    <div class="onsite-message" id="onsiteMessage">
+                        <h4>📋 On-Site Payment Instructions</h4>
+                        <p>You have chosen to pay at the testing center. Please note:</p>
+                        <ul>
+                            <li>Payment must be made before your scheduled appointment time</li>
+                            <li>Bring valid ID and vehicle documents</li>
+                            <li>Your appointment receipt will be available in your user profile</li>
+                            <li>You can download and print your receipt from your profile dashboard</li>
+                        </ul>
+                        <div style="margin-top: 15px; padding: 10px; background: #fff; border-radius: 5px; border: 1px solid #a4133c;">
+                            <strong style="color: #a4133c;">💡 Tip:</strong> Download your receipt from your profile before visiting to speed up the check-in process.
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -402,6 +617,7 @@ if (session_status() === PHP_SESSION_NONE) {
             <h2>Registration Successful!</h2>
             <p>Thank you for registering! Your appointment has been confirmed.</p>
             <p><strong>Reference Number:</strong> <span id="referenceNumber"></span></p>
+            <div id="paymentSuccessMessage"></div>
             <button class="btn" onclick="closeModal()">Close</button>
         </div>
     </div>
@@ -424,6 +640,9 @@ if (session_status() === PHP_SESSION_NONE) {
         let selectedTime = null;
         let selectedBranchId = null;
         let selectedBranchName = null;
+        let selectedBranchQR = null;
+        let selectedPaymentMethod = null;
+        let paymentReceiptFile = null;
         let currentMonth = new Date().getMonth();
         let currentYear = new Date().getFullYear();
 
@@ -433,7 +652,7 @@ if (session_status() === PHP_SESSION_NONE) {
         });
 
         // Branch selection function
-        function selectBranch(element, branchId, branchName) {
+        function selectBranch(element, branchId, branchName, gcashQR) {
             // Remove previous selection
             const previousSelected = document.querySelector('.branch-card.selected');
             if (previousSelected) {
@@ -449,11 +668,12 @@ if (session_status() === PHP_SESSION_NONE) {
             
             selectedBranchId = branchId;
             selectedBranchName = branchName;
+            selectedBranchQR = gcashQR;
         }
 
         // Toggle map display
         function toggleMap(event, button, mapLink) {
-            event.stopPropagation(); // Prevent branch selection when clicking map toggle
+            event.stopPropagation();
             
             const mapContainer = button.nextElementSibling;
             const iframe = mapContainer.querySelector('iframe');
@@ -466,6 +686,55 @@ if (session_status() === PHP_SESSION_NONE) {
                 mapContainer.style.display = 'none';
                 iframe.src = '';
                 button.textContent = 'View Location';
+            }
+        }
+
+        // Payment method selection
+        function selectPaymentMethod(method) {
+            selectedPaymentMethod = method;
+            
+            // Remove previous selection
+            document.querySelectorAll('.payment-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            
+            // Add selection to clicked card
+            event.currentTarget.classList.add('selected');
+            
+            // Show/hide relevant sections
+            const gcashSection = document.getElementById('gcashSection');
+            const onsiteMessage = document.getElementById('onsiteMessage');
+            
+            if (method === 'gcash') {
+                gcashSection.classList.add('active');
+                onsiteMessage.classList.remove('active');
+                
+                // Load QR code
+                if (selectedBranchQR) {
+                    document.getElementById('qrCodeImage').src = selectedBranchQR;
+                }
+            } else {
+                gcashSection.classList.remove('active');
+                onsiteMessage.classList.add('active');
+            }
+        }
+
+        // Preview payment receipt
+        function previewReceipt(input) {
+            const preview = document.getElementById('receiptPreview');
+            
+            if (input.files && input.files[0]) {
+                paymentReceiptFile = input.files[0];
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    preview.innerHTML = `
+                        <img src="${e.target.result}" alt="Payment Receipt">
+                        <div class="file-name">✓ ${input.files[0].name}</div>
+                    `;
+                };
+                
+                reader.readAsDataURL(input.files[0]);
             }
         }
 
@@ -612,6 +881,8 @@ if (session_status() === PHP_SESSION_NONE) {
                     return validateOwnerDetails();
                 case 4:
                     return validateSchedule();
+                case 5:
+                    return validatePaymentMethod();
                 default:
                     return true;
             }
@@ -647,7 +918,6 @@ if (session_status() === PHP_SESSION_NONE) {
         }
 
         function validateOwnerDetails() {
-            // Target elements specifically within the step3 form to avoid conflicts with header
             const step3Form = document.getElementById('step3');
             const firstName = step3Form.querySelector('#firstName');
             const lastName = step3Form.querySelector('#lastName');
@@ -655,7 +925,6 @@ if (session_status() === PHP_SESSION_NONE) {
             const email = step3Form.querySelector('#email');
             const address = step3Form.querySelector('#address');
             
-            // Check if elements exist
             if (!firstName || !lastName || !contactNumber || !email || !address) {
                 alert('One or more form elements could not be found.');
                 return false;
@@ -704,6 +973,20 @@ if (session_status() === PHP_SESSION_NONE) {
             const today = new Date();
             if (selectedDate < today.setHours(0, 0, 0, 0)) {
                 alert('Please select a future date.');
+                return false;
+            }
+            
+            return true;
+        }
+
+        function validatePaymentMethod() {
+            if (!selectedPaymentMethod) {
+                alert('Please select a payment method.');
+                return false;
+            }
+            
+            if (selectedPaymentMethod === 'gcash' && !paymentReceiptFile) {
+                alert('Please upload your GCash payment receipt.');
                 return false;
             }
             
@@ -849,7 +1132,7 @@ if (session_status() === PHP_SESSION_NONE) {
                 formData.append('price', selectedOption.dataset.price);
             }
             
-            // Owner details - using querySelector to target step3 specifically
+            // Owner details
             formData.append('firstName', document.querySelector('#step3 #firstName').value);
             formData.append('lastName', document.querySelector('#step3 #lastName').value);
             formData.append('middleName', document.querySelector('#step3 #middleName').value);
@@ -858,9 +1141,17 @@ if (session_status() === PHP_SESSION_NONE) {
             formData.append('address', document.querySelector('#step3 #address').value);
             
             // Schedule info
-            const scheduleDate = selectedDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+            const scheduleDate = selectedDate.toISOString().split('T')[0];
             formData.append('scheduleDate', scheduleDate);
             formData.append('scheduleTime', selectedTime);
+            
+            // Payment info
+            formData.append('paymentMethod', selectedPaymentMethod);
+            
+            // Add payment receipt if GCash payment
+            if (selectedPaymentMethod === 'gcash' && paymentReceiptFile) {
+                formData.append('paymentReceipt', paymentReceiptFile);
+            }
             
             // Disable submit button to prevent double submission
             const nextBtn = document.getElementById('nextBtn');
@@ -875,8 +1166,26 @@ if (session_status() === PHP_SESSION_NONE) {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    // Show success modal
+                    // Show success modal with payment-specific message
                     document.getElementById('referenceNumber').textContent = data.referenceNumber;
+                    
+                    const paymentMessage = document.getElementById('paymentSuccessMessage');
+                    if (selectedPaymentMethod === 'gcash') {
+                        paymentMessage.innerHTML = `
+                            <div style="margin-top: 15px; padding: 15px; background: #e8f5e9; border-radius: 5px; border-left: 4px solid #4caf50;">
+                                <strong>✓ GCash Payment Received</strong><br>
+                                <span style="color: #666;">Your payment receipt has been uploaded successfully. We will verify your payment shortly.</span>
+                            </div>
+                        `;
+                    } else {
+                        paymentMessage.innerHTML = `
+                            <div style="margin-top: 15px; padding: 15px; background: #fff3e0; border-radius: 5px; border-left: 4px solid #ff9800;">
+                                <strong>📋 On-Site Payment</strong><br>
+                                <span style="color: #666;">Please pay at the testing center. Your appointment receipt is available in your profile for download.</span>
+                            </div>
+                        `;
+                    }
+                    
                     document.getElementById('successModal').style.display = 'block';
                     
                     // Reset form after successful submission
@@ -914,13 +1223,21 @@ if (session_status() === PHP_SESSION_NONE) {
             // Reset selections
             selectedBranchId = null;
             selectedBranchName = null;
+            selectedBranchQR = null;
             selectedDate = null;
             selectedTime = null;
+            selectedPaymentMethod = null;
+            paymentReceiptFile = null;
             
             // Remove all selected classes
             document.querySelectorAll('.selected').forEach(element => {
                 element.classList.remove('selected');
             });
+            
+            // Hide payment sections
+            document.getElementById('gcashSection').classList.remove('active');
+            document.getElementById('onsiteMessage').classList.remove('active');
+            document.getElementById('receiptPreview').innerHTML = '';
             
             // Reset to first step
             currentStep = 1;
@@ -936,8 +1253,6 @@ if (session_status() === PHP_SESSION_NONE) {
 
         function closeModal() {
             document.getElementById('successModal').style.display = 'none';
-            // Optionally redirect to home page or appointments page
-            // window.location.href = 'index.php';
         }
 
         function closeErrorModal() {
@@ -962,7 +1277,7 @@ if (session_status() === PHP_SESSION_NONE) {
             const contactInput = document.querySelector('#step3 #contactNumber');
             if (contactInput) {
                 contactInput.addEventListener('input', function(e) {
-                    let value = e.target.value.replace(/\D/g, ''); // Remove non-digits
+                    let value = e.target.value.replace(/\D/g, '');
                     
                     if (value.startsWith('63')) {
                         value = '+' + value;
@@ -970,7 +1285,6 @@ if (session_status() === PHP_SESSION_NONE) {
                         value = '0' + value;
                     }
                     
-                    // Format as 09XX-XXX-XXXX
                     if (value.startsWith('09') && value.length > 4) {
                         value = value.substring(0, 4) + '-' + 
                                value.substring(4, 7) + '-' + 
@@ -985,10 +1299,8 @@ if (session_status() === PHP_SESSION_NONE) {
         // Plate number formatting
         document.getElementById('plateNumber').addEventListener('input', function(e) {
             let value = e.target.value.toUpperCase();
-            // Remove any existing hyphens
             value = value.replace(/-/g, '');
             
-            // Add hyphen after 3 characters if there are more characters
             if (value.length > 3) {
                 value = value.substring(0, 3) + '-' + value.substring(3);
             }
