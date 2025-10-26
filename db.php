@@ -1,5 +1,5 @@
 <?php
-// HI TESTING LANG BENJIE TO 2 testingss
+// HI TESTING LANG ng commit benjie to
 $servername = getenv('MYSQLHOST') ?: 'mysql.railway.internal';
 $username = getenv('MYSQLUSER') ?: 'root';
 $password = getenv('MYSQLPASSWORD') ?: 'OUJHNoEzFNhsIgRFuduLzLFWunvvMrrP';
