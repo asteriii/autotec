@@ -7,7 +7,7 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 include 'db.php';
-include 'header.php'; 
+
 
 function alertAndRedirect($message, $url = 'profile.php') {
     echo "<script>alert(" . json_encode($message) . "); window.location.href='$url';</script>";
