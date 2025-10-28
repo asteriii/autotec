@@ -554,12 +554,12 @@ $vehicle_categories_result = $conn->query($vehicle_categories_query);
                 <div class="payment-options">
                     <h3>Choose Payment Method</h3>
                     <div class="payment-method-cards">
-                        <div class="payment-card" onclick="selectPaymentMethod(event, 'gcash')">
+                        <div class="payment-card" onclick="selectPaymentMethod('gcash')">
                             <div class="payment-icon">💳</div>
                             <div class="payment-title">GCash Payment</div>
                             <div class="payment-description">Pay now via GCash and upload receipt</div>
                         </div>
-                        <div class="payment-card" onclick="selectPaymentMethod(event, 'onsite')">
+                        <div class="payment-card" onclick="selectPaymentMethod('onsite')">
                             <div class="payment-icon">🏢</div>
                             <div class="payment-title">Pay On-Site</div>
                             <div class="payment-description">Pay at the testing center</div>
@@ -690,7 +690,7 @@ $vehicle_categories_result = $conn->query($vehicle_categories_query);
         }
 
         // Payment method selection
-        function selectPaymentMethod(event, method) {
+        function selectPaymentMethod(method) {
             selectedPaymentMethod = method;
             
             // Remove previous selection
@@ -711,14 +711,7 @@ $vehicle_categories_result = $conn->query($vehicle_categories_query);
                 
                 // Load QR code
                 if (selectedBranchQR) {
-                    let src = selectedBranchQR;
-                    // If DB stores only filename, prefix the known directory
-                    if (!/^https?:\/\//i.test(src) && src[0] !== '/') {
-                        if (!src.startsWith('uploads/')) {
-                            src = 'uploads/qrcodes/' + src;
-                        }
-                    }
-                    document.getElementById('qrCodeImage').src = src;
+                    document.getElementById('qrCodeImage').src = selectedBranchQR;
                 }
             } else {
                 gcashSection.classList.remove('active');
