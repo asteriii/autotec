@@ -15,7 +15,7 @@
         </div>
         <ul class="nav-links">
             <li><a href="<?= isset($_SESSION['user_id']) ? 'homepage.php' : 'index.php' ?>">Home</a></li>
-            <li><a href="vehicleinfo.php">Register Now!</a></li>
+            <li><a href="vehicleinfo.php" id="reserveNowLink">Reserve Now!</a></li>
             <li><a href="aboutus.php">About Us</a></li>
             <li><a href="contactus.php">Contact Us</a></li>
         </ul>
@@ -222,6 +222,26 @@
         </div>
         <div class="terms-modal-footer">
             <button class="terms-btn-close">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- ============ NEW: Login Required Modal ============ -->
+<div id="loginRequiredModal" class="login-required-modal">
+    <div class="login-required-content">
+        <div class="login-required-icon">
+            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="12" cy="12" r="10" stroke="#a4133c" stroke-width="2"/>
+                <path d="M12 8V12" stroke="#a4133c" stroke-width="2" stroke-linecap="round"/>
+                <circle cx="12" cy="16" r="1" fill="#a4133c"/>
+            </svg>
+        </div>
+        <h2>Authentication Required</h2>
+        <p>Please sign in or create an account to make a reservation.</p>
+        <div class="login-required-actions">
+            <button class="btn-cancel" onclick="closeLoginRequiredModal()">Cancel</button>
+            <button class="btn-signin" onclick="redirectToLogin()">Sign In</button>
+            <button class="btn-register-new" onclick="redirectToRegister()">Register</button>
         </div>
     </div>
 </div>
@@ -474,6 +494,135 @@
     background: #ff758f;
 }
 
+/* ============ NEW: Login Required Modal Styles ============ */
+.login-required-modal {
+    display: none;
+    position: fixed;
+    z-index: 10000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(5px);
+    animation: fadeIn 0.3s ease-out;
+    align-items: center;
+    justify-content: center;
+}
+
+.login-required-content {
+    background: white;
+    border-radius: 16px;
+    padding: 40px 30px;
+    max-width: 450px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(164, 19, 60, 0.2);
+    animation: slideUp 0.3s ease-out;
+    position: relative;
+}
+
+.login-required-icon {
+    margin: 0 auto 20px;
+    width: 60px;
+    height: 60px;
+    animation: pulse 2s infinite;
+}
+
+.login-required-content h2 {
+    color: #a4133c;
+    font-size: 1.8rem;
+    margin: 0 0 15px 0;
+    font-weight: 600;
+}
+
+.login-required-content p {
+    color: #666;
+    font-size: 1rem;
+    line-height: 1.6;
+    margin: 0 0 30px 0;
+}
+
+.login-required-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.login-required-actions button {
+    padding: 12px 28px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 110px;
+}
+
+.btn-cancel {
+    background-color: #f0f0f0;
+    color: #666;
+}
+
+.btn-cancel:hover {
+    background-color: #e0e0e0;
+    transform: translateY(-2px);
+}
+
+.btn-signin {
+    background: linear-gradient(135deg, #a4133c 0%, #ff758f 100%);
+    color: white;
+    box-shadow: 0 4px 15px rgba(164, 19, 60, 0.3);
+}
+
+.btn-signin:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(164, 19, 60, 0.4);
+}
+
+.btn-register-new {
+    background: linear-gradient(135deg, #ff758f 0%, #ffb3c6 100%);
+    color: white;
+    box-shadow: 0 4px 15px rgba(255, 117, 143, 0.3);
+}
+
+.btn-register-new:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 117, 143, 0.4);
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+}
+
 /* Terms Modal Responsive */
 @media (max-width: 768px) {
     .terms-modal-content {
@@ -487,6 +636,42 @@
     
     .terms-modal-body {
         max-height: 50vh;
+    }
+    
+    .login-required-content {
+        padding: 30px 20px;
+    }
+    
+    .login-required-content h2 {
+        font-size: 1.5rem;
+    }
+    
+    .login-required-actions {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .login-required-actions button {
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .login-required-content {
+        padding: 30px 20px;
+    }
+    
+    .login-required-content h2 {
+        font-size: 1.5rem;
+    }
+    
+    .login-required-actions {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .login-required-actions button {
+        width: 100%;
     }
 }
 </style>
@@ -523,6 +708,43 @@
             modal.style.display = 'none';
             document.body.style.overflow = 'auto';
         }
+    }
+
+    // ============ NEW: Login Required Modal Functions ============
+    function showLoginRequiredModal() {
+        const modal = document.getElementById('loginRequiredModal');
+        if (modal) {
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+    }
+
+    function closeLoginRequiredModal() {
+        const modal = document.getElementById('loginRequiredModal');
+        if (modal) {
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+    }
+
+    function redirectToLogin() {
+        closeLoginRequiredModal();
+        openModal('loginModal');
+    }
+
+    function redirectToRegister() {
+        closeLoginRequiredModal();
+        openModal('registrationModal');
+    }
+
+    // ============ NEW: Check if user is logged in before accessing Reserve Now ============
+    function checkLoginForReservation(event) {
+        <?php if (!isset($_SESSION['user_id'])): ?>
+            event.preventDefault();
+            showLoginRequiredModal();
+            return false;
+        <?php endif; ?>
+        return true;
     }
 
     // Terms checkbox functionality
@@ -585,6 +807,11 @@
             termsModal.style.display = 'none';
             document.body.style.overflow = 'auto';
         }
+        // ============ NEW: Close login required modal when clicking outside ============
+        const loginRequiredModal = document.getElementById('loginRequiredModal');
+        if (event.target === loginRequiredModal) {
+            closeLoginRequiredModal();
+        }
     });
 
     if (loginForm) {
@@ -623,6 +850,21 @@
             closeModal('forgotPasswordModal');
         });
     }
+
+    // ============ NEW: Add event listener to Reserve Now link ============
+    document.addEventListener('DOMContentLoaded', function() {
+        // Check the Reserve Now link in navigation
+        const reserveLink = document.getElementById('reserveNowLink');
+        if (reserveLink) {
+            reserveLink.addEventListener('click', checkLoginForReservation);
+        }
+        
+        // Also check any buttons with these classes (if you have Book Now buttons elsewhere)
+        const reserveButtons = document.querySelectorAll('.btn-book, .reserve-btn');
+        reserveButtons.forEach(button => {
+            button.addEventListener('click', checkLoginForReservation);
+        });
+    });
 </script>
 </body>
 </html>
