@@ -1,6 +1,6 @@
 <?php
 session_start();
 session_destroy();
-header('Location: http://localhost/autotec/index.php');
+header('Location: https://autotec-production.up.railway.app/index.php');
 exit();
 ?>

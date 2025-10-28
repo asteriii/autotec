@@ -366,7 +366,7 @@
 
 /* ============ NEW: Login Required Modal Styles ============ */
 .login-required-modal {
-    display: none;
+    display:none !important;
     position: fixed;
     z-index: 10000;
     left: 0;
