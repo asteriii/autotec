@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Modals Example</title>
-    <link rel="stylesheet" href="../css/header.css">
+    <link rel="stylesheet" href="css/header.css">
     <link rel="stylesheet" href="css/index.css">
 </head>
 <body>
@@ -245,6 +245,436 @@
         </div>
     </div>
 </div>
+
+<style>
+/* Terms and Conditions Styling */
+.terms-group {
+    margin: 15px 0;
+}
+
+.checkbox-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #333;
+    margin-top: 10px;
+    user-select: none;
+    position: relative;
+}
+
+/* Hide the default checkbox */
+.checkbox-container input[type="checkbox"] {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    position: absolute;
+}
+
+/* Custom checkbox appearance */
+.custom-checkmark {
+    width: 18px;
+    height: 18px;
+    border: 2px solid #a4133c;
+    border-radius: 4px;
+    background-color: white;
+    display: inline-block;
+    position: relative;
+    transition: background 0.2s ease;
+}
+
+/* Checkmark tick when checked */
+.checkbox-container input[type="checkbox"]:checked + .custom-checkmark::after {
+    content: "";
+    position: absolute;
+    left: 4px;
+    top: 0px;
+    width: 5px;
+    height: 10px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+    background: transparent;
+}
+
+.checkbox-container input[type="checkbox"]:checked + .custom-checkmark {
+    background-color: #a4133c;
+    border-color: #a4133c;
+}
+
+.terms-text {
+    font-size: 14px;
+    color: #444;
+}
+
+/* Link styling */
+.terms-text .terms-link {
+    color: #a4133c;
+    text-decoration: underline;
+    font-weight: 500;
+}
+
+.terms-text .terms-link:hover {
+    color: #ff5e7e;
+}
+.registration-btn:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.registration-btn:disabled:hover {
+    background-color: #ccc;
+}
+
+/* Terms Modal Styles */
+.terms-modal {
+    display: none;
+    position: fixed;
+    z-index: 9999;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(5px);
+    animation: termsModalFadeIn 0.3s ease-out;
+}
+
+.terms-modal-content {
+    background-color: #fff;
+    margin: 2% auto;
+    padding: 0;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 800px;
+    max-height: 90vh;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    animation: termsModalSlideIn 0.3s ease-out;
+    overflow: hidden;
+}
+
+.terms-modal-header {
+    background: linear-gradient(135deg, #a4133c 0%, #ff758f 100%);
+    color: white;
+    padding: 20px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.terms-modal-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.terms-modal-close {
+    color: white;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    line-height: 1;
+}
+
+.terms-modal-close:hover {
+    color: #f0f0f0;
+    transform: scale(1.1);
+}
+
+.terms-modal-body {
+    padding: 30px;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.terms-content h3 {
+    color: #333;
+    margin: 25px 0 10px 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border-bottom: 2px solid #a4133c;
+    padding-bottom: 5px;
+}
+
+.terms-content h3:first-child {
+    margin-top: 0;
+}
+
+.terms-content p {
+    color: #666;
+    line-height: 1.6;
+    margin-bottom: 15px;
+    text-align: justify;
+}
+
+.terms-content ul {
+    color: #666;
+    line-height: 1.6;
+    margin: 15px 0;
+    padding-left: 20px;
+}
+
+.terms-content li {
+    margin-bottom: 5px;
+}
+
+.footer-highlight {
+    background-color: #f8f9ff;
+    padding: 15px;
+    border-radius: 6px;
+    border-left: 4px solid #a4133c;
+    margin: 20px 0;
+}
+
+.footer-highlight p {
+    margin: 0;
+    color: #333 !important;
+}
+
+.terms-modal-footer {
+    background-color: #f8f9fa;
+    padding: 20px 30px;
+    text-align: right;
+    border-top: 1px solid #eee;
+}
+
+.terms-btn-close {
+    background: linear-gradient(135deg, #a4133c 0%, #ff758f 100%);
+    color: white;
+    border: none;
+    padding: 12px 25px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.terms-btn-close:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(234, 102, 131, 0.4);
+}
+
+/* Terms Modal Animations */
+@keyframes termsModalFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes termsModalSlideIn {
+    from { 
+        opacity: 0;
+        transform: translateY(-50px);
+    }
+    to { 
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Terms Modal Scrollbar styling */
+.terms-modal-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+.terms-modal-body::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.terms-modal-body::-webkit-scrollbar-thumb {
+    background: #ff758f;
+    border-radius: 4px;
+}
+
+.terms-modal-body::-webkit-scrollbar-thumb:hover {
+    background: #ff758f;
+}
+
+/* ============ NEW: Login Required Modal Styles ============ */
+.login-required-modal {
+    display: none;
+    position: fixed;
+    z-index: 10000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(5px);
+    animation: fadeIn 0.3s ease-out;
+    align-items: center;
+    justify-content: center;
+}
+
+.login-required-content {
+    background: white;
+    border-radius: 16px;
+    padding: 40px 30px;
+    max-width: 450px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(164, 19, 60, 0.2);
+    animation: slideUp 0.3s ease-out;
+    position: relative;
+}
+
+.login-required-icon {
+    margin: 0 auto 20px;
+    width: 60px;
+    height: 60px;
+    animation: pulse 2s infinite;
+}
+
+.login-required-content h2 {
+    color: #a4133c;
+    font-size: 1.8rem;
+    margin: 0 0 15px 0;
+    font-weight: 600;
+}
+
+.login-required-content p {
+    color: #666;
+    font-size: 1rem;
+    line-height: 1.6;
+    margin: 0 0 30px 0;
+}
+
+.login-required-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.login-required-actions button {
+    padding: 12px 28px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 110px;
+}
+
+.btn-cancel {
+    background-color: #f0f0f0;
+    color: #666;
+}
+
+.btn-cancel:hover {
+    background-color: #e0e0e0;
+    transform: translateY(-2px);
+}
+
+.btn-signin {
+    background: linear-gradient(135deg, #a4133c 0%, #ff758f 100%);
+    color: white;
+    box-shadow: 0 4px 15px rgba(164, 19, 60, 0.3);
+}
+
+.btn-signin:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(164, 19, 60, 0.4);
+}
+
+.btn-register-new {
+    background: linear-gradient(135deg, #ff758f 0%, #ffb3c6 100%);
+    color: white;
+    box-shadow: 0 4px 15px rgba(255, 117, 143, 0.3);
+}
+
+.btn-register-new:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 117, 143, 0.4);
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+/* Terms Modal Responsive */
+@media (max-width: 768px) {
+    .terms-modal-content {
+        margin: 5% auto;
+        width: 95%;
+    }
+    
+    .terms-modal-header, .terms-modal-body, .terms-modal-footer {
+        padding: 20px;
+    }
+    
+    .terms-modal-body {
+        max-height: 50vh;
+    }
+    
+    .login-required-content {
+        padding: 30px 20px;
+    }
+    
+    .login-required-content h2 {
+        font-size: 1.5rem;
+    }
+    
+    .login-required-actions {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .login-required-actions button {
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .login-required-content {
+        padding: 30px 20px;
+    }
+    
+    .login-required-content h2 {
+        font-size: 1.5rem;
+    }
+    
+    .login-required-actions {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .login-required-actions button {
+        width: 100%;
+    }
+}
+</style>
 
 <script>
     const loginBtn = document.getElementById('loginBtn');
