@@ -76,6 +76,25 @@
         </div>
         <div class="modal-body">
             <form id="registrationForm" method="POST" action="process/registration.php" enctype="multipart/form-data">
+                
+                <!-- Profile Picture Upload Section -->
+                <div class="profile-upload-section">
+                    <div class="profile-preview-container">
+                        <img id="profilePreview" src="pictures/default-avatar.png" alt="Profile Preview" class="profile-preview-img">
+                        <div class="upload-overlay">
+                            <label for="profilePicture" class="upload-label">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                                    <circle cx="12" cy="13" r="4"></circle>
+                                </svg>
+                                <span>Upload Photo</span>
+                            </label>
+                            <input type="file" id="profilePicture" name="profilePicture" accept="image/*" style="display: none;">
+                        </div>
+                    </div>
+                    <p class="upload-hint">Click to upload profile picture (Max 5MB)</p>
+                </div>
+
                 <!-- Name and Username Row -->
                 <div class="form-row">
                     <div class="form-group">
@@ -130,7 +149,6 @@
                                 I agree to the <a href="#" id="termsLink" class="terms-link">Terms and Conditions</a>
                             </span>
                         </label>
-
                     </div>
                 </div>
 
@@ -226,7 +244,7 @@
     </div>
 </div>
 
-<!-- ============ NEW: Login Required Modal ============ -->
+<!-- Login Required Modal -->
 <div id="loginRequiredModal" class="login-required-modal">
     <div class="login-required-content">
         <div class="login-required-icon">
@@ -247,6 +265,74 @@
 </div>
 
 <style>
+/* Profile Picture Upload Section */
+.profile-upload-section {
+    text-align: center;
+    margin-bottom: 25px;
+    padding: 20px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 15px;
+}
+
+.profile-preview-container {
+    position: relative;
+    width: 150px;
+    height: 150px;
+    margin: 0 auto 15px;
+    border-radius: 50%;
+    overflow: hidden;
+    box-shadow: 0 8px 20px rgba(164, 19, 60, 0.2);
+    transition: all 0.3s ease;
+}
+
+.profile-preview-container:hover {
+    transform: scale(1.05);
+    box-shadow: 0 12px 30px rgba(164, 19, 60, 0.3);
+}
+
+.profile-preview-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    background: white;
+}
+
+.upload-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(164, 19, 60, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    cursor: pointer;
+}
+
+.profile-preview-container:hover .upload-overlay {
+    opacity: 1;
+}
+
+.upload-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    color: white;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 14px;
+}
+
+.upload-hint {
+    color: #666;
+    font-size: 13px;
+    margin: 0;
+}
+
 /* Terms and Conditions Styling */
 .terms-group {
     margin: 15px 0;
@@ -264,7 +350,6 @@
     position: relative;
 }
 
-/* Hide the default checkbox */
 .checkbox-container input[type="checkbox"] {
     opacity: 0;
     width: 0;
@@ -272,7 +357,6 @@
     position: absolute;
 }
 
-/* Custom checkbox appearance */
 .custom-checkmark {
     width: 18px;
     height: 18px;
@@ -284,7 +368,6 @@
     transition: background 0.2s ease;
 }
 
-/* Checkmark tick when checked */
 .checkbox-container input[type="checkbox"]:checked + .custom-checkmark::after {
     content: "";
     position: absolute;
@@ -308,7 +391,6 @@
     color: #444;
 }
 
-/* Link styling */
 .terms-text .terms-link {
     color: #a4133c;
     text-decoration: underline;
@@ -318,6 +400,7 @@
 .terms-text .terms-link:hover {
     color: #ff5e7e;
 }
+
 .registration-btn:disabled {
     background-color: #ccc;
     cursor: not-allowed;
@@ -458,7 +541,6 @@
     box-shadow: 0 5px 15px rgba(234, 102, 131, 0.4);
 }
 
-/* Terms Modal Animations */
 @keyframes termsModalFadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
@@ -475,7 +557,6 @@
     }
 }
 
-/* Terms Modal Scrollbar styling */
 .terms-modal-body::-webkit-scrollbar {
     width: 8px;
 }
@@ -494,7 +575,7 @@
     background: #ff758f;
 }
 
-/* ============ NEW: Login Required Modal Styles ============ */
+/* Login Required Modal Styles */
 .login-required-modal {
     display: none;
     position: fixed;
@@ -593,14 +674,9 @@
     box-shadow: 0 6px 20px rgba(255, 117, 143, 0.4);
 }
 
-/* Animations */
 @keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 @keyframes slideUp {
@@ -615,15 +691,11 @@
 }
 
 @keyframes pulse {
-    0%, 100% {
-        transform: scale(1);
-    }
-    50% {
-        transform: scale(1.05);
-    }
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
 }
 
-/* Terms Modal Responsive */
+/* Responsive */
 @media (max-width: 768px) {
     .terms-modal-content {
         margin: 5% auto;
@@ -654,24 +726,10 @@
     .login-required-actions button {
         width: 100%;
     }
-}
-
-@media (max-width: 480px) {
-    .login-required-content {
-        padding: 30px 20px;
-    }
     
-    .login-required-content h2 {
-        font-size: 1.5rem;
-    }
-    
-    .login-required-actions {
-        flex-direction: column;
-        gap: 10px;
-    }
-    
-    .login-required-actions button {
-        width: 100%;
+    .profile-preview-container {
+        width: 120px;
+        height: 120px;
     }
 }
 </style>
@@ -694,6 +752,38 @@
     const termsModalClose = document.querySelector('.terms-modal-close');
     const termsCloseBtn = document.querySelector('.terms-btn-close');
 
+    // Profile Picture Preview
+    const profilePictureInput = document.getElementById('profilePicture');
+    const profilePreview = document.getElementById('profilePreview');
+
+    if (profilePictureInput) {
+        profilePictureInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                // Validate file size (5MB max)
+                if (file.size > 5 * 1024 * 1024) {
+                    alert('File size must be less than 5MB');
+                    e.target.value = '';
+                    return;
+                }
+
+                // Validate file type
+                if (!file.type.startsWith('image/')) {
+                    alert('Please select an image file');
+                    e.target.value = '';
+                    return;
+                }
+
+                // Preview image
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    profilePreview.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+
     function openModal(id) {
         const modal = document.getElementById(id);
         if (modal) {
@@ -710,7 +800,6 @@
         }
     }
 
-    // ============ NEW: Login Required Modal Functions ============
     function showLoginRequiredModal() {
         const modal = document.getElementById('loginRequiredModal');
         if (modal) {
@@ -737,7 +826,6 @@
         openModal('registrationModal');
     }
 
-    // ============ NEW: Check if user is logged in before accessing Reserve Now ============
     function checkLoginForReservation(event) {
         <?php if (!isset($_SESSION['user_id'])): ?>
             event.preventDefault();
@@ -747,14 +835,12 @@
         return true;
     }
 
-    // Terms checkbox functionality
     if (termsCheckbox && registerSubmitBtn) {
         termsCheckbox.addEventListener('change', function() {
             registerSubmitBtn.disabled = !this.checked;
         });
     }
 
-    // Terms link functionality
     if (termsLink) {
         termsLink.addEventListener('click', function(e) {
             e.preventDefault();
@@ -765,7 +851,6 @@
         });
     }
 
-    // Terms modal close functionality
     function closeTermsModal() {
         if (termsModal) {
             termsModal.style.display = 'none';
@@ -807,7 +892,6 @@
             termsModal.style.display = 'none';
             document.body.style.overflow = 'auto';
         }
-        // ============ NEW: Close login required modal when clicking outside ============
         const loginRequiredModal = document.getElementById('loginRequiredModal');
         if (event.target === loginRequiredModal) {
             closeLoginRequiredModal();
@@ -851,15 +935,12 @@
         });
     }
 
-    // ============ NEW: Add event listener to Reserve Now link ============
     document.addEventListener('DOMContentLoaded', function() {
-        // Check the Reserve Now link in navigation
         const reserveLink = document.getElementById('reserveNowLink');
         if (reserveLink) {
             reserveLink.addEventListener('click', checkLoginForReservation);
         }
         
-        // Also check any buttons with these classes (if you have Book Now buttons elsewhere)
         const reserveButtons = document.querySelectorAll('.btn-book, .reserve-btn');
         reserveButtons.forEach(button => {
             button.addEventListener('click', checkLoginForReservation);
