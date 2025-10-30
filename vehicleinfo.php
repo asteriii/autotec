@@ -30,7 +30,12 @@ $vehicle_categories_query = "SELECT CategoryID, Name FROM vehicle_categories ORD
 $vehicle_categories_result = $conn->query($vehicle_categories_query);
 ?>
 
-
+<?php 
+// Check if session is not already started before calling session_start()
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -1141,7 +1146,11 @@ $vehicle_categories_result = $conn->query($vehicle_categories_query);
             formData.append('address', document.querySelector('#step3 #address').value);
             
             // Schedule info
-            const scheduleDate = selectedDate.toISOString().split('T')[0];
+            const year = selectedDate.getFullYear();
+            const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+            const day = String(selectedDate.getDate()).padStart(2, '0');
+            const scheduleDate = `${year}-${month}-${day}`;
+
             formData.append('scheduleDate', scheduleDate);
             formData.append('scheduleTime', selectedTime);
             
@@ -1307,6 +1316,238 @@ $vehicle_categories_result = $conn->query($vehicle_categories_query);
             
             e.target.value = value;
         });
+
+        // Add this to your existing script section in registration.php
+
+let slotAvailability = {}; // Store slot availability counts
+
+// Modified selectDate function to fetch availability
+function selectDate(date, element) {
+    // Remove previous selection
+    const previousSelected = document.querySelector('.calendar-day.selected');
+    if (previousSelected) {
+        previousSelected.classList.remove('selected');
+    }
+    
+    // Add selection to clicked date
+    element.classList.add('selected');
+    selectedDate = date;
+    
+    // Reset selected time
+    selectedTime = null;
+    const previousTimeSelected = document.querySelector('.time-slot.selected');
+    if (previousTimeSelected) {
+        previousTimeSelected.classList.remove('selected');
+    }
+    
+    // Fetch availability for this date
+    fetchSlotAvailability(date);
+}
+
+// New function to fetch slot availability
+// Replace the fetchSlotAvailability function with this:
+function fetchSlotAvailability(date) {
+    // Use local date format instead of UTC
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const formattedDate = `${year}-${month}-${day}`;
+    
+    // Show loading state
+    const timeSlots = document.querySelectorAll('.time-slot');
+    timeSlots.forEach(slot => {
+        slot.classList.add('checking');
+        // Store original time text as data attribute if not already stored
+        if (!slot.dataset.originalTime) {
+            slot.dataset.originalTime = slot.textContent.trim();
+        }
+        slot.innerHTML = slot.dataset.originalTime + '<br><small>Checking...</small>';
+    });
+    
+    // Check if branch is selected
+    if (!selectedBranchName) {
+        alert('Please select a branch first before choosing a date.');
+        timeSlots.forEach(slot => {
+            slot.classList.remove('checking');
+            slot.innerHTML = slot.dataset.originalTime;
+        });
+        return;
+    }
+    
+    // Fetch availability from server - using branchName instead of branchId
+    const url = `check_availability.php?date=${formattedDate}&branchName=${encodeURIComponent(selectedBranchName)}`;
+    console.log('Fetching from URL:', url);
+    
+    fetch(url)
+        .then(response => {
+            console.log('Response status:', response.status);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.text();
+        })
+        .then(text => {
+            console.log('Raw response:', text);
+            try {
+                const data = JSON.parse(text);
+                console.log('Parsed data:', data);
+                
+                if (data.error) {
+                    console.error('Error from server:', data.error);
+                    alert('Error: ' + data.error);
+                    return;
+                }
+                
+                slotAvailability = data.slot_counts || {};
+                const maxSlots = data.max_slots || 3;
+                
+                // Update time slots with availability
+                timeSlots.forEach(slot => {
+                    slot.classList.remove('checking');
+                    const onclickAttr = slot.getAttribute('onclick');
+                    if (!onclickAttr) {
+                        console.error('No onclick attribute found for slot:', slot);
+                        return;
+                    }
+                    
+                    const timeMatch = onclickAttr.match(/'(\d{2}:\d{2}:\d{2})'/);
+                    if (!timeMatch) {
+                        console.error('Could not extract time from onclick:', onclickAttr);
+                        return;
+                    }
+                    
+                    const timeValue = timeMatch[1];
+                    const bookedCount = slotAvailability[timeValue] || 0;
+                    const availableSlots = maxSlots - bookedCount;
+                    
+                    // Use stored original time text
+                    const timeText = slot.dataset.originalTime;
+                    
+                    if (availableSlots > 0) {
+                        slot.classList.remove('unavailable', 'full');
+                        slot.classList.add('available');
+                        
+                        // Add availability indicator
+                        const availabilityColor = availableSlots === 3 ? '#4caf50' : 
+                                                 availableSlots === 2 ? '#ff9800' : '#f44336';
+                        
+                        slot.innerHTML = `${timeText}<br><small style="color: ${availabilityColor}; font-weight: bold;">${availableSlots} slot${availableSlots > 1 ? 's' : ''} left</small>`;
+                    } else {
+                        slot.classList.remove('available');
+                        slot.classList.add('unavailable', 'full');
+                        slot.onclick = null;
+                        slot.style.cursor = 'not-allowed';
+                        slot.innerHTML = `${timeText}<br><small style="color: #999;">FULL</small>`;
+                    }
+                });
+            } catch (e) {
+                console.error('JSON parse error:', e);
+                console.error('Text that failed to parse:', text);
+                alert('Failed to parse server response. Check console for details.');
+            }
+        })
+        .catch(error => {
+            console.error('Fetch error:', error);
+            alert('Failed to load time slot availability: ' + error.message);
+            
+            // Reset time slots on error
+            timeSlots.forEach(slot => {
+                slot.classList.remove('checking', 'unavailable');
+                slot.innerHTML = slot.dataset.originalTime;
+            });
+        });
+}
+
+// Modified selectTimeSlot function
+function selectTimeSlot(element, time) {
+    // Check if slot is full
+    if (element.classList.contains('full') || element.classList.contains('unavailable')) {
+        return; // Don't allow selection of full slots
+    }
+    
+    // Remove previous selection
+    const previousSelected = document.querySelector('.time-slot.selected');
+    if (previousSelected) {
+        previousSelected.classList.remove('selected');
+    }
+    
+    // Add selection to clicked time slot
+    element.classList.add('selected');
+    selectedTime = time;
+}
+
+// Update the branch selection to reset time slots
+function selectBranch(element, branchId, branchName, gcashQR) {
+    // Remove previous selection
+    const previousSelected = document.querySelector('.branch-card.selected');
+    if (previousSelected) {
+        previousSelected.classList.remove('selected');
+        const previousRadio = previousSelected.querySelector('.branch-radio');
+        if (previousRadio) previousRadio.checked = false;
+    }
+    
+    // Add selection to clicked branch
+    element.classList.add('selected');
+    const radio = element.querySelector('.branch-radio');
+    if (radio) radio.checked = true;
+    
+    selectedBranchId = branchId;
+    selectedBranchName = branchName;
+    selectedBranchQR = gcashQR;
+    
+    // Reset date and time selection when branch changes
+    selectedDate = null;
+    selectedTime = null;
+    
+    // Clear any selected date
+    const selectedDateElement = document.querySelector('.calendar-day.selected');
+    if (selectedDateElement) {
+        selectedDateElement.classList.remove('selected');
+    }
+    
+    // Clear any selected time
+    const selectedTimeElement = document.querySelector('.time-slot.selected');
+    if (selectedTimeElement) {
+        selectedTimeElement.classList.remove('selected');
+    }
+    
+    // Reset time slots to default state
+    const timeSlots = document.querySelectorAll('.time-slot');
+    timeSlots.forEach(slot => {
+        slot.classList.remove('available', 'unavailable', 'full', 'selected');
+        const timeText = slot.textContent.split('\n')[0].split('Checking')[0].split('slot')[0].trim();
+        slot.innerHTML = timeText;
+    });
+}
+
+// Add CSS for the new states
+const style = document.createElement('style');
+style.textContent = `
+    .time-slot.full {
+        background-color: #f5f5f5;
+        color: #999;
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+    
+    .time-slot.checking {
+        opacity: 0.7;
+        pointer-events: none;
+    }
+    
+    .time-slot small {
+        display: block;
+        margin-top: 5px;
+        font-size: 11px;
+    }
+    
+    .time-slot:not(.full):not(.unavailable):hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(164, 19, 60, 0.2);
+    }
+`;
+document.head.appendChild(style);
     </script>
 </body>
 </html>

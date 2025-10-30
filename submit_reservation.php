@@ -157,17 +157,21 @@ try {
     }
     $check_stmt->close();
 
-    // Check if there's already a booking for the same date, time, and branch (prevent double booking)
-    $time_check_stmt = $conn->prepare("SELECT ReservationID FROM reservations WHERE Date = ? AND Time = ? AND BranchName = ?");
-    $time_check_stmt->bind_param("sss", $date, $time, $branchName);
-    $time_check_stmt->execute();
-    $time_result = $time_check_stmt->get_result();
+    // FIXED: Check slot availability - allow up to 3 bookings per time slot per branch
+    $max_slots = 3; // Maximum bookings per time slot (3 machines available)
+    
+    $slot_check_stmt = $conn->prepare("SELECT COUNT(*) as booking_count FROM reservations WHERE Date = ? AND Time = ? AND BranchName = ?");
+    $slot_check_stmt->bind_param("sss", $date, $time, $branchName);
+    $slot_check_stmt->execute();
+    $slot_result = $slot_check_stmt->get_result();
+    $slot_row = $slot_result->fetch_assoc();
+    $current_bookings = intval($slot_row['booking_count']);
+    $slot_check_stmt->close();
 
-    if ($time_result->num_rows > 0) {
-        $time_check_stmt->close();
-        throw new Exception("This time slot is already booked for the selected date at this branch. Please choose a different time.");
+    // Check if slot is full
+    if ($current_bookings >= $max_slots) {
+        throw new Exception("This time slot is fully booked (" . $current_bookings . "/" . $max_slots . " slots taken). Please choose a different time.");
     }
-    $time_check_stmt->close();
 
     // Handle payment receipt upload for GCash
     $paymentReceiptPath = null;
@@ -222,6 +226,9 @@ try {
     if ($stmt->execute()) {
         $reservation_id = $stmt->insert_id;
         
+        // Calculate remaining slots
+        $remaining_slots = $max_slots - ($current_bookings + 1);
+        
         // Success response in JSON format
         echo json_encode([
             'success' => true,
@@ -229,7 +236,8 @@ try {
             'referenceNumber' => $referenceNumber,
             'reservationId' => $reservation_id,
             'paymentMethod' => $paymentMethod,
-            'paymentStatus' => $paymentStatus
+            'paymentStatus' => $paymentStatus,
+            'slotsRemaining' => $remaining_slots
         ]);
     } else {
         throw new Exception("Error creating reservation: " . $stmt->error);
