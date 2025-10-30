@@ -7,7 +7,6 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 include 'db.php';
-include 'header.php'; 
 
 function alertAndRedirect($message, $url = 'profile.php') {
     echo "<script>alert(" . json_encode($message) . "); window.location.href='$url';</script>";
@@ -15,6 +14,70 @@ function alertAndRedirect($message, $url = 'profile.php') {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
+    // Handle profile picture update
+    if (isset($_POST['update_profile_picture'])) {
+        if (isset($_FILES['profile_picture']) && $_FILES['profile_picture']['error'] === UPLOAD_ERR_OK) {
+            $uploadDir = 'upload/profile/';
+            
+            if (!file_exists($uploadDir)) {
+                mkdir($uploadDir, 0777, true);
+            }
+
+            $fileTmpPath = $_FILES['profile_picture']['tmp_name'];
+            $fileName = $_FILES['profile_picture']['name'];
+            $fileSize = $_FILES['profile_picture']['size'];
+            $fileNameCmps = explode(".", $fileName);
+            $fileExtension = strtolower(end($fileNameCmps));
+
+            $allowedExtensions = array('jpg', 'jpeg', 'png', 'gif');
+
+            if (in_array($fileExtension, $allowedExtensions)) {
+                if ($fileSize <= 5 * 1024 * 1024) {
+                    // Get current profile picture to delete old one
+                    $sql = "SELECT profile_picture FROM users WHERE UserID = ?";
+                    $stmt = mysqli_prepare($conn, $sql);
+                    mysqli_stmt_bind_param($stmt, "i", $_SESSION['user_id']);
+                    mysqli_stmt_execute($stmt);
+                    $result = mysqli_stmt_get_result($stmt);
+                    $user = mysqli_fetch_assoc($result);
+                    mysqli_stmt_close($stmt);
+
+                    // Delete old profile picture if exists
+                    if ($user['profile_picture'] && file_exists($uploadDir . $user['profile_picture'])) {
+                        unlink($uploadDir . $user['profile_picture']);
+                    }
+
+                    // Generate unique filename
+                    $newFileName = uniqid('profile_', true) . '.' . $fileExtension;
+                    $destPath = $uploadDir . $newFileName;
+
+                    if (move_uploaded_file($fileTmpPath, $destPath)) {
+                        // Update database
+                        $sql = "UPDATE users SET profile_picture = ? WHERE UserID = ?";
+                        $stmt = mysqli_prepare($conn, $sql);
+                        mysqli_stmt_bind_param($stmt, "si", $newFileName, $_SESSION['user_id']);
+                        
+                        if (mysqli_stmt_execute($stmt)) {
+                            mysqli_stmt_close($stmt);
+                            alertAndRedirect("Profile picture updated successfully.");
+                        } else {
+                            mysqli_stmt_close($stmt);
+                            alertAndRedirect("Failed to update profile picture.");
+                        }
+                    } else {
+                        alertAndRedirect("Error uploading file.");
+                    }
+                } else {
+                    alertAndRedirect("File size must be less than 5MB.");
+                }
+            } else {
+                alertAndRedirect("Invalid file type. Only JPG, JPEG, PNG, and GIF are allowed.");
+            }
+        } else {
+            alertAndRedirect("No file uploaded or upload error.");
+        }
+    }
 
     // Handle profile update (Username, Email, Address)
     if (isset($_POST['update_profile'])) {
@@ -78,6 +141,12 @@ mysqli_stmt_close($stmt);
 
 if (!$user) {
     die("User not found.");
+}
+
+// Set profile picture path
+$profilePicturePath = 'pictures/default-avatar.png';
+if (!empty($user['profile_picture']) && file_exists('upload/profile/' . $user['profile_picture'])) {
+    $profilePicturePath = 'upload/profile/' . $user['profile_picture'];
 }
 ?>
 
@@ -241,19 +310,91 @@ if (!$user) {
             transform: translateY(0);
         }
 
-        /* Profile Icon */
-        .profile-icon {
-            width: 80px;
-            height: 80px;
-            background: linear-gradient(135deg, #bd1e51, #d63969);
+        /* Profile Picture Section */
+        .profile-picture-section {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .profile-picture-container {
+            position: relative;
+            width: 150px;
+            height: 150px;
+            margin: 0 auto 20px;
             border-radius: 50%;
+            overflow: hidden;
+            box-shadow: 0 8px 25px rgba(189, 30, 81, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .profile-picture-container:hover {
+            transform: scale(1.05);
+            box-shadow: 0 12px 35px rgba(189, 30, 81, 0.3);
+        }
+
+        .profile-picture-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            background: linear-gradient(135deg, #bd1e51, #d63969);
+        }
+
+        .profile-picture-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(189, 30, 81, 0.85);
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 20px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            cursor: pointer;
+        }
+
+        .profile-picture-container:hover .profile-picture-overlay {
+            opacity: 1;
+        }
+
+        .profile-picture-overlay svg {
+            width: 40px;
+            height: 40px;
+            margin-bottom: 8px;
+        }
+
+        .profile-picture-overlay span {
             color: white;
-            font-size: 32px;
-            font-weight: 600;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .upload-btn-wrapper {
+            margin-top: 15px;
+        }
+
+        .upload-btn {
+            background: linear-gradient(135deg, #bd1e51, #d63969);
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .upload-btn:hover {
+            background: linear-gradient(135deg, #a01a45, #bd1e51);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(189, 30, 81, 0.3);
+        }
+
+        .file-input {
+            display: none;
         }
 
         /* Card Headers */
@@ -272,6 +413,60 @@ if (!$user) {
         .card-header p {
             color: #666;
             font-size: 14px;
+        }
+
+        /* Profile Picture Upload Form */
+        .picture-upload-form {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 15px;
+        }
+
+        .picture-upload-form input[type="file"] {
+            display: none;
+        }
+
+        .choose-file-btn {
+            background: #f0f0f0;
+            color: #666;
+            border: 2px solid #e1e5e9;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .choose-file-btn:hover {
+            background: #e0e0e0;
+            border-color: #bd1e51;
+        }
+
+        .upload-picture-btn {
+            background: linear-gradient(135deg, #bd1e51, #d63969);
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .upload-picture-btn:hover {
+            background: linear-gradient(135deg, #a01a45, #bd1e51);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(189, 30, 81, 0.3);
+        }
+
+        .file-name-display {
+            font-size: 12px;
+            color: #666;
+            margin-top: 8px;
         }
 
         /* Responsive Design */
@@ -302,6 +497,20 @@ if (!$user) {
             }
 
             .save-btn {
+                width: 100%;
+            }
+
+            .profile-picture-container {
+                width: 120px;
+                height: 120px;
+            }
+
+            .picture-upload-form {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .choose-file-btn, .upload-picture-btn {
                 width: 100%;
             }
         }
@@ -349,10 +558,39 @@ if (!$user) {
 
         <div class="profile-grid">
             <div class="info-card">
-                <div class="card-header">
-                    <div class="profile-icon">
-                        <?php echo strtoupper(substr($user['Fname'], 0, 1)); ?>
+                <!-- Profile Picture Section -->
+                <div class="profile-picture-section">
+                    <div class="profile-picture-container">
+                        <img src="<?php echo htmlspecialchars($profilePicturePath); ?>" 
+                             alt="Profile Picture" 
+                             class="profile-picture-img"
+                             id="currentProfilePic">
+                        <div class="profile-picture-overlay" onclick="document.getElementById('profilePictureInput').click()">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                                <circle cx="12" cy="13" r="4"></circle>
+                            </svg>
+                            <span>Change Photo</span>
+                        </div>
                     </div>
+                    
+                    <form method="post" action="" enctype="multipart/form-data" id="profilePictureForm" class="picture-upload-form">
+                        <label for="profilePictureInput" class="choose-file-btn">
+                            Choose File
+                        </label>
+                        <input type="file" 
+                               name="profile_picture" 
+                               id="profilePictureInput" 
+                               accept="image/*" 
+                               onchange="previewProfilePicture(this)">
+                        <button type="submit" name="update_profile_picture" class="upload-picture-btn">
+                            Upload
+                        </button>
+                    </form>
+                    <div class="file-name-display" id="fileName"></div>
+                </div>
+
+                <div class="card-header">
                     <h2>Personal Information</h2>
                     <p>Update your personal details and account information</p>
                 </div>
@@ -369,43 +607,68 @@ if (!$user) {
                         </div>
                     </div>
 
-                    <div class="form-row">
                         <div class="form-group">
                             <label>Email Address</label>
                             <input type="email" name="email" value="<?php echo htmlspecialchars($user['Email']); ?>" required>
                         </div>
                         <div class="form-group">
-                            <label>Address</label>
-                            <input type="text" name="address" value="<?php echo htmlspecialchars($user['Address'] ?? ''); ?>" required>
+                            <label>Phone Number</label>
+                            <input type="text" value="<?php echo htmlspecialchars($user['ContactNum']); ?>" disabled>
                         </div>
                     </div>
 
-                    <button class="save-btn" type="submit" name="update_profile">Save Changes</button>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Address</label>
+                            <input type="text" name="address" value="<?php echo htmlspecialchars($user['Address']); ?>" required>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="save-btn" name="update_profile">Save Changes</button>
                 </form>
             </div>
 
+            <!-- Password Change Card -->
             <div class="password-card">
-                <div class="card-header">
-                    <h2>Change Password</h2>
-                    <p>Keep your account secure with a strong password</p>
-                </div>
-                
+                <h3>Change Password</h3>
                 <form method="post" action="" class="password-form">
                     <div class="form-row">
                         <div class="form-group">
                             <label>New Password</label>
-                            <input type="password" name="new_password" required>
+                            <input type="password" name="new_password" placeholder="Enter new password" required>
                         </div>
                         <div class="form-group">
                             <label>Confirm Password</label>
-                            <input type="password" name="confirm_password" required>
+                            <input type="password" name="confirm_password" placeholder="Re-enter new password" required>
                         </div>
                     </div>
-                    <button class="save-btn" type="submit" name="change_password">Change Password</button>
+                    <button type="submit" class="save-btn" name="change_password">Update Password</button>
                 </form>
             </div>
         </div>
     </div>
+
+    <?php include 'footer.php'; ?>
+
+    <script>
+        function previewProfilePicture(input) {
+            const fileName = input.files[0]?.name;
+            const fileNameDisplay = document.getElementById('fileName');
+            const currentProfilePic = document.getElementById('currentProfilePic');
+
+            if (fileName) {
+                fileNameDisplay.textContent = `Selected: ${fileName}`;
+                
+                // Preview the image
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    currentProfilePic.src = e.target.result;
+                };
+                reader.readAsDataURL(input.files[0]);
+            } else {
+                fileNameDisplay.textContent = '';
+            }
+        }
+    </script>
 </body>
-<?php include 'footer.php'; ?>
 </html>

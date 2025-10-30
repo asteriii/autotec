@@ -11,11 +11,11 @@
 <header>
     <nav>
         <div class="logo">
-            <img src="/autotec/pictures/logo/autoteclogo.png" alt="Autotec Logo" style="height: 50px;">
+            <img src="pictures/logo/autoteclogo.png" alt="Autotec Logo" style="height: 50px;">
         </div>
         <ul class="nav-links">
             <li><a href="<?= isset($_SESSION['user_id']) ? 'homepage.php' : 'index.php' ?>">Home</a></li>
-            <li><a href="vehicleinfo.php">Register Now!</a></li>
+            <li><a href="vehicleinfo.php" id="reserveNowLink">Reserve Now!</a></li>
             <li><a href="aboutus.php">About Us</a></li>
             <li><a href="contactus.php">Contact Us</a></li>
         </ul>
@@ -76,6 +76,25 @@
         </div>
         <div class="modal-body">
             <form id="registrationForm" method="POST" action="process/registration.php" enctype="multipart/form-data">
+                
+                <!-- Profile Picture Upload Section -->
+                <div class="profile-upload-section">
+                    <div class="profile-preview-container">
+                        <img id="profilePreview" src="pictures/default-avatar.png" alt="Profile Preview" class="profile-preview-img">
+                        <div class="upload-overlay">
+                            <label for="profilePicture" class="upload-label">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                                    <circle cx="12" cy="13" r="4"></circle>
+                                </svg>
+                                <span>Upload Photo</span>
+                            </label>
+                            <input type="file" id="profilePicture" name="profilePicture" accept="image/*" style="display: none;">
+                        </div>
+                    </div>
+                    <p class="upload-hint">Click to upload profile picture (Max 5MB)</p>
+                </div>
+
                 <!-- Name and Username Row -->
                 <div class="form-row">
                     <div class="form-group">
@@ -130,7 +149,6 @@
                                 I agree to the <a href="#" id="termsLink" class="terms-link">Terms and Conditions</a>
                             </span>
                         </label>
-
                     </div>
                 </div>
 
@@ -226,7 +244,95 @@
     </div>
 </div>
 
+<!-- Login Required Modal -->
+<div id="loginRequiredModal" class="login-required-modal">
+    <div class="login-required-content">
+        <div class="login-required-icon">
+            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="12" cy="12" r="10" stroke="#a4133c" stroke-width="2"/>
+                <path d="M12 8V12" stroke="#a4133c" stroke-width="2" stroke-linecap="round"/>
+                <circle cx="12" cy="16" r="1" fill="#a4133c"/>
+            </svg>
+        </div>
+        <h2>Authentication Required</h2>
+        <p>Please sign in or create an account to make a reservation.</p>
+        <div class="login-required-actions">
+            <button class="btn-cancel" onclick="closeLoginRequiredModal()">Cancel</button>
+            <button class="btn-signin" onclick="redirectToLogin()">Sign In</button>
+            <button class="btn-register-new" onclick="redirectToRegister()">Register</button>
+        </div>
+    </div>
+</div>
+
 <style>
+/* Profile Picture Upload Section */
+.profile-upload-section {
+    text-align: center;
+    margin-bottom: 25px;
+    padding: 20px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 15px;
+}
+
+.profile-preview-container {
+    position: relative;
+    width: 150px;
+    height: 150px;
+    margin: 0 auto 15px;
+    border-radius: 50%;
+    overflow: hidden;
+    box-shadow: 0 8px 20px rgba(164, 19, 60, 0.2);
+    transition: all 0.3s ease;
+}
+
+.profile-preview-container:hover {
+    transform: scale(1.05);
+    box-shadow: 0 12px 30px rgba(164, 19, 60, 0.3);
+}
+
+.profile-preview-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    background: white;
+}
+
+.upload-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(164, 19, 60, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    cursor: pointer;
+}
+
+.profile-preview-container:hover .upload-overlay {
+    opacity: 1;
+}
+
+.upload-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    color: white;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 14px;
+}
+
+.upload-hint {
+    color: #666;
+    font-size: 13px;
+    margin: 0;
+}
+
 /* Terms and Conditions Styling */
 .terms-group {
     margin: 15px 0;
@@ -244,7 +350,6 @@
     position: relative;
 }
 
-/* Hide the default checkbox */
 .checkbox-container input[type="checkbox"] {
     opacity: 0;
     width: 0;
@@ -252,7 +357,6 @@
     position: absolute;
 }
 
-/* Custom checkbox appearance */
 .custom-checkmark {
     width: 18px;
     height: 18px;
@@ -264,7 +368,6 @@
     transition: background 0.2s ease;
 }
 
-/* Checkmark tick when checked */
 .checkbox-container input[type="checkbox"]:checked + .custom-checkmark::after {
     content: "";
     position: absolute;
@@ -288,7 +391,6 @@
     color: #444;
 }
 
-/* Link styling */
 .terms-text .terms-link {
     color: #a4133c;
     text-decoration: underline;
@@ -298,6 +400,7 @@
 .terms-text .terms-link:hover {
     color: #ff5e7e;
 }
+
 .registration-btn:disabled {
     background-color: #ccc;
     cursor: not-allowed;
@@ -438,7 +541,6 @@
     box-shadow: 0 5px 15px rgba(234, 102, 131, 0.4);
 }
 
-/* Terms Modal Animations */
 @keyframes termsModalFadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
@@ -455,7 +557,6 @@
     }
 }
 
-/* Terms Modal Scrollbar styling */
 .terms-modal-body::-webkit-scrollbar {
     width: 8px;
 }
@@ -474,7 +575,127 @@
     background: #ff758f;
 }
 
-/* Terms Modal Responsive */
+/* Login Required Modal Styles */
+.login-required-modal {
+    display: none;
+    position: fixed;
+    z-index: 10000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(5px);
+    animation: fadeIn 0.3s ease-out;
+    align-items: center;
+    justify-content: center;
+}
+
+.login-required-content {
+    background: white;
+    border-radius: 16px;
+    padding: 40px 30px;
+    max-width: 450px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(164, 19, 60, 0.2);
+    animation: slideUp 0.3s ease-out;
+    position: relative;
+}
+
+.login-required-icon {
+    margin: 0 auto 20px;
+    width: 60px;
+    height: 60px;
+    animation: pulse 2s infinite;
+}
+
+.login-required-content h2 {
+    color: #a4133c;
+    font-size: 1.8rem;
+    margin: 0 0 15px 0;
+    font-weight: 600;
+}
+
+.login-required-content p {
+    color: #666;
+    font-size: 1rem;
+    line-height: 1.6;
+    margin: 0 0 30px 0;
+}
+
+.login-required-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.login-required-actions button {
+    padding: 12px 28px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-width: 110px;
+}
+
+.btn-cancel {
+    background-color: #f0f0f0;
+    color: #666;
+}
+
+.btn-cancel:hover {
+    background-color: #e0e0e0;
+    transform: translateY(-2px);
+}
+
+.btn-signin {
+    background: linear-gradient(135deg, #a4133c 0%, #ff758f 100%);
+    color: white;
+    box-shadow: 0 4px 15px rgba(164, 19, 60, 0.3);
+}
+
+.btn-signin:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(164, 19, 60, 0.4);
+}
+
+.btn-register-new {
+    background: linear-gradient(135deg, #ff758f 0%, #ffb3c6 100%);
+    color: white;
+    box-shadow: 0 4px 15px rgba(255, 117, 143, 0.3);
+}
+
+.btn-register-new:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 117, 143, 0.4);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+/* Responsive */
 @media (max-width: 768px) {
     .terms-modal-content {
         margin: 5% auto;
@@ -487,6 +708,28 @@
     
     .terms-modal-body {
         max-height: 50vh;
+    }
+    
+    .login-required-content {
+        padding: 30px 20px;
+    }
+    
+    .login-required-content h2 {
+        font-size: 1.5rem;
+    }
+    
+    .login-required-actions {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .login-required-actions button {
+        width: 100%;
+    }
+    
+    .profile-preview-container {
+        width: 120px;
+        height: 120px;
     }
 }
 </style>
@@ -509,6 +752,38 @@
     const termsModalClose = document.querySelector('.terms-modal-close');
     const termsCloseBtn = document.querySelector('.terms-btn-close');
 
+    // Profile Picture Preview
+    const profilePictureInput = document.getElementById('profilePicture');
+    const profilePreview = document.getElementById('profilePreview');
+
+    if (profilePictureInput) {
+        profilePictureInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                // Validate file size (5MB max)
+                if (file.size > 5 * 1024 * 1024) {
+                    alert('File size must be less than 5MB');
+                    e.target.value = '';
+                    return;
+                }
+
+                // Validate file type
+                if (!file.type.startsWith('image/')) {
+                    alert('Please select an image file');
+                    e.target.value = '';
+                    return;
+                }
+
+                // Preview image
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    profilePreview.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+
     function openModal(id) {
         const modal = document.getElementById(id);
         if (modal) {
@@ -525,14 +800,47 @@
         }
     }
 
-    // Terms checkbox functionality
+    function showLoginRequiredModal() {
+        const modal = document.getElementById('loginRequiredModal');
+        if (modal) {
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+    }
+
+    function closeLoginRequiredModal() {
+        const modal = document.getElementById('loginRequiredModal');
+        if (modal) {
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+    }
+
+    function redirectToLogin() {
+        closeLoginRequiredModal();
+        openModal('loginModal');
+    }
+
+    function redirectToRegister() {
+        closeLoginRequiredModal();
+        openModal('registrationModal');
+    }
+
+    function checkLoginForReservation(event) {
+        <?php if (!isset($_SESSION['user_id'])): ?>
+            event.preventDefault();
+            showLoginRequiredModal();
+            return false;
+        <?php endif; ?>
+        return true;
+    }
+
     if (termsCheckbox && registerSubmitBtn) {
         termsCheckbox.addEventListener('change', function() {
             registerSubmitBtn.disabled = !this.checked;
         });
     }
 
-    // Terms link functionality
     if (termsLink) {
         termsLink.addEventListener('click', function(e) {
             e.preventDefault();
@@ -543,7 +851,6 @@
         });
     }
 
-    // Terms modal close functionality
     function closeTermsModal() {
         if (termsModal) {
             termsModal.style.display = 'none';
@@ -585,6 +892,10 @@
             termsModal.style.display = 'none';
             document.body.style.overflow = 'auto';
         }
+        const loginRequiredModal = document.getElementById('loginRequiredModal');
+        if (event.target === loginRequiredModal) {
+            closeLoginRequiredModal();
+        }
     });
 
     if (loginForm) {
@@ -623,6 +934,18 @@
             closeModal('forgotPasswordModal');
         });
     }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const reserveLink = document.getElementById('reserveNowLink');
+        if (reserveLink) {
+            reserveLink.addEventListener('click', checkLoginForReservation);
+        }
+        
+        const reserveButtons = document.querySelectorAll('.btn-book, .reserve-btn');
+        reserveButtons.forEach(button => {
+            button.addEventListener('click', checkLoginForReservation);
+        });
+    });
 </script>
 </body>
 </html>
