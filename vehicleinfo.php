@@ -30,7 +30,6 @@ $vehicle_categories_result = $conn->query($vehicle_categories_query);
 ?>
 
 
-?>
 <!DOCTYPE html>
 <html lang="en">
 
