@@ -59,7 +59,7 @@
                 </div>
                 <div class="form-actions">
                     <button type="submit" class="login-btn">Login</button>
-                    <a href="#" class="forgot-password">Forgot Password?</a>
+                    <a href="#" class="forgot-password" style="color: #a4133c; font-weight: 500; transition: color 0.3s ease;">Forgot Password?</a>
                 </div>
             </form>
         </div>
