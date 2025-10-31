@@ -30,17 +30,33 @@ if (!isset($conn)) {
                 <?php
                 // Fetch user profile picture
                 $userProfilePic = 'pictures/default-avatar.png';
-                if (isset($_SESSION['user_id'])) {
+                
+                // First, try to get from session (faster)
+                if (isset($_SESSION['profile_picture']) && !empty($_SESSION['profile_picture'])) {
+                    $profilePath = 'uploads/profile/' . $_SESSION['profile_picture'];
+                    if (file_exists($profilePath)) {
+                        $userProfilePic = $profilePath;
+                    }
+                } 
+                // If not in session, try database
+                elseif (isset($conn) && $conn) {
                     $userId = $_SESSION['user_id'];
                     $profileQuery = "SELECT profile_picture FROM users WHERE UserID = ?";
                     $stmt = mysqli_prepare($conn, $profileQuery);
+                    
                     if ($stmt) {
                         mysqli_stmt_bind_param($stmt, "i", $userId);
                         mysqli_stmt_execute($stmt);
                         $result = mysqli_stmt_get_result($stmt);
+                        
                         if ($row = mysqli_fetch_assoc($result)) {
-                            if (!empty($row['profile_picture']) && file_exists('uploads/profile/' . $row['profile_picture'])) {
-                                $userProfilePic = 'uploads/profile/' . $row['profile_picture'];
+                            if (!empty($row['profile_picture'])) {
+                                $profilePath = 'uploads/profile/' . $row['profile_picture'];
+                                if (file_exists($profilePath)) {
+                                    $userProfilePic = $profilePath;
+                                    // Update session for next time
+                                    $_SESSION['profile_picture'] = $row['profile_picture'];
+                                }
                             }
                         }
                         mysqli_stmt_close($stmt);
@@ -51,7 +67,8 @@ if (!isset($conn)) {
                     <button class="btn btn-profile">
                         <img src="<?php echo htmlspecialchars($userProfilePic); ?>" 
                              alt="Profile" 
-                             class="header-profile-pic">
+                             class="header-profile-pic"
+                             onerror="this.src='pictures/default-avatar.png'">
                         <?= htmlspecialchars($_SESSION['fname'] ?? $_SESSION['username'] ?? 'My Account') ?> ▼
                     </button>
                     <div class="dropdown-content">
