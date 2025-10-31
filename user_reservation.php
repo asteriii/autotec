@@ -673,7 +673,7 @@ mysqli_stmt_close($user_stmt);
                     <div class="empty-icon">📋</div>
                     <h2 class="empty-title">No Reservations Yet</h2>
                     <p class="empty-description">You haven't made any reservations yet. Start by booking your first service!</p>
-                    <a href="registration.php" class="btn btn-primary">Make a Reservation</a>
+                    <a href="vehicleinfo.php" class="btn btn-primary">Make a Reservation</a>
                 </div>
             <?php else: ?>
                 <?php foreach ($reservations as $reservation): 
