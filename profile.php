@@ -2,7 +2,7 @@
 session_start();
 
 if (!isset($_SESSION['user_id'])) {
-    header("Location: index.php");
+    header("Location: login.php");
     exit();
 }
 
@@ -18,7 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Handle profile picture update
     if (isset($_POST['update_profile_picture'])) {
         if (isset($_FILES['profile_picture']) && $_FILES['profile_picture']['error'] === UPLOAD_ERR_OK) {
-            $uploadDir = 'upload/profile/';
+            $uploadDir = 'uploads/profile/';
             
             if (!file_exists($uploadDir)) {
                 mkdir($uploadDir, 0777, true);
@@ -60,6 +60,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         
                         if (mysqli_stmt_execute($stmt)) {
                             mysqli_stmt_close($stmt);
+                            // Update session variable
+                            $_SESSION['profile_picture'] = $newFileName;
                             alertAndRedirect("Profile picture updated successfully.");
                         } else {
                             mysqli_stmt_close($stmt);
@@ -145,8 +147,8 @@ if (!$user) {
 
 // Set profile picture path
 $profilePicturePath = 'pictures/default-avatar.png';
-if (!empty($user['profile_picture']) && file_exists('upload/profile/' . $user['profile_picture'])) {
-    $profilePicturePath = 'upload/profile/' . $user['profile_picture'];
+if (!empty($user['profile_picture']) && file_exists('uploads/profile/' . $user['profile_picture'])) {
+    $profilePicturePath = 'uploads/profile/' . $user['profile_picture'];
 }
 ?>
 
