@@ -4,7 +4,7 @@ require_once 'db.php';
 
 // Fetch about/branch data from database
 $aboutEntries = [];
-$sql = "SELECT * FROM about ORDER BY AboutID ASC";
+$sql = "SELECT * FROM about_us ORDER BY AboutID ASC";
 $result = mysqli_query($conn, $sql);
 
 if ($result) {
