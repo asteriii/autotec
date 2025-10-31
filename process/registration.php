@@ -31,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Handle profile picture upload
     $profilePictureName = null;
     if (isset($_FILES['profilePicture']) && $_FILES['profilePicture']['error'] === UPLOAD_ERR_OK) {
-        $uploadDir = '../upload/profile/';
+        $uploadDir = '../uploads/profile/';
         
         // Create directory if it doesn't exist
         if (!file_exists($uploadDir)) {

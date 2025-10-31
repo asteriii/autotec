@@ -8,6 +8,12 @@
     <link rel="stylesheet" href="css/index.css">
 </head>
 <body>
+<?php
+// Ensure database connection is available
+if (!isset($conn)) {
+    require_once 'db.php';
+}
+?>
 <header>
     <nav>
         <div class="logo">
@@ -21,8 +27,31 @@
         </ul>
         <div class="auth-buttons">
             <?php if (isset($_SESSION['user_id'])): ?>
+                <?php
+                // Fetch user profile picture
+                $userProfilePic = 'pictures/default-avatar.png';
+                if (isset($_SESSION['user_id'])) {
+                    $userId = $_SESSION['user_id'];
+                    $profileQuery = "SELECT profile_picture FROM users WHERE UserID = ?";
+                    $stmt = mysqli_prepare($conn, $profileQuery);
+                    if ($stmt) {
+                        mysqli_stmt_bind_param($stmt, "i", $userId);
+                        mysqli_stmt_execute($stmt);
+                        $result = mysqli_stmt_get_result($stmt);
+                        if ($row = mysqli_fetch_assoc($result)) {
+                            if (!empty($row['profile_picture']) && file_exists('uploads/profile/' . $row['profile_picture'])) {
+                                $userProfilePic = 'uploads/profile/' . $row['profile_picture'];
+                            }
+                        }
+                        mysqli_stmt_close($stmt);
+                    }
+                }
+                ?>
                 <div class="dropdown">
                     <button class="btn btn-profile">
+                        <img src="<?php echo htmlspecialchars($userProfilePic); ?>" 
+                             alt="Profile" 
+                             class="header-profile-pic">
                         <?= htmlspecialchars($_SESSION['fname'] ?? $_SESSION['username'] ?? 'My Account') ?> ▼
                     </button>
                     <div class="dropdown-content">
@@ -59,7 +88,7 @@
                 </div>
                 <div class="form-actions">
                     <button type="submit" class="login-btn">Login</button>
-                    <a href="#" class="forgot-password" style="color: #a4133c; font-weight: 500; transition: color 0.3s ease; text-decoration: none;">Forgot Password?</a>
+                    <a href="#" class="forgot-password">Forgot Password?</a>
                 </div>
             </form>
         </div>
@@ -265,6 +294,24 @@
 </div>
 
 <style>
+/* Header Profile Picture */
+.header-profile-pic {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-right: 10px;
+    border: 2px solid #fff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    vertical-align: middle;
+}
+
+.btn-profile {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
 /* Profile Picture Upload Section */
 .profile-upload-section {
     text-align: center;
