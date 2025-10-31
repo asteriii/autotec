@@ -1,28 +1,5 @@
 <?php 
-// Check if session is not already started before calling session_start()
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
-// Database connection - adjust these credentials to match your setup
-    $servername = "localhost";
-    $username = "root";
-    $password = "";
-    $dbname = "autotec";
-
-try {
-    $pdo = new PDO("mysql:host=$servername;dbname=$dbname", $username, $password);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    
-    // Fetch all about us entries
-    $stmt = $pdo->prepare("SELECT * FROM about_us ORDER BY AboutID");
-    $stmt->execute();
-    $aboutEntries = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-} catch(PDOException $e) {
-    $aboutEntries = [];
-    error_log("Database connection failed: " . $e->getMessage());
-}
+include 'db.php';
 ?>
 
 <!DOCTYPE html>

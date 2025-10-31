@@ -2,7 +2,7 @@
 session_start();
 
 if (!isset($_SESSION['user_id'])) {
-    header("Location: login.php");
+    header("Location: index.php");
     exit();
 }
 
@@ -607,57 +607,52 @@ if (!empty($user['profile_picture']) && file_exists('upload/profile/' . $user['p
                         </div>
                     </div>
 
+                    <div class="form-row">
                         <div class="form-group">
                             <label>Email Address</label>
                             <input type="email" name="email" value="<?php echo htmlspecialchars($user['Email']); ?>" required>
                         </div>
                         <div class="form-group">
-                            <label>Phone Number</label>
-                            <input type="text" value="<?php echo htmlspecialchars($user['ContactNum']); ?>" disabled>
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
                             <label>Address</label>
-                            <input type="text" name="address" value="<?php echo htmlspecialchars($user['Address']); ?>" required>
+                            <input type="text" name="address" value="<?php echo htmlspecialchars($user['Address'] ?? ''); ?>" required>
                         </div>
                     </div>
 
-                    <button type="submit" class="save-btn" name="update_profile">Save Changes</button>
+                    <button class="save-btn" type="submit" name="update_profile">Save Changes</button>
                 </form>
             </div>
 
-            <!-- Password Change Card -->
             <div class="password-card">
-                <h3>Change Password</h3>
+                <div class="card-header">
+                    <h2>Change Password</h2>
+                    <p>Keep your account secure with a strong password</p>
+                </div>
+                
                 <form method="post" action="" class="password-form">
                     <div class="form-row">
                         <div class="form-group">
                             <label>New Password</label>
-                            <input type="password" name="new_password" placeholder="Enter new password" required>
+                            <input type="password" name="new_password" required>
                         </div>
                         <div class="form-group">
                             <label>Confirm Password</label>
-                            <input type="password" name="confirm_password" placeholder="Re-enter new password" required>
+                            <input type="password" name="confirm_password" required>
                         </div>
                     </div>
-                    <button type="submit" class="save-btn" name="change_password">Update Password</button>
+                    <button class="save-btn" type="submit" name="change_password">Change Password</button>
                 </form>
             </div>
         </div>
     </div>
 
-    <?php include 'footer.php'; ?>
-
     <script>
         function previewProfilePicture(input) {
-            const fileName = input.files[0]?.name;
+            const fileName = input.files[0]?.name || '';
             const fileNameDisplay = document.getElementById('fileName');
             const currentProfilePic = document.getElementById('currentProfilePic');
-
+            
             if (fileName) {
-                fileNameDisplay.textContent = `Selected: ${fileName}`;
+                fileNameDisplay.textContent = 'Selected: ' + fileName;
                 
                 // Preview the image
                 const reader = new FileReader();
@@ -671,4 +666,5 @@ if (!empty($user['profile_picture']) && file_exists('upload/profile/' . $user['p
         }
     </script>
 </body>
+<?php include 'footer.php'; ?>
 </html>
