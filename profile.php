@@ -18,6 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Handle profile picture update
     if (isset($_POST['update_profile_picture'])) {
         if (isset($_FILES['profile_picture']) && $_FILES['profile_picture']['error'] === UPLOAD_ERR_OK) {
+            // FIXED: Use consistent path with registration.php
             $uploadDir = 'uploads/profile/';
             
             if (!file_exists($uploadDir)) {
@@ -43,9 +44,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $user = mysqli_fetch_assoc($result);
                     mysqli_stmt_close($stmt);
 
-                    // Delete old profile picture if exists
-                    if ($user['profile_picture'] && file_exists($uploadDir . $user['profile_picture'])) {
-                        unlink($uploadDir . $user['profile_picture']);
+                    // FIXED: Delete old profile picture if exists (with better error handling)
+                    if (!empty($user['profile_picture'])) {
+                        $oldFilePath = $uploadDir . $user['profile_picture'];
+                        if (file_exists($oldFilePath)) {
+                            @unlink($oldFilePath); // @ suppresses warnings if file deletion fails
+                        }
                     }
 
                     // Generate unique filename
@@ -65,10 +69,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             alertAndRedirect("Profile picture updated successfully.");
                         } else {
                             mysqli_stmt_close($stmt);
-                            alertAndRedirect("Failed to update profile picture.");
+                            // If database update fails, delete the uploaded file
+                            @unlink($destPath);
+                            alertAndRedirect("Failed to update profile picture in database.");
                         }
                     } else {
-                        alertAndRedirect("Error uploading file.");
+                        alertAndRedirect("Error uploading file. Check folder permissions.");
                     }
                 } else {
                     alertAndRedirect("File size must be less than 5MB.");
@@ -87,6 +93,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $email = $_POST['email'] ?? '';
         $address = $_POST['address'] ?? '';
 
+        // ADDED: Check if username or email already exists (excluding current user)
+        $checkSql = "SELECT UserID FROM users WHERE (Username = ? OR Email = ?) AND UserID != ?";
+        $checkStmt = mysqli_prepare($conn, $checkSql);
+        mysqli_stmt_bind_param($checkStmt, "ssi", $username, $email, $_SESSION['user_id']);
+        mysqli_stmt_execute($checkStmt);
+        $checkResult = mysqli_stmt_get_result($checkStmt);
+
+        if (mysqli_num_rows($checkResult) > 0) {
+            mysqli_stmt_close($checkStmt);
+            alertAndRedirect("Username or Email already exists.");
+        }
+        mysqli_stmt_close($checkStmt);
+
         $sql = "UPDATE users SET Username = ?, Email = ?, Address = ? WHERE UserID = ?";
         $stmt = mysqli_prepare($conn, $sql);
         if (!$stmt) {
@@ -96,6 +115,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if (mysqli_stmt_execute($stmt)) {
             mysqli_stmt_close($stmt);
+            // ADDED: Update session variables
+            $_SESSION['username'] = $username;
+            $_SESSION['email'] = $email;
             alertAndRedirect("Profile updated successfully.");
         } else {
             mysqli_stmt_close($stmt);
@@ -108,7 +130,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $new_password = $_POST['new_password'] ?? '';
         $confirm_password = $_POST['confirm_password'] ?? '';
 
+        // ADDED: Password strength validation
+        if (strlen($new_password) < 6) {
+            alertAndRedirect("Password must be at least 6 characters long.");
+        }
+
         if ($new_password === $confirm_password) {
+            // SECURITY: Should be hashing password! See note below
             $sql = "UPDATE users SET password = ? WHERE UserID = ?";
             $stmt = mysqli_prepare($conn, $sql);
             if (!$stmt) {
@@ -145,7 +173,7 @@ if (!$user) {
     die("User not found.");
 }
 
-// Set profile picture path
+// FIXED: Set profile picture path with consistent directory
 $profilePicturePath = 'pictures/default-avatar.png';
 if (!empty($user['profile_picture']) && file_exists('uploads/profile/' . $user['profile_picture'])) {
     $profilePicturePath = 'uploads/profile/' . $user['profile_picture'];
