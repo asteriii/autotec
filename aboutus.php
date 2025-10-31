@@ -1,9 +1,20 @@
 <?php 
+session_start();
 require_once 'db.php'; 
-?>
 
+// Fetch about/branch data from database
+$aboutEntries = [];
+$sql = "SELECT * FROM about ORDER BY AboutID ASC";
+$result = mysqli_query($conn, $sql);
+
+if ($result) {
+    while ($row = mysqli_fetch_assoc($result)) {
+        $aboutEntries[] = $row;
+    }
+}
+?>
 <!DOCTYPE html>
-git<html lang="en">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
@@ -22,14 +33,12 @@ git<html lang="en">
       color: #333;
       line-height: 1.6;
     }
-
     /* Main Content */
         .container {
             max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
         }
-
     /* Hero Section */
         .hero {
             background: linear-gradient(135deg, #e8f4f8 0%, #d1e7dd 100%);
@@ -39,33 +48,26 @@ git<html lang="en">
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             text-align: center;
         }
-
         .hero h1 {
             font-size: 2.5em;
             color: #333;
             margin-bottom: 20px;
         }
-
         .hero h1 .highlight {
             color: #a4133c;
         }
-
         .hero p {
             font-size: 1.1em;
             color: #666;
             max-width: 600px;
             margin: 0 auto;
         }
-
-
-
     /* Content Grid */
     .content-grid {
       display: grid;
       gap: 30px;
       margin-top: 40px;
     }
-
     /* Branch Cards */
     .branch-card {
       background: white;
@@ -74,42 +76,35 @@ git<html lang="en">
       box-shadow: 0 5px 20px rgba(0,0,0,0.08);
       transition: transform 0.3s ease, box-shadow 0.3s ease;
     }
-
     .branch-card:hover {
       transform: translateY(-5px);
       box-shadow: 0 10px 30px rgba(0,0,0,0.15);
     }
-
     .branch-content {
       display: grid;
       grid-template-columns: 1fr 1fr;
       min-height: 400px;
     }
-
     .branch-content.reverse {
       direction: rtl;
     }
-
     .branch-content.reverse > * {
       direction: ltr;
     }
-
     .branch-image {
       position: relative;
       overflow: hidden;
+      background: linear-gradient(135deg, #e8f4f8 0%, #d1e7dd 100%);
     }
-
     .branch-image img {
       width: 100%;
       height: 100%;
       object-fit: cover;
       transition: transform 0.3s ease;
     }
-
     .branch-card:hover .branch-image img {
       transform: scale(1.05);
     }
-
     .branch-info {
       padding: 40px;
       display: flex;
@@ -118,21 +113,18 @@ git<html lang="en">
       align-items: center;
       text-align: center;
     }
-
     .branch-info h2 {
       color: #bd1e51;
       font-size: 28px;
       font-weight: 600;
       margin-bottom: 20px;
     }
-
     .branch-info p {
       color: #666;
       font-size: 16px;
       line-height: 1.7;
       margin-bottom: 25px;
     }
-
     .view-location-btn {
       background: linear-gradient(135deg, #bd1e51, #d63969);
       color: white;
@@ -149,24 +141,20 @@ git<html lang="en">
       position: relative;
       overflow: hidden;
     }
-
     .view-location-btn:hover {
       background: linear-gradient(135deg, #a01a45, #bd1e51);
       transform: translateY(-2px);
       box-shadow: 0 5px 15px rgba(189, 30, 81, 0.3);
     }
-
     .view-location-btn::after {
       content: '▼';
       margin-left: 8px;
       transition: transform 0.3s ease;
       display: inline-block;
     }
-
     .view-location-btn.active::after {
       transform: rotate(180deg);
     }
-
     /* Map Section */
     .map-section {
       background: white;
@@ -179,33 +167,31 @@ git<html lang="en">
       transition: all 0.4s ease;
       opacity: 0;
     }
-
     .map-section.show {
       max-height: 500px;
       padding: 30px;
       opacity: 1;
       border-top: 1px solid #eee;
     }
-
     .map-section h3 {
       color: #bd1e51;
       font-size: 20px;
       margin-bottom: 15px;
       text-align: center;
     }
-
+    
     .map-container {
       border-radius: 10px;
       overflow: hidden;
       box-shadow: 0 3px 10px rgba(0,0,0,0.1);
     }
-
+   
     .map-container iframe {
       width: 100%;
       height: 350px;
       border: 0;
     }
-
+   
     /* No Data Message */
     .no-data {
       background: white;
@@ -214,95 +200,97 @@ git<html lang="en">
       text-align: center;
       box-shadow: 0 5px 20px rgba(0,0,0,0.08);
     }
-
+    
     .no-data h2 {
       color: #bd1e51;
       font-size: 24px;
       margin-bottom: 15px;
     }
-
+   
     .no-data p {
       color: #666;
       font-size: 16px;
     }
-
+   
     /* Responsive Design */
     @media (max-width: 768px) {
-
       .branch-content {
         grid-template-columns: 1fr;
       }
-
       .branch-content.reverse {
         direction: ltr;
       }
-
       .branch-info {
         padding: 30px 25px;
       }
-
       .branch-info h2 {
         font-size: 24px;
       }
-
       .map-container iframe {
         height: 250px;
       }
-
       .map-section.show {
         max-height: 400px;
       }
     }
-
     @media (max-width: 480px) {
-      .header-section {
+      .hero {
         padding: 30px 20px;
       }
-
-      .header-section h1 {
+      .hero h1 {
         font-size: 28px;
       }
-
       .branch-info {
         padding: 25px 20px;
       }
-
       .map-section {
         padding: 20px;
       }
-
       .map-section.show {
         max-height: 350px;
       }
     }
   </style>
+
 </head>
 <body>
  <?php include 'header.php'; ?>
-
-    <div class="container">
+ 
+ <div class="container">
         <!-- Hero Section -->
         <section class="hero">
             <h1><span class="highlight">ABOUT</span> US</h1>
             <p>So we may hear your concerns and for us to address them. We encourage you to address your concern to us
                 so that we may improve our services!</p>
         </section>
-
-  <!-- Content -->
+  
+      <!-- Content -->
   <div class="content-grid">
     <?php if (!empty($aboutEntries)): ?>
       <?php foreach ($aboutEntries as $index => $entry): ?>
         <div class="branch-card">
           <div class="branch-content <?php echo ($index % 2 == 1) ? 'reverse' : ''; ?>">
             <div class="branch-image">
-              <?php if (!empty($entry['Picture'])): ?>
+              
+            <?php if (!empty($entry['Picture'])): ?>
                 <?php 
-                  // Convert file system path to web path
-                  $imagePath = str_replace('\\', '/', $entry['Picture']);
-                  $imagePath = str_replace('C:/xampp/htdocs/autotec/', '', $imagePath);
+                  // Handle different path formats
+                  $imagePath = $entry['Picture'];
+                  
+                  // If it's a full Windows path, convert to relative web path
+                  if (strpos($imagePath, 'C:/xampp/htdocs/') !== false) {
+                      $imagePath = str_replace('C:/xampp/htdocs/autotec/', '', $imagePath);
+                  }
+                  
+                  // Convert backslashes to forward slashes
+                  $imagePath = str_replace('\\', '/', $imagePath);
+                  
+                  // Remove any leading slashes
+                  $imagePath = ltrim($imagePath, '/');
                 ?>
                 <img src="<?php echo htmlspecialchars($imagePath); ?>" 
-                     alt="<?php echo htmlspecialchars($entry['BranchName']); ?>">
+                     alt="<?php echo htmlspecialchars($entry['BranchName']); ?>"
+                     onerror="this.src='pictures/branches/default-branch.jpg'">
               <?php else: ?>
                 <img src="pictures/branches/default-branch.jpg" alt="Default Branch Image">
               <?php endif; ?>
