@@ -12,7 +12,7 @@
             <div class="footer-top">
                 <div class="footer-logo">
                     <h2>AUTOTEC</h2>
-                    <p>SHAW BRANCH</p>
+                    <p>AUTOMOTIVE TESTING CENTER</p>
                 </div>
                 
                 <div class="footer-links">
