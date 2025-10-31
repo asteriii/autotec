@@ -3,21 +3,11 @@
 header('Content-Type: application/json; charset=utf-8');
 
 // Database connection parameters
-$servername = "localhost";
-$username = "root";
-$password = "";
-$dbname = "autotec";
+require_once 'db.php';
 
-// Create connection
-$conn = new mysqli($servername, $username, $password, $dbname);
-
-// Check connection
-if ($conn->connect_error) {
-    die(json_encode(['error' => 'Connection failed: ' . $conn->connect_error]));
-}
-
-// Get the date from the request
+// Get the date and branch from the request
 $date = isset($_GET['date']) ? $_GET['date'] : '';
+$branchName = isset($_GET['branchName']) ? $_GET['branchName'] : '';
 
 if (empty($date)) {
     die(json_encode(['error' => 'Date parameter is required']));
@@ -28,21 +18,38 @@ if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
     die(json_encode(['error' => 'Invalid date format']));
 }
 
-// Get all booked time slots for the given date
-$stmt = $conn->prepare("SELECT Time FROM reservations WHERE Date = ?");
-$stmt->bind_param("s", $date);
+// Count bookings for each time slot on the given date and branch
+// Maximum 3 slots per time (3 machines available)
+$query = "SELECT Time, COUNT(*) as booking_count 
+          FROM reservations 
+          WHERE Date = ?";
+
+// Add branch filter if provided
+if (!empty($branchName)) {
+    $query .= " AND BranchName = ?";
+    $stmt = $conn->prepare($query . " GROUP BY Time");
+    $stmt->bind_param("ss", $date, $branchName);
+} else {
+    $stmt = $conn->prepare($query . " GROUP BY Time");
+    $stmt->bind_param("s", $date);
+}
+
 $stmt->execute();
 $result = $stmt->get_result();
 
-$booked_times = [];
+// Store count of bookings for each time slot
+$slot_counts = [];
 while ($row = $result->fetch_assoc()) {
-    $booked_times[] = $row['Time'];
+    $slot_counts[$row['Time']] = intval($row['booking_count']);
 }
 
 // Close connections
 $stmt->close();
 $conn->close();
 
-// Return the booked times as JSON
-echo json_encode(['booked_times' => $booked_times]);
+// Return the slot counts with max slots allowed (3 machines)
+echo json_encode([
+    'slot_counts' => $slot_counts,
+    'max_slots' => 3
+]);
 ?>
