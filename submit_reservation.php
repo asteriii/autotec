@@ -195,7 +195,10 @@ try {
         // Create upload directory if it doesn't exist
         $uploadDir = 'uploads/payment_receipts/';
         if (!file_exists($uploadDir)) {
-            mkdir($uploadDir, 0777, true);
+            if (!mkdir($uploadDir, 0777, true)) {
+                error_log("Failed to create upload directory: " . $uploadDir);
+                throw new Exception('Failed to create upload directory. Please contact support.');
+            }
         }
         
         // Generate unique filename
