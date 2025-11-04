@@ -1168,7 +1168,7 @@ if (session_status() === PHP_SESSION_NONE) {
             nextBtn.textContent = 'Submitting...';
             
             // Submit to server
-            fetch('submit_reservation.php', {
+            fetch('/submit_reservation.php', {
                 method: 'POST',
                 body: formData
             })
