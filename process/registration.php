@@ -31,11 +31,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Handle profile picture upload
     $profilePictureName = null;
     if (isset($_FILES['profilePicture']) && $_FILES['profilePicture']['error'] === UPLOAD_ERR_OK) {
-        $uploadDir = 'uploads/profile/';
+        // FIXED: Correct path - go UP one level from /process, then into uploads/profile
+        $uploadDir = '../uploads/profile/';
         
         // Create directory if it doesn't exist
         if (!file_exists($uploadDir)) {
-            mkdir($uploadDir, 0777, true);
+            if (!mkdir($uploadDir, 0755, true)) {
+                echo "<script>alert('Failed to create upload directory. Please contact administrator.'); window.location.href='../index.php';</script>";
+                exit();
+            }
+        }
+
+        // Check if directory is writable
+        if (!is_writable($uploadDir)) {
+            echo "<script>alert('Upload directory is not writable. Please contact administrator.'); window.location.href='../index.php';</script>";
+            exit();
         }
 
         $fileTmpPath = $_FILES['profilePicture']['tmp_name'];
@@ -57,8 +67,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 if (move_uploaded_file($fileTmpPath, $destPath)) {
                     $profilePictureName = $newFileName;
+                    // Set proper permissions
+                    chmod($destPath, 0644);
                 } else {
-                    echo "<script>alert('Error uploading profile picture.'); window.location.href='../index.php';</script>";
+                    echo "<script>alert('Error uploading profile picture. Check folder permissions.'); window.location.href='../index.php';</script>";
                     exit();
                 }
             } else {
@@ -80,16 +92,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (mysqli_num_rows($checkResult) > 0) {
         mysqli_stmt_close($checkStmt);
+        
+        // Delete uploaded file if username/email already exists
+        if ($profilePictureName && file_exists($uploadDir . $profilePictureName)) {
+            @unlink($uploadDir . $profilePictureName);
+        }
+        
         echo "<script>alert('Username or Email already exists.'); window.location.href='../index.php';</script>";
         exit();
     }
     mysqli_stmt_close($checkStmt);
 
+    // SECURITY WARNING: Password should be hashed!
+    // $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+    
     // Insert new user with profile picture
     $sql = "INSERT INTO users (Fname, Username, Email, PhoneNumber, Address, password, profile_picture) VALUES (?, ?, ?, ?, ?, ?, ?)";
     $stmt = mysqli_prepare($conn, $sql);
     
     if (!$stmt) {
+        // Clean up uploaded file if database error
+        if ($profilePictureName && file_exists($uploadDir . $profilePictureName)) {
+            @unlink($uploadDir . $profilePictureName);
+        }
         echo "<script>alert('Database error: " . mysqli_error($conn) . "'); window.location.href='../index.php';</script>";
         exit();
     }
@@ -100,6 +125,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         mysqli_stmt_close($stmt);
         echo "<script>alert('Registration successful! Please login.'); window.location.href='../index.php';</script>";
     } else {
+        // Clean up uploaded file if insert fails
+        if ($profilePictureName && file_exists($uploadDir . $profilePictureName)) {
+            @unlink($uploadDir . $profilePictureName);
+        }
         mysqli_stmt_close($stmt);
         echo "<script>alert('Registration failed: " . mysqli_error($conn) . "'); window.location.href='../index.php';</script>";
     }
