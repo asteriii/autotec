@@ -4,10 +4,10 @@ session_start();
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-require 'phpmailer/src/Exception.php';
-require 'phpmailer/src/PHPMailer.php';
-require 'phpmailer/src/SMTP.php';
-require 'db.php'; 
+require '../phpmailer/src/Exception.php';
+require '../phpmailer/src/PHPMailer.php';
+require '../phpmailer/src/SMTP.php';
+require '../db.php';
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['send'])) {
 
@@ -54,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['send'])) {
         $mail->Host = 'smtp.gmail.com';
         $mail->SMTPAuth = true;
         $mail->Username = 'marlbenjaminbedana2@gmail.com';
-        $mail->Password = getenv('kaqp jdom qtsq khsr'); // Use environment variable
+        $mail->Password = 'kaqp jdom qtsq khsr';
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
         $mail->Port = 587;
 
