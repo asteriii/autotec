@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['send'])) {
     }
 
     // Check if email exists in database
-    $stmt = $conn->prepare("SELECT id FROM users WHERE email = ?");
+    $stmt = $conn->prepare("SELECT UserID FROM users WHERE email = ?");
     $stmt->bind_param("s", $email);
     $stmt->execute();
     $result = $stmt->get_result();
