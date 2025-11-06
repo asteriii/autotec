@@ -218,7 +218,7 @@ if (!isset($conn)) {
             <form id="forgotPasswordForm" action="process/resetlink.php" method="POST">
                 <p><strong>Note:</strong> A link will be sent to your email to reset your password.</p>
                 <div class="form-group">
-                    <label for="resetEmail">EmaiL</label>
+                    <label for="resetEmail">Email</label>
                     <input type="email" id="resetEmail" name="email" required>
                 </div>
                 <input type="hidden" name="send" value="true">
