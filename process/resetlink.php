@@ -7,7 +7,7 @@ use PHPMailer\PHPMailer\Exception;
 require 'phpmailer/src/Exception.php';
 require 'phpmailer/src/PHPMailer.php';
 require 'phpmailer/src/SMTP.php';
-require 'dbconnect.php'; // Your database connection
+require 'db.php'; 
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['send'])) {
 

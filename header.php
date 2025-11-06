@@ -216,7 +216,7 @@ if (!isset($conn)) {
         </div>
         <div class="modal-body">
             <form id="forgotPasswordForm" action="process/resetlink.php" method="POST">
-                <p><strong>Note:</strong> A link will be sent to your email/phone number to reset your password.</p>
+                <p><strong>Note:</strong> A link will be sent to your email to reset your password.</p>
                 <div class="form-group">
                     <label for="resetEmail">Email / Mobile</label>
                     <input type="text" id="resetEmail" name="email" required>
