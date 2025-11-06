@@ -60,8 +60,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['send'])) {
         $mail->isSMTP();
         $mail->Host = 'smtp.gmail.com';
         $mail->SMTPAuth = true;
-        $mail->Username = 'marlbenjaminbedana2@gmail.com';
-        $mail->Password = 'kaqp jdom qtsq khsr';
+        $mail->Username = 'tw.kart2020@gmail.com';
+        $mail->Password = 'nmmy jhjp kycd agdy';
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
         $mail->Port = 587;
         
@@ -75,7 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['send'])) {
         );
 
         // Recipients
-        $mail->setFrom('marlbenjaminbedana2@gmail.com', 'AutoTec');
+        $mail->setFrom('tw.kart2020@gmail.com', 'AutoTec');
         $mail->addAddress($email);
 
         // Content
