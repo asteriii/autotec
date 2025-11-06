@@ -60,13 +60,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['send'])) {
         $mail->Username = 'apikey';
         $mail->Password = getenv('SENDGRID_API_KEY');
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-        $mail->Port = 2525;
+        $mail->Port = 2525; // Changed from 587 to 2525 (Railway-friendly port)
         
-        // Timeouts
-        $mail->Timeout = 15;
-        $mail->SMTPDebug = 2;
+        // Timeouts - increased for better reliability
+        $mail->Timeout = 30;
+        $mail->SMTPDebug = 0; // Set to 2 for debugging, 0 for production
         
-        // Connection options
+        // Connection options - relaxed for cloud hosting
         $mail->SMTPOptions = array(
             'ssl' => array(
                 'verify_peer' => false,
@@ -77,6 +77,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['send'])) {
 
         // Recipients
         $fromEmail = getenv('SMTP_FROM_EMAIL');
+        if (!$fromEmail) {
+            $fromEmail = 'noreply@autotec-production.up.railway.app';
+        }
         $mail->setFrom($fromEmail, 'AutoTec');
         $mail->addAddress($email);
         $mail->addReplyTo($fromEmail, 'AutoTec Support');
@@ -132,17 +135,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['send'])) {
         exit;
 
     } catch (Exception $e) {
-    error_log("SendGrid Mailer Error: " . $mail->ErrorInfo);
-    error_log("Exception Message: " . $e->getMessage());
-    error_log("Stack Trace: " . $e->getTraceAsString());
-    
-    // Show detailed error to help debug (remove in production)
-    echo "<script>
-        alert('Email Error: " . addslashes($e->getMessage()) . "\\n\\nMailer Info: " . addslashes($mail->ErrorInfo) . "');
-        window.location.href = '../index.php';
-    </script>";
-    exit;
-}
+        error_log("SendGrid Mailer Error: " . $mail->ErrorInfo);
+        error_log("Exception Message: " . $e->getMessage());
+        error_log("Stack Trace: " . $e->getTraceAsString());
+        
+        echo "<script>
+            alert('Unable to send email at this time. Please try again later or contact support.');
+            window.location.href = '../index.php';
+        </script>";
+        exit;
+    }
 } else {
     header('Location: ../index.php');
     exit;
