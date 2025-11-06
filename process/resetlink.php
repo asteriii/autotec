@@ -5,12 +5,6 @@ ini_set('max_execution_time', 30);
 
 session_start();
 
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception;
-
-require '../phpmailer/src/Exception.php';
-require '../phpmailer/src/PHPMailer.php';
-require '../phpmailer/src/SMTP.php';
 require '../db.php';
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['send'])) {
@@ -49,102 +43,121 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['send'])) {
     $stmt->execute();
 
     $resetLink = "https://autotec-production.up.railway.app/reset_password.php?token=" . $token;
+    
+    // Get credentials from environment
+    $apiKey = getenv('SENDGRID_API_KEY');
+    $fromEmail = getenv('SMTP_FROM_EMAIL');
+    
+    if (!$fromEmail) {
+        $fromEmail = 'noreply@autotec.com';
+    }
 
-    $mail = new PHPMailer(true);
-
-    try {
-        // SendGrid SMTP Configuration
-        $mail->isSMTP();
-        $mail->Host = 'smtp.sendgrid.net';
-        $mail->SMTPAuth = true;
-        $mail->Username = 'apikey';
-        $mail->Password = getenv('SENDGRID_API_KEY');
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-        $mail->Port = 2525; // Changed from 587 to 2525 (Railway-friendly port)
-        
-        // Timeouts - increased for better reliability
-        $mail->Timeout = 30;
-        $mail->SMTPDebug = 0; // Set to 2 for debugging, 0 for production
-        
-        // Connection options - relaxed for cloud hosting
-        $mail->SMTPOptions = array(
-            'ssl' => array(
-                'verify_peer' => false,
-                'verify_peer_name' => false,
-                'allow_self_signed' => true
-            )
-        );
-
-        // Recipients
-        $fromEmail = getenv('SMTP_FROM_EMAIL');
-        if (!$fromEmail) {
-            $fromEmail = 'noreply@autotec-production.up.railway.app';
-        }
-        $mail->setFrom($fromEmail, 'AutoTec');
-        $mail->addAddress($email);
-        $mail->addReplyTo($fromEmail, 'AutoTec Support');
-
-        // Content
-        $mail->isHTML(true);
-        $mail->Subject = 'Password Reset Request - AutoTec';
-        $mail->Body    = "
-            <div style='font-family: Arial, sans-serif; padding: 20px; background-color: #f4f4f4;'>
-                <div style='max-width: 600px; margin: 0 auto; background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);'>
-                    <div style='text-align: center; margin-bottom: 20px;'>
-                        <h1 style='color: #a4133c; margin: 0;'>AutoTec</h1>
-                    </div>
-                    <h2 style='color: #333; border-bottom: 2px solid #a4133c; padding-bottom: 10px;'>Password Reset Request</h2>
-                    <p style='color: #555; font-size: 16px; line-height: 1.6;'>Hello,</p>
-                    <p style='color: #555; font-size: 16px; line-height: 1.6;'>We received a request to reset your password for your AutoTec account. Click the button below to proceed:</p>
-                    <div style='text-align: center; margin: 30px 0;'>
-                        <a href='$resetLink' style='background-color: #a4133c; color: white; padding: 15px 40px; text-decoration: none; display: inline-block; border-radius: 5px; font-weight: bold; font-size: 16px;'>Reset Password</a>
-                    </div>
-                    <p style='color: #666; font-size: 14px; line-height: 1.6;'>Or copy and paste this link into your browser:</p>
-                    <p style='background-color: #f8f8f8; padding: 10px; border-radius: 5px; word-break: break-all;'><a href='$resetLink' style='color: #a4133c;'>$resetLink</a></p>
-                    <div style='margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;'>
-                        <p style='color: #d32f2f; font-size: 14px; font-weight: bold; margin-bottom: 10px;'>⚠️ Important:</p>
-                        <ul style='color: #666; font-size: 13px; line-height: 1.6;'>
-                            <li>This link will expire in <strong>10 minutes</strong></li>
-                            <li>If you didn't request this, please ignore this email</li>
-                            <li>Your password will not change until you access the link and create a new one</li>
-                        </ul>
-                    </div>
-                    <div style='margin-top: 30px; text-align: center; color: #999; font-size: 12px;'>
-                        <p>© 2025 AutoTec. All rights reserved.</p>
-                    </div>
+    // HTML Email content
+    $htmlContent = "
+        <div style='font-family: Arial, sans-serif; padding: 20px; background-color: #f4f4f4;'>
+            <div style='max-width: 600px; margin: 0 auto; background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);'>
+                <div style='text-align: center; margin-bottom: 20px;'>
+                    <h1 style='color: #a4133c; margin: 0;'>AutoTec</h1>
+                </div>
+                <h2 style='color: #333; border-bottom: 2px solid #a4133c; padding-bottom: 10px;'>Password Reset Request</h2>
+                <p style='color: #555; font-size: 16px; line-height: 1.6;'>Hello,</p>
+                <p style='color: #555; font-size: 16px; line-height: 1.6;'>We received a request to reset your password for your AutoTec account. Click the button below to proceed:</p>
+                <div style='text-align: center; margin: 30px 0;'>
+                    <a href='$resetLink' style='background-color: #a4133c; color: white; padding: 15px 40px; text-decoration: none; display: inline-block; border-radius: 5px; font-weight: bold; font-size: 16px;'>Reset Password</a>
+                </div>
+                <p style='color: #666; font-size: 14px; line-height: 1.6;'>Or copy and paste this link into your browser:</p>
+                <p style='background-color: #f8f8f8; padding: 10px; border-radius: 5px; word-break: break-all;'><a href='$resetLink' style='color: #a4133c;'>$resetLink</a></p>
+                <div style='margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;'>
+                    <p style='color: #d32f2f; font-size: 14px; font-weight: bold; margin-bottom: 10px;'>⚠️ Important:</p>
+                    <ul style='color: #666; font-size: 13px; line-height: 1.6;'>
+                        <li>This link will expire in <strong>10 minutes</strong></li>
+                        <li>If you didn't request this, please ignore this email</li>
+                        <li>Your password will not change until you access the link and create a new one</li>
+                    </ul>
+                </div>
+                <div style='margin-top: 30px; text-align: center; color: #999; font-size: 12px;'>
+                    <p>© 2025 AutoTec. All rights reserved.</p>
                 </div>
             </div>
-        ";
-        
-        $mail->AltBody = "Password Reset Request\n\n"
-                       . "Hello,\n\n"
-                       . "We received a request to reset your password for your AutoTec account.\n\n"
-                       . "Click this link to reset your password:\n$resetLink\n\n"
-                       . "This link will expire in 10 minutes.\n\n"
-                       . "If you didn't request this, please ignore this email.\n\n"
-                       . "© 2025 AutoTec";
+        </div>
+    ";
 
-        if ($mail->send()) {
-            echo "<script>
-                alert('Password reset link sent successfully! Please check your email (including spam folder).');
-                window.location.href = '../index.php';
-            </script>";
-        } else {
-            throw new Exception("Email could not be sent.");
-        }
-        exit;
+    // Plain text version
+    $textContent = "Password Reset Request\n\n"
+                 . "Hello,\n\n"
+                 . "We received a request to reset your password for your AutoTec account.\n\n"
+                 . "Click this link to reset your password:\n$resetLink\n\n"
+                 . "This link will expire in 10 minutes.\n\n"
+                 . "If you didn't request this, please ignore this email.\n\n"
+                 . "© 2025 AutoTec";
 
-    } catch (Exception $e) {
-        error_log("SendGrid Mailer Error: " . $mail->ErrorInfo);
-        error_log("Exception Message: " . $e->getMessage());
-        error_log("Stack Trace: " . $e->getTraceAsString());
+    // SendGrid API v3 payload
+    $data = [
+        'personalizations' => [
+            [
+                'to' => [
+                    ['email' => $email]
+                ],
+                'subject' => 'Password Reset Request - AutoTec'
+            ]
+        ],
+        'from' => [
+            'email' => $fromEmail,
+            'name' => 'AutoTec'
+        ],
+        'reply_to' => [
+            'email' => $fromEmail,
+            'name' => 'AutoTec Support'
+        ],
+        'content' => [
+            [
+                'type' => 'text/plain',
+                'value' => $textContent
+            ],
+            [
+                'type' => 'text/html',
+                'value' => $htmlContent
+            ]
+        ]
+    ];
+
+    // Send via SendGrid Web API
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, 'https://api.sendgrid.com/v3/mail/send');
+    curl_setopt($ch, CURLOPT_POST, 1);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Authorization: Bearer ' . $apiKey,
+        'Content-Type: application/json'
+    ]);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($ch);
+    curl_close($ch);
+
+    // Check response
+    if ($httpCode === 202) {
+        // Success - SendGrid accepted the email
+        echo "<script>
+            alert('Password reset link sent successfully! Please check your email (including spam folder).');
+            window.location.href = '../index.php';
+        </script>";
+    } else {
+        // Error - log details
+        error_log("SendGrid API Error - HTTP Code: $httpCode");
+        error_log("Response: $response");
+        error_log("Curl Error: $curlError");
         
         echo "<script>
             alert('Unable to send email at this time. Please try again later or contact support.');
             window.location.href = '../index.php';
         </script>";
-        exit;
     }
+    exit;
+
 } else {
     header('Location: ../index.php');
     exit;
