@@ -13,7 +13,7 @@ function alertAndRedirect($message, $url = 'profile.php') {
     exit();
 }
 
-// Define upload directory as constant
+// Define upload directory using absolute path
 define('UPLOAD_DIR', __DIR__ . '/uploads/profile/');
 define('UPLOAD_DIR_RELATIVE', 'uploads/profile/');
 
@@ -24,8 +24,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Create directory if it doesn't exist
         if (!file_exists(UPLOAD_DIR)) {
             if (!mkdir(UPLOAD_DIR, 0755, true)) {
+                error_log("Failed to create directory: " . UPLOAD_DIR);
                 alertAndRedirect("Failed to create upload directory.");
             }
+        }
+
+        // Check if directory is writable
+        if (!is_writable(UPLOAD_DIR)) {
+            error_log("Directory not writable: " . UPLOAD_DIR);
+            alertAndRedirect("Upload directory is not writable. Please contact administrator.");
         }
 
         // Check if file was uploaded
@@ -50,6 +57,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $fileTmpPath = $_FILES['profile_picture']['tmp_name'];
         $fileName = $_FILES['profile_picture']['name'];
         $fileSize = $_FILES['profile_picture']['size'];
+        
+        // Check if temp file exists
+        if (!file_exists($fileTmpPath)) {
+            error_log("Temporary file not found: " . $fileTmpPath);
+            alertAndRedirect("Upload failed: temporary file not found.");
+        }
         
         // Validate file is actually an image
         $imageInfo = @getimagesize($fileTmpPath);
@@ -83,17 +96,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!empty($user['profile_picture'])) {
             $oldFilePath = UPLOAD_DIR . $user['profile_picture'];
             if (file_exists($oldFilePath)) {
-                @unlink($oldFilePath);
+                if (@unlink($oldFilePath)) {
+                    error_log("Old profile picture deleted: " . $oldFilePath);
+                } else {
+                    error_log("Failed to delete old profile picture: " . $oldFilePath);
+                }
             }
         }
 
         // Generate unique filename
-        $newFileName = 'profile_' . $_SESSION['user_id'] . '_' . time() . '.' . $fileExtension;
+        $newFileName = 'profile_' . $_SESSION['user_id'] . '_' . uniqid() . '.' . $fileExtension;
         $destPath = UPLOAD_DIR . $newFileName;
+
+        // Debug logging
+        error_log("Attempting to move file from: " . $fileTmpPath);
+        error_log("To: " . $destPath);
+        error_log("Upload directory exists: " . (file_exists(UPLOAD_DIR) ? 'YES' : 'NO'));
+        error_log("Upload directory writable: " . (is_writable(UPLOAD_DIR) ? 'YES' : 'NO'));
 
         // Move uploaded file
         if (!move_uploaded_file($fileTmpPath, $destPath)) {
-            alertAndRedirect("Error uploading file. Check folder permissions (needs 0755).");
+            error_log("move_uploaded_file failed!");
+            error_log("Source: " . $fileTmpPath);
+            error_log("Destination: " . $destPath);
+            error_log("Last PHP error: " . print_r(error_get_last(), true));
+            alertAndRedirect("Error uploading file. Check folder permissions (needs 0755) and PHP upload settings.");
         }
 
         // Set file permissions
@@ -101,8 +128,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Verify file was actually saved
         if (!file_exists($destPath)) {
+            error_log("File upload failed - file not found after move_uploaded_file");
             alertAndRedirect("File upload failed - file not found after upload.");
         }
+
+        error_log("File successfully uploaded to: " . $destPath);
 
         // Update database
         $sql = "UPDATE users SET profile_picture = ? WHERE UserID = ?";
@@ -113,6 +143,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             mysqli_stmt_close($stmt);
             // Delete the uploaded file since DB update failed
             @unlink($destPath);
+            error_log("Database update failed: " . mysqli_error($conn));
             alertAndRedirect("Failed to update database: " . mysqli_error($conn));
         }
         
@@ -120,6 +151,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         // Update session variable
         $_SESSION['profile_picture'] = $newFileName;
+        
+        error_log("Profile picture updated successfully for user: " . $_SESSION['user_id']);
         
         // Redirect with success
         alertAndRedirect("Profile picture updated successfully!");
@@ -176,23 +209,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             alertAndRedirect("Please enter both password fields.");
         }
 
-        if (strlen($new_password) < 6) {
-            alertAndRedirect("Password must be at least 6 characters long.");
+        // Password validation with regex
+        $passwordPattern = '/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/';
+        
+        if (!preg_match($passwordPattern, $new_password)) {
+            alertAndRedirect("Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&#).");
         }
 
         if ($new_password !== $confirm_password) {
             alertAndRedirect("Passwords do not match.");
         }
 
-        // SECURITY WARNING: Should use password_hash()
-        // $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
+        // Hash the password (SECURITY FIX)
+        $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
         
         $sql = "UPDATE users SET password = ? WHERE UserID = ?";
         $stmt = mysqli_prepare($conn, $sql);
         if (!$stmt) {
             alertAndRedirect("Database error: " . mysqli_error($conn));
         }
-        mysqli_stmt_bind_param($stmt, "si", $new_password, $_SESSION['user_id']);
+        mysqli_stmt_bind_param($stmt, "si", $hashed_password, $_SESSION['user_id']);
 
         if (mysqli_stmt_execute($stmt)) {
             mysqli_stmt_close($stmt);
@@ -225,7 +261,9 @@ $profilePicturePath = 'pictures/default-avatar.png';
 if (!empty($user['profile_picture'])) {
     $checkPath = UPLOAD_DIR_RELATIVE . $user['profile_picture'];
     if (file_exists($checkPath)) {
-        $profilePicturePath = $checkPath;
+        $profilePicturePath = $checkPath . '?v=' . time(); // Add cache buster
+    } else {
+        error_log("Profile picture not found: " . $checkPath);
     }
 }
 ?>
@@ -350,6 +388,14 @@ if (!empty($user['profile_picture'])) {
             background-color: #f8f9fa;
             color: #6c757d;
             cursor: not-allowed;
+        }
+
+        .password-hint {
+            display: block;
+            font-size: 11px;
+            color: #666;
+            margin-top: 4px;
+            line-height: 1.4;
         }
 
         .save-btn {
@@ -605,11 +651,19 @@ if (!empty($user['profile_picture'])) {
                     <div class="form-row">
                         <div class="form-group">
                             <label>New Password</label>
-                            <input type="password" name="new_password" minlength="6" required>
+                            <input 
+                                type="password" 
+                                name="new_password" 
+                                pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$"
+                                title="Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&#)"
+                                required>
+                            <small class="password-hint">
+                                Must contain: 8+ characters, uppercase, lowercase, number, special character (@$!%*?&#)
+                            </small>
                         </div>
                         <div class="form-group">
                             <label>Confirm Password</label>
-                            <input type="password" name="confirm_password" minlength="6" required>
+                            <input type="password" name="confirm_password" required>
                         </div>
                     </div>
                     <button class="save-btn" type="submit" name="change_password">Change Password</button>
@@ -638,8 +692,9 @@ if (!empty($user['profile_picture'])) {
                 }
                 
                 // Validate file type
-                if (!file.type.match('image.*')) {
-                    alert('Please select an image file');
+                const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+                if (!validTypes.includes(file.type)) {
+                    alert('Only JPG, JPEG, PNG, and GIF files are allowed');
                     input.value = '';
                     fileNameDisplay.textContent = '';
                     uploadBtn.disabled = true;
