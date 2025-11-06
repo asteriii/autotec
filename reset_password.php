@@ -50,7 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['reset_password'])) {
         $error = 'Password must be at least 8 characters long and contain uppercase, lowercase, number, and special character.';
     } else {
         // Verify token again
-        $stmt = $conn->prepare("SELECT id, email, reset_expiry FROM users WHERE reset_token = ?");
+        $stmt = $conn->prepare("SELECT UserID, email, reset_expiry FROM users WHERE reset_token = ?");
         $stmt->bind_param("s", $token);
         $stmt->execute();
         $result = $stmt->get_result();
@@ -63,8 +63,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['reset_password'])) {
                 
                 
                 // Update password and clear reset token
-                $stmt = $conn->prepare("UPDATE users SET password = ?, reset_token = NULL, reset_expiry = NULL WHERE id = ?");
-                $stmt->bind_param("si", $newPassword, $user['id']);
+                $stmt = $conn->prepare("UPDATE users SET password = ?, reset_token = NULL, reset_expiry = NULL WHERE UserID = ?");
+                $stmt->bind_param("si", $newPassword, $user['UserID']);
                 
                 if ($stmt->execute()) {
                     $success = 'Password reset successfully! Redirecting to login...';
