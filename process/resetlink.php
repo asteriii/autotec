@@ -64,7 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['send'])) {
         
         // Timeouts
         $mail->Timeout = 15;
-        $mail->SMTPDebug = 0;
+        $mail->SMTPDebug = 2;
         
         // Connection options
         $mail->SMTPOptions = array(
@@ -132,15 +132,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['send'])) {
         exit;
 
     } catch (Exception $e) {
-        error_log("SendGrid Mailer Error: " . $mail->ErrorInfo);
-        error_log("Exception Message: " . $e->getMessage());
-        
-        echo "<script>
-            alert('There was an issue sending the email. Please try again later.');
-            window.location.href = '../index.php';
-        </script>";
-        exit;
-    }
+    error_log("SendGrid Mailer Error: " . $mail->ErrorInfo);
+    error_log("Exception Message: " . $e->getMessage());
+    error_log("Stack Trace: " . $e->getTraceAsString());
+    
+    // Show detailed error to help debug (remove in production)
+    echo "<script>
+        alert('Email Error: " . addslashes($e->getMessage()) . "\\n\\nMailer Info: " . addslashes($mail->ErrorInfo) . "');
+        window.location.href = '../index.php';
+    </script>";
+    exit;
+}
 } else {
     header('Location: ../index.php');
     exit;
