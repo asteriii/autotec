@@ -173,16 +173,37 @@ if (!isset($conn)) {
                     </div>
                 </div>
 
-                <!-- Password Row -->
+                <!-- Password Row with Validation -->
                 <div class="password-row">
                     <div class="form-group">
                         <label for="regPassword">Password</label>
-                        <input type="password" id="regPassword" name="regPassword" required>
+                        <input 
+                            type="password" 
+                            id="regPassword" 
+                            name="regPassword" 
+                            pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$"
+                            title="Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&#)"
+                            required>
+                        <small class="password-hint">
+                            Must contain: 8+ characters, uppercase, lowercase, number, special character (@$!%*?&#)
+                        </small>
                     </div>
                     <div class="form-group">
                         <label for="confirmPassword">Confirm Password</label>
                         <input type="password" id="confirmPassword" name="confirmPassword" required>
                     </div>
+                </div>
+
+                <!-- Password Strength Indicator (Optional) -->
+                <div class="password-requirements" id="passwordRequirements" style="display: none;">
+                    <p style="font-size: 12px; margin-bottom: 8px; color: #666;">Password must contain:</p>
+                    <ul style="font-size: 11px; margin: 0; padding-left: 20px; color: #666;">
+                        <li id="req-length">At least 8 characters</li>
+                        <li id="req-uppercase">One uppercase letter (A-Z)</li>
+                        <li id="req-lowercase">One lowercase letter (a-z)</li>
+                        <li id="req-number">One number (0-9)</li>
+                        <li id="req-special">One special character (@$!%*?&#)</li>
+                    </ul>
                 </div>
 
                 <!-- Terms and Conditions Checkbox -->
