@@ -12,7 +12,7 @@ if (isset($_GET['token']) && !empty($_GET['token'])) {
     $token = $_GET['token'];
     
     // Verify token and check expiry
-    $stmt = $conn->prepare("SELECT id, email, reset_expiry FROM users WHERE reset_token = ?");
+    $stmt = $conn->prepare("SELECT UserID, email, reset_expiry FROM users WHERE reset_token = ?");
     $stmt->bind_param("s", $token);
     $stmt->execute();
     $result = $stmt->get_result();
