@@ -117,6 +117,35 @@
                 height: 100vh;
             }
         }
+         .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+            padding: 15px 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .logo {
+            font-size: 24px;
+            color: #c0392b;
+            font-weight: 600;
+        }
+        .logout-btn {
+            background: linear-gradient(135deg, #a4133c, #ff4d6d);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3);
+        }
+         .logout-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4);
+        }
     </style>
 </head>
 <body>
@@ -124,6 +153,7 @@
     <div class="sidebar">
         <div class="section">
             <div class="section-title active">
+                <a href="adminDash.php" style="color: white; text-decoration: none; display: flex; align-items: center; width: 100%;">
                 <span><i class="fas fa-tachometer-alt"></i> Dashboard</span>
             </div>
         </div>
@@ -164,6 +194,16 @@
             </ul>
         </div>
     </div>
+
+     <!-- Topbar -->
+          <div class="topbar">
+            <div class="logo">
+                <i class="fas fa-car"></i> AutoTec Admin
+            </div>
+            <button class="logout-btn">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </button>
+        </div>
 
     <script>
         function toggleMenu(menuId) {
