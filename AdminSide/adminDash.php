@@ -490,6 +490,7 @@ $monthly_revenue = $revenue_stmt->fetch(PDO::FETCH_ASSOC)['total_revenue'] ?? 0;
     <div class="sidebar">
         <div class="section">
             <div class="section-title active">
+                <a href="adminDash.php" style="color: white; text-decoration: none; display: flex; align-items: center; width: 100%;">
                 <span><i class="fas fa-tachometer-alt"></i> Dashboard</span>
             </div>
         </div>

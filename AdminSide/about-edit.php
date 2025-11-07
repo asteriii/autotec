@@ -526,7 +526,7 @@ $branches = $stmt->fetchAll(PDO::FETCH_ASSOC);
     </style>
 </head>
 <body>
-   <?php include 'AdminSide/sidebar.php'; ?>
+   <?php include 'sidebar.php'; ?>
 
     <!-- Main Content -->
     <div class="main">
