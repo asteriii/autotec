@@ -531,6 +531,15 @@ $branches = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <!-- Main Content -->
     <div class="main">
        
+        <!-- Topbar -->
+          <div class="topbar">
+            <div class="logo">
+                <i class="fas fa-car"></i> AutoTec Admin
+            </div>
+            <button class="logout-btn">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </button>
+        </div>
 
         <div class="content">
             <h2><i class="fas fa-info-circle"></i> About Page Management</h2>

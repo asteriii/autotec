@@ -491,6 +491,16 @@ $monthly_revenue = $revenue_stmt->fetch(PDO::FETCH_ASSOC)['total_revenue'] ?? 0;
     <!-- Main Content -->
     <div class="main">
     
+    <!-- Topbar -->
+          <div class="topbar">
+            <div class="logo">
+                <i class="fas fa-car"></i> AutoTec Admin
+            </div>
+            <button class="logout-btn">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </button>
+        </div>
+        
         <div class="content">
             <h2>Dashboard</h2>
             <p class="subtitle">Welcome back! Here's what's happening with your business today.</p>
