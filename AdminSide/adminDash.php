@@ -486,63 +486,11 @@ $monthly_revenue = $revenue_stmt->fetch(PDO::FETCH_ASSOC)['total_revenue'] ?? 0;
     </style>
 </head>
 <body>
-    <!-- Sidebar -->
-    <div class="sidebar">
-        <div class="section">
-            <div class="section-title active">
-                <a href="adminDash.php" style="color: white; text-decoration: none; display: flex; align-items: center; width: 100%;">
-                <span><i class="fas fa-tachometer-alt"></i> Dashboard</span>
-            </div>
-        </div>
-        
-        <div class="section">
-            <div class="section-title" onclick="toggleMenu('admin-controls')">
-                <span><i class="fas fa-cogs"></i> Admin Controls</span>
-                <i class="fas fa-chevron-down"></i>
-            </div>
-            <ul class="submenu" id="admin-controls">
-                <li><a href="reservations.php"><i class="fas fa-calendar-check"></i> Reservations</a></li>
-                <li><a href="ongoing-list.php"><i class="fas fa-clock"></i> Ongoing List</a></li>
-                <li><a href="completed-list.php"><i class="fas fa-check-circle"></i> Completed List</a></li>
-            </ul>
-        </div>
-        
-        <div class="section">
-            <div class="section-title" onclick="toggleMenu('page-settings')">
-                <span><i class="fas fa-edit"></i> Page Settings</span>
-                <i class="fas fa-chevron-down"></i>
-            </div>
-            <ul class="submenu" id="page-settings">
-                <li><a href="homepage-edit.php"><i class="fas fa-home"></i> Home Page</a></li>
-                <li><a href="contact-edit.php"><i class="fas fa-envelope"></i> Contact Page</a></li>
-                <li><a href="about-edit.php"><i class="fas fa-info-circle"></i> About Page</a></li>
-            </ul>
-        </div>
-
-        <div class="section">
-            <div class="section-title" onclick="toggleMenu('activity-logs')">
-                <span><i class="fas fa-history"></i> Activity Logs</span>
-                <i class="fas fa-chevron-down"></i>
-            </div>
-            <ul class="submenu" id="activity-logs">
-                <li><i class="fas fa-edit"></i> Page Edits</li>
-                <li><i class="fas fa-check"></i> Confirmed Logs</li>
-                <li><i class="fas fa-clock"></i> Ongoing Logs</li>
-            </ul>
-        </div>
-    </div>
+       <?php include 'sidebar.php'; ?>
 
     <!-- Main Content -->
     <div class="main">
-        <div class="topbar">
-            <div class="logo">
-                <i class="fas fa-car"></i> AutoTec Admin
-            </div>
-            <button class="logout-btn">
-                <i class="fas fa-sign-out-alt"></i> Logout
-            </button>
-        </div>
-
+    
         <div class="content">
             <h2>Dashboard</h2>
             <p class="subtitle">Welcome back! Here's what's happening with your business today.</p>
