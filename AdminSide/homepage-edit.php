@@ -12,9 +12,9 @@ $location = $row['location'] ?? '';
 $contact = $row['contact'] ?? '';
 
 // Fixed file paths to use AdminSide/uploads
-$service1_img = !empty($row['service1_img']) ? 'uploads/' . $row['service1_img'] : 'placeholder1.jpg';
-$service2_img = !empty($row['service2_img']) ? 'uploads/' . $row['service2_img'] : 'placeholder2.jpg';
-$service3_img = !empty($row['service3_img']) ? 'uploads/' . $row['service3_img'] : 'placeholder3.jpg';
+$service1_img = !empty($row['service1_img']) ? 'AdminSide/uploads/' . $row['service1_img'] : 'placeholder1.jpg';
+$service2_img = !empty($row['service2_img']) ? 'AdminSide/uploads/' . $row['service2_img'] : 'placeholder2.jpg';
+$service3_img = !empty($row['service3_img']) ? 'AdminSide/uploads/' . $row['service3_img'] : 'placeholder3.jpg';
 $announcement_img = !empty($row['announcement_img']) ? 'AdminSide/uploads/' . $row['announcement_img'] : 'announcement.png';
 ?>
 
@@ -40,34 +40,6 @@ $announcement_img = !empty($row['announcement_img']) ? 'AdminSide/uploads/' . $r
       display: flex;
       min-height: 100vh;
       background: #f5f7fa;
-    }
-
-    .sidebar {
-        width: 280px;
-        background: linear-gradient(180deg, #a4133c 0%, #ff4d6d 100%);
-        color: white;
-        padding-top: 20px;
-        box-shadow: 4px 0 15px rgba(0,0,0,0.1);
-        position: relative;
-        overflow: hidden;
-        flex-shrink: 0;
-    }
-
-    .sidebar::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.03)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.03)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
-        opacity: 0.3;
-    }
-
-    .sidebar .section {
-        padding: 0 20px;
-        position: relative;
-        z-index: 1;
     }
 
     .section-title {
@@ -136,16 +108,6 @@ $announcement_img = !empty($row['announcement_img']) ? 'AdminSide/uploads/' . $r
         display: flex;
         flex-direction: column;
         min-height: 100vh;
-    }
-
-    .topbar {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        background: white;
-        padding: 15px 30px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-        border-bottom: 1px solid #e2e8f0;
     }
 
     .logo {
@@ -510,71 +472,7 @@ $announcement_img = !empty($row['announcement_img']) ? 'AdminSide/uploads/' . $r
   </style>
 </head>
 <body>
-    <div class="sidebar">
-        <div class="section">
-            <div class="section-title active">
-                <span><i class="fas fa-tachometer-alt"></i> Dashboard</span>
-            </div>
-        </div>
-        
-        <div class="section">
-            <div class="section-title" onclick="toggleMenu('admin-controls')">
-                <span><i class="fas fa-cogs"></i> Admin Controls</span>
-                <i class="fas fa-chevron-down"></i>
-            </div>
-            <ul class="submenu" id="admin-controls">
-                <li><a href="reservations.php"><i class="fas fa-calendar-check"></i> Reservations</a></li>
-                <li><a href="ongoing-list.php"><i class="fas fa-clock"></i> Ongoing List</a></li>
-                <li><a href="completed-list.php"><i class="fas fa-check-circle"></i> Completed List</a></li>
-            </ul>
-        </div>
-        
-        <div class="section">
-            <div class="section-title" onclick="toggleMenu('page-settings')">
-                <span><i class="fas fa-edit"></i> Page Settings</span>
-                <i class="fas fa-chevron-down"></i>
-            </div>
-            <ul class="submenu show" id="page-settings">
-                <li><a href="homepage-edit.php" style="font-weight:700;"><i class="fas fa-home"></i> Home Page</a></li>
-                <li><a href="reservation-edit.php"><i class="fas fa-envelope"></i> Reservation Details</a></li>
-                <li><a href="contact-edit.php"><i class="fas fa-envelope"></i> Contact Page</a></li>
-                <li><a href="about-edit.php"><i class="fas fa-info-circle"></i> About Page</a></li>
-            </ul>
-        </div>
-
-        <div class="section">
-            <div class="section-title" onclick="toggleMenu('activity-logs')">
-                <span><i class="fas fa-history"></i> Activity Logs</span>
-                <i class="fas fa-chevron-down"></i>
-            </div>
-            <ul class="submenu" id="activity-logs">
-                <li><i class="fas fa-edit"></i> Page Edits</li>
-                <li><i class="fas fa-check"></i> Confirmed Logs</li>
-                <li><i class="fas fa-clock"></i> Ongoing Logs</li>
-            </ul>
-        </div>
-
-        <div class="section">
-            <div class="section-title" onclick="toggleMenu('master-controls')">
-                <span><i class="fas fa-user-shield"></i> Master Controls</span>
-                <i class="fas fa-chevron-down"></i>
-            </div>
-            <ul class="submenu" id="master-controls">
-                <li><a href="admin_acc_manage.php"><i class="fas fa-users-cog"></i> Admin Accounts Manager</a></li>
-            </ul>
-        </div>
-    </div>
-
     <div class="main">
-        <div class="topbar">
-            <div class="logo">
-                <i class="fas fa-car"></i> AutoTec Admin
-            </div>
-            <button class="logout-btn" onclick="window.location.href='logout.php'">
-                <i class="fas fa-sign-out-alt"></i> Logout
-            </button>
-        </div>
-
         <div class="content">
             <h2><i class="fas fa-home"></i> Homepage Settings</h2>
 
