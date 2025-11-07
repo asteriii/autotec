@@ -472,6 +472,8 @@ $announcement_img = !empty($row['announcement_img']) ? 'AdminSide/uploads/' . $r
   </style>
 </head>
 <body>
+    <?php include 'sidebar.php'; ?>
+
     <div class="main">
         <div class="content">
             <h2><i class="fas fa-home"></i> Homepage Settings</h2>
