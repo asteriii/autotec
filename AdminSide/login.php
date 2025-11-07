@@ -34,12 +34,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $error_message = 'Please enter both username and password.';
     } else {
         try {
-            // Create database connection
-            $pdo = new PDO("mysql:host=$host;dbname=$database;charset=utf8mb4", $db_username, $db_password, [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                PDO::ATTR_EMULATE_PREPARES => false,
-            ]);
+             $pdo = new PDO(
+        "mysql:host=$servername;dbname=$dbname;port=$port;charset=utf8mb4",
+        $username,
+        $password,
+        [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES => false,
+        ]);
             
             // Prepare and execute query to find admin user
             $stmt = $pdo->prepare("SELECT admin_id, username, Email, password, BranchName FROM admin WHERE username = ? OR Email = ?");
