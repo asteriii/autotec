@@ -126,6 +126,10 @@
             box-shadow: 0 2px 10px rgba(0,0,0,0.05);
             border-bottom: 1px solid #e2e8f0;
         }
+        .main {
+            flex: 1;
+            background-color: #f8fafc;
+        }
         .logo {
             font-size: 24px;
             color: #c0392b;
