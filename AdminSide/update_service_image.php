@@ -1,56 +1,99 @@
 <?php
-include 'db.php';
 header('Content-Type: application/json');
+include 'db.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (!isset($_FILES['image']) || !isset($_POST['service'])) {
-        echo json_encode(['success' => false, 'error' => 'Missing image or service number']);
-        exit;
-    }
-
-    $service = intval($_POST['service']);
-    if ($service < 1 || $service > 3) {
+    // Validate service number
+    if (!isset($_POST['service']) || !in_array($_POST['service'], ['1', '2', '3'])) {
         echo json_encode(['success' => false, 'error' => 'Invalid service number']);
         exit;
     }
 
-    $targetDir = "uploads/";
-    $filename = basename($_FILES['image']['name']); // ✅ FIXED: define $filename
-    $uniqueName = uniqid("service{$service}_") . "_" . $filename;
-    $targetFile = $targetDir . $uniqueName;
+    $service = $_POST['service'];
+    $columnName = 'service' . $service . '_img';
 
-    $column = "service{$service}_img";
-
-    // 🔍 Get current image filename from DB
-    $stmt = $conn->prepare("SELECT $column FROM homepage WHERE id = 1");
-    $stmt->execute();
-    $stmt->bind_result($currentImagePath);
-    $stmt->fetch();
-    $stmt->close();
-
-    // 🧹 Delete old image if it exists
-    if (!empty($currentImagePath) && file_exists("uploads/" . $currentImagePath)) {
-        unlink("uploads/" . $currentImagePath);
+    // Check if file was uploaded
+    if (!isset($_FILES['image']) || $_FILES['image']['error'] !== UPLOAD_ERR_OK) {
+        echo json_encode(['success' => false, 'error' => 'No file uploaded or upload error']);
+        exit;
     }
 
-    // 💾 Upload new image
-    if (move_uploaded_file($_FILES['image']['tmp_name'], $targetFile)) {
-        $stmt = $conn->prepare("UPDATE homepage SET $column = ? WHERE id = 1");
-        $stmt->bind_param("s", $uniqueName); // Save filename only
+    $file = $_FILES['image'];
+    
+    // Validate file type
+    $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/jpg', 'image/jfif'];
+    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+    $mimeType = finfo_file($finfo, $file['tmp_name']);
+    finfo_close($finfo);
 
-        if ($stmt->execute()) {
-            echo json_encode(['success' => true, 'filePath' => 'uploads/' . $uniqueName . '?v=' . time()]);
-        } else {
-            echo json_encode(['success' => false, 'error' => $stmt->error]);
+    if (!in_array($mimeType, $allowedTypes)) {
+        echo json_encode(['success' => false, 'error' => 'Invalid file type. Only JPG, PNG, GIF, and JFIF allowed']);
+        exit;
+    }
+
+    // Validate file size (max 5MB)
+    if ($file['size'] > 5 * 1024 * 1024) {
+        echo json_encode(['success' => false, 'error' => 'File too large. Maximum size is 5MB']);
+        exit;
+    }
+
+    // Create AdminSide/uploads directory if it doesn't exist
+    $uploadDir = __DIR__ . '/AdminSide/uploads/';
+    if (!is_dir($uploadDir)) {
+        if (!mkdir($uploadDir, 0755, true)) {
+            echo json_encode(['success' => false, 'error' => 'Failed to create upload directory']);
+            exit;
+        }
+    }
+
+    // Ensure directory is writable
+    if (!is_writable($uploadDir)) {
+        chmod($uploadDir, 0755);
+    }
+
+    // Generate unique filename
+    $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
+    $filename = 'service' . $service . '_' . uniqid() . '_' . time() . '.' . $extension;
+    $targetPath = $uploadDir . $filename;
+
+    // Get old image to delete
+    $stmt = $conn->prepare("SELECT $columnName FROM homepage WHERE id = 1");
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $row = $result->fetch_assoc();
+    $oldImage = $row[$columnName] ?? null;
+
+    // Move uploaded file
+    if (!move_uploaded_file($file['tmp_name'], $targetPath)) {
+        echo json_encode(['success' => false, 'error' => 'Failed to move uploaded file']);
+        exit;
+    }
+
+    // Update database with just the filename (not full path)
+    $stmt = $conn->prepare("UPDATE homepage SET $columnName = ? WHERE id = 1");
+    $stmt->bind_param('s', $filename);
+
+    if ($stmt->execute()) {
+        // Delete old image if it exists
+        if ($oldImage && file_exists($uploadDir . $oldImage)) {
+            unlink($uploadDir . $oldImage);
         }
 
-        $stmt->close();
+        echo json_encode([
+            'success' => true,
+            'filePath' => 'AdminSide/uploads/' . $filename,
+            'message' => 'Image uploaded successfully'
+        ]);
     } else {
-        echo json_encode(['success' => false, 'error' => 'Image upload failed']);
+        // If database update fails, remove the uploaded file
+        unlink($targetPath);
+        echo json_encode(['success' => false, 'error' => 'Database update failed: ' . $conn->error]);
     }
 
-    $conn->close();
-    exit;
+    $stmt->close();
+} else {
+    echo json_encode(['success' => false, 'error' => 'Invalid request method']);
 }
 
-echo json_encode(['success' => false, 'error' => 'Invalid request']);
+$conn->close();
+?>

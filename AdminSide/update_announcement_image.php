@@ -1,51 +1,90 @@
 <?php
-include 'db.php';
 header('Content-Type: application/json');
+include 'db.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (!isset($_FILES['image'])) {
-        echo json_encode(['success' => false, 'error' => 'Missing image']);
+    // Check if file was uploaded
+    if (!isset($_FILES['image']) || $_FILES['image']['error'] !== UPLOAD_ERR_OK) {
+        echo json_encode(['success' => false, 'error' => 'No file uploaded or upload error']);
         exit;
     }
 
-    $targetDir = "uploads/";
-    $ext = pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION);
-    $uniqueName = uniqid("announcement_") . "." . $ext;
-    $targetFile = $targetDir . $uniqueName;
+    $file = $_FILES['image'];
+    
+    // Validate file type
+    $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/jpg', 'image/jfif'];
+    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+    $mimeType = finfo_file($finfo, $file['tmp_name']);
+    finfo_close($finfo);
 
-    // 🔍 Get current image path from DB
+    if (!in_array($mimeType, $allowedTypes)) {
+        echo json_encode(['success' => false, 'error' => 'Invalid file type. Only JPG, PNG, GIF, and JFIF allowed']);
+        exit;
+    }
+
+    // Validate file size (max 5MB)
+    if ($file['size'] > 5 * 1024 * 1024) {
+        echo json_encode(['success' => false, 'error' => 'File too large. Maximum size is 5MB']);
+        exit;
+    }
+
+    // Create AdminSide/uploads directory if it doesn't exist
+    $uploadDir = __DIR__ . '/AdminSide/uploads/';
+    if (!is_dir($uploadDir)) {
+        if (!mkdir($uploadDir, 0755, true)) {
+            echo json_encode(['success' => false, 'error' => 'Failed to create upload directory']);
+            exit;
+        }
+    }
+
+    // Ensure directory is writable
+    if (!is_writable($uploadDir)) {
+        chmod($uploadDir, 0755);
+    }
+
+    // Generate unique filename
+    $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
+    $filename = 'announcement_' . uniqid() . '_' . time() . '.' . $extension;
+    $targetPath = $uploadDir . $filename;
+
+    // Get old image to delete
     $stmt = $conn->prepare("SELECT announcement_img FROM homepage WHERE id = 1");
     $stmt->execute();
-    $stmt->bind_result($currentImagePath);
-    $stmt->fetch();
-    $stmt->close();
+    $result = $stmt->get_result();
+    $row = $result->fetch_assoc();
+    $oldImage = $row['announcement_img'] ?? null;
 
-    // 🧹 Delete old image if it exists
-    if (!empty($currentImagePath) && file_exists("uploads/" . $currentImagePath)) {
-        unlink("uploads/" . $currentImagePath);
+    // Move uploaded file
+    if (!move_uploaded_file($file['tmp_name'], $targetPath)) {
+        echo json_encode(['success' => false, 'error' => 'Failed to move uploaded file']);
+        exit;
     }
 
-    // 💾 Save new uploaded file
-    if (move_uploaded_file($_FILES['image']['tmp_name'], $targetFile)) {
-        $stmt = $conn->prepare("UPDATE homepage SET announcement_img = ? WHERE id = 1");
-        $stmt->bind_param("s", $uniqueName);
+    // Update database with just the filename (not full path)
+    $stmt = $conn->prepare("UPDATE homepage SET announcement_img = ? WHERE id = 1");
+    $stmt->bind_param('s', $filename);
 
-        if ($stmt->execute()) {
-            echo json_encode([
-                'success' => true,
-                'filePath' => 'uploads/' . $uniqueName . '?v=' . time()
-            ]);
-        } else {
-            echo json_encode(['success' => false, 'error' => $stmt->error]);
+    if ($stmt->execute()) {
+        // Delete old image if it exists
+        if ($oldImage && file_exists($uploadDir . $oldImage)) {
+            unlink($uploadDir . $oldImage);
         }
 
-        $stmt->close();
+        echo json_encode([
+            'success' => true,
+            'filePath' => 'uploads/' . $filename,
+            'message' => 'Announcement image uploaded successfully'
+        ]);
     } else {
-        echo json_encode(['success' => false, 'error' => 'Image upload failed']);
+        // If database update fails, remove the uploaded file
+        unlink($targetPath);
+        echo json_encode(['success' => false, 'error' => 'Database update failed: ' . $conn->error]);
     }
 
-    $conn->close();
-    exit;
+    $stmt->close();
+} else {
+    echo json_encode(['success' => false, 'error' => 'Invalid request method']);
 }
 
-echo json_encode(['success' => false, 'error' => 'Invalid request']);
+$conn->close();
+?>
