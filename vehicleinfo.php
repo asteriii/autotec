@@ -1168,12 +1168,37 @@ if (session_status() === PHP_SESSION_NONE) {
             nextBtn.textContent = 'Submitting...';
             
             // Submit to server
-            fetch('/submit_reservation.php', {
+            fetch('submit_reservation.php', {
                 method: 'POST',
                 body: formData
             })
-            .then(response => response.json())
+            .then(response => {
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+                
+                // Check if response is ok
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                // Try to get the response as text first to see what we're getting
+                return response.text();
+            })
+            .then(text => {
+                console.log('Raw response:', text);
+                
+                // Try to parse as JSON
+                try {
+                    const data = JSON.parse(text);
+                    return data;
+                } catch (e) {
+                    console.error('JSON parse error:', e);
+                    console.error('Response text:', text);
+                    throw new Error('Invalid JSON response from server');
+                }
+            })
             .then(data => {
+                console.log('Parsed data:', data);
                 if (data.success) {
                     // Show success modal with payment-specific message
                     document.getElementById('referenceNumber').textContent = data.referenceNumber;
@@ -1181,9 +1206,9 @@ if (session_status() === PHP_SESSION_NONE) {
                     const paymentMessage = document.getElementById('paymentSuccessMessage');
                     if (selectedPaymentMethod === 'gcash') {
                         paymentMessage.innerHTML = `
-                            <div style="margin-top: 15px; padding: 15px; background: #e8f5e9; border-radius: 5px; border-left: 4px solid #4caf50;">
-                                <strong>✓ GCash Payment Received</strong><br>
-                                <span style="color: #666;">Your payment receipt has been uploaded successfully. We will verify your payment shortly.</span>
+                            <div style="margin-top: 15px; padding: 15px; background: #fff3e0; border-radius: 5px; border-left: 4px solid #ff9800;">
+                                <strong>⏳ Payment Pending Verification</strong><br>
+                                <span style="color: #666;">Your payment receipt has been uploaded successfully. Please wait while we verify your payment. You will be notified once verified.</span>
                             </div>
                         `;
                     } else {

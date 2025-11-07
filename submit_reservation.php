@@ -2,6 +2,11 @@
 session_start();
 header('Content-Type: application/json');
 
+// Enable error reporting for debugging
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 require_once 'db.php';
 
 try {
@@ -216,8 +221,10 @@ try {
         throw new Exception('Payment receipt is required for GCash payment.');
     }
 
-    // Set payment status based on payment method
-    $paymentStatus = ($paymentMethod === 'gcash') ? 'paid' : 'pending';
+    // UPDATED: Set payment status - BOTH gcash and onsite start as 'pending'
+    // GCash payments will stay pending until admin verifies the receipt
+    // On-site payments will stay pending until payment is made at the center
+    $paymentStatus = 'pending';
 
     // Generate reference number
     $referenceNumber = 'AT-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -6));
@@ -251,13 +258,23 @@ try {
     $stmt->close();
 
 } catch (Exception $e) {
+    // Log the error for debugging
+    error_log("Reservation Error: " . $e->getMessage());
+    error_log("Stack trace: " . $e->getTraceAsString());
+    
     // Error response in JSON format
     echo json_encode([
         'success' => false,
-        'message' => $e->getMessage()
+        'message' => $e->getMessage(),
+        'error_details' => [
+            'file' => $e->getFile(),
+            'line' => $e->getLine()
+        ]
     ]);
 } finally {
-    $conn->close();
+    if (isset($conn) && $conn) {
+        $conn->close();
+    }
 }
 
 // Optional: Email confirmation function
