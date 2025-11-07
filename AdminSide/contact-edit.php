@@ -455,50 +455,8 @@ $read_count = $read_stmt->fetch(PDO::FETCH_ASSOC)['count'];
     </style>
 </head>
 <body>
-    <!-- Sidebar -->
-    <div class="sidebar">
-        <div class="section">
-            <div class="section-title">
-                <span><i class="fas fa-tachometer-alt"></i> <a href="admindash.php" style="color: white; text-decoration: none;">Dashboard</a></span>
-            </div>
-        </div>
-        
-        <div class="section">
-            <div class="section-title" onclick="toggleMenu('admin-controls')">
-                <span><i class="fas fa-cogs"></i> Admin Controls</span>
-                <i class="fas fa-chevron-down"></i>
-            </div>
-            <ul class="submenu" id="admin-controls">
-                <li><a href="reservations.php"><i class="fas fa-calendar-check"></i> Reservations</a></li>
-                <li><a href="ongoing-list.php"><i class="fas fa-clock"></i> Ongoing List</a></li>
-                <li><a href="completed-list.php"><i class="fas fa-check-circle"></i> Completed List</a></li>
-            </ul>
-        </div>
-        
-        <div class="section">
-            <div class="section-title" onclick="toggleMenu('page-settings')">
-                <span><i class="fas fa-edit"></i> Page Settings</span>
-                <i class="fas fa-chevron-down"></i>
-            </div>
-            <ul class="submenu show" id="page-settings">
-                <li><a href="homepage-edit.php"><i class="fas fa-home"></i> Home Page</a></li>
-                <li class="active"><a href="contact-edit.php"><i class="fas fa-envelope"></i> Contact Messages</a></li>
-                <li><a href="about-edit.php"><i class="fas fa-info-circle"></i> About Page</a></li>
-            </ul>
-        </div>
-
-        <div class="section">
-            <div class="section-title" onclick="toggleMenu('activity-logs')">
-                <span><i class="fas fa-history"></i> Activity Logs</span>
-                <i class="fas fa-chevron-down"></i>
-            </div>
-            <ul class="submenu" id="activity-logs">
-                <li><i class="fas fa-edit"></i> Page Edits</li>
-                <li><i class="fas fa-clock"></i> Audit Logs</li>
-            </ul>
-        </div>
-    </div>
-
+    <?php include 'sidebar.php'; ?>
+    
     <!-- Main Content -->
     <div class="main">
         <div class="topbar">

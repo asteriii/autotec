@@ -285,61 +285,7 @@ $announcement_img = !empty($row['announcement_img']) ? 'uploads/' . $row['announ
   </style>
 </head>
 <body>
-    <!-- Sidebar (exact items and structure from your dashboard file) -->
-    <div class="sidebar">
-        <div class="section">
-            <div class="section-title active">
-                <span><i class="fas fa-tachometer-alt"></i> Dashboard</span>
-            </div>
-        </div>
-        
-        <div class="section">
-            <div class="section-title" onclick="toggleMenu('admin-controls')">
-                <span><i class="fas fa-cogs"></i> Admin Controls</span>
-                <i class="fas fa-chevron-down"></i>
-            </div>
-            <ul class="submenu" id="admin-controls">
-                <li><a href="reservations.php"><i class="fas fa-calendar-check"></i> Reservations</a></li>
-                <li><a href="ongoing-list.php"><i class="fas fa-clock"></i> Ongoing List</a></li>
-                <li><a href="completed-list.php"><i class="fas fa-check-circle"></i> Completed List</a></li>
-            </ul>
-        </div>
-        
-        <div class="section">
-            <div class="section-title" onclick="toggleMenu('page-settings')">
-                <span><i class="fas fa-edit"></i> Page Settings</span>
-                <i class="fas fa-chevron-down"></i>
-            </div>
-            <ul class="submenu show" id="page-settings">
-                <li><a href="homepage-edit.php" style="font-weight:700;"><i class="fas fa-home"></i> Home Page</a></li>
-                <li><a href="reservation-edit.php"><i class="fas fa-envelope"></i> Reservation Details</a></li>
-                <li><a href="contact-edit.php"><i class="fas fa-envelope"></i> Contact Page</a></li>
-                <li><a href="about-edit.php"><i class="fas fa-info-circle"></i> About Page</a></li>
-            </ul>
-        </div>
-
-        <div class="section">
-            <div class="section-title" onclick="toggleMenu('activity-logs')">
-                <span><i class="fas fa-history"></i> Activity Logs</span>
-                <i class="fas fa-chevron-down"></i>
-            </div>
-            <ul class="submenu" id="activity-logs">
-                <li><i class="fas fa-edit"></i> Page Edits</li>
-                <li><i class="fas fa-check"></i> Confirmed Logs</li>
-                <li><i class="fas fa-clock"></i> Ongoing Logs</li>
-            </ul>
-        </div>
-
-        <div class="section">
-            <div class="section-title" onclick="toggleMenu('master-controls')">
-                <span><i class="fas fa-user-shield"></i> Master Controls</span>
-                <i class="fas fa-chevron-down"></i>
-            </div>
-            <ul class="submenu" id="master-controls">
-                <li><a href="admin_acc_manage.php"><i class="fas fa-users-cog"></i> Admin Accounts Manager</a></li>
-            </ul>
-        </div>
-    </div>
+    <?php include 'sidebar.php'; ?>
 
     <!-- Main Content -->
     <div class="main">
