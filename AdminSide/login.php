@@ -25,12 +25,12 @@ $error_message = '';
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $username = trim($_POST['username']);
-    $password = trim($_POST['password']);
+    $input_username = trim($_POST['username']);
+    $input_password = trim($_POST['password']);
     $remember = isset($_POST['remember']);
     
     // Basic validation
-    if (empty($username) || empty($password)) {
+    if (empty($input_username) || empty($input_password)) {
         $error_message = 'Please enter both username and password.';
     } else {
         try {
@@ -46,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             
             // Prepare and execute query to find admin user
             $stmt = $pdo->prepare("SELECT admin_id, username, Email, password, BranchName FROM admin WHERE username = ? OR Email = ?");
-            $stmt->execute([$username, $username]);
+            $stmt->execute([$input_username, $input_username]);
             $admin = $stmt->fetch();
             
             if (!$admin) {
@@ -55,9 +55,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 // Verify password
                 $password_verified = false;
                 
-                if (password_verify($password, $admin['password'])) {
+                if (password_verify($input_password, $admin['password'])) {
                     $password_verified = true;
-                } elseif ($password === $admin['password']) {
+                } elseif ($input_password === $admin['password']) {
                     // Plain text password (not recommended for production)
                     $password_verified = true;
                 }
@@ -70,14 +70,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     // Determine branch type
                     $branch_filter = null;
                     if (strpos($branch_normalized, 'shaw') !== false) {
-                        $branch_filter = 'AutoTec Shaw';
+                        $branch_filter = 'Autotec Shaw';
                     } elseif (strpos($branch_normalized, 'subic') !== false) {
-                        $branch_filter = 'AutoTec Subic';
+                        $branch_filter = 'Autotec Subic';
                     }
                     
                     // Validate that admin has a valid branch
                     if (!$branch_filter) {
-                        $error_message = "Your account is not assigned to a valid branch (AutoTec Shaw or AutoTec Subic).";
+                        $error_message = "Your account is not assigned to a valid branch (Autotec Shaw or Autotec Subic).";
                     } else {
                         // Login successful
                         $_SESSION['admin_logged_in'] = true;
@@ -94,13 +94,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             setcookie('admin_remember', $cookie_token, time() + (86400 * 30), '/', '', false, true);
                         }
                         
-                        // Update last login time
+                        // Update last login time (note: your database doesn't have this column, so this will fail)
+                        // You may want to add this column or remove this code
+                        /*
                         try {
                             $update_stmt = $pdo->prepare("UPDATE admin SET last_login = NOW() WHERE admin_id = ?");
                             $update_stmt->execute([$admin['admin_id']]);
                         } catch (PDOException $e) {
                             error_log("Last login update failed: " . $e->getMessage());
                         }
+                        */
                         
                         // Redirect to dashboard
                         header('Location: adminDash.php');
