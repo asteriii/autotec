@@ -25,75 +25,90 @@ $error_message = '';
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $input_username = trim($_POST['username']);
-    $input_password = trim($_POST['password']);
+    $username = trim($_POST['username']);
+    $password = trim($_POST['password']);
     $remember = isset($_POST['remember']);
     
     // Basic validation
-    if (empty($input_username) || empty($input_password)) {
+    if (empty($username) || empty($password)) {
         $error_message = 'Please enter both username and password.';
     } else {
         try {
             // Create database connection
-            $pdo = new PDO("mysql:host=$servername;dbname=$dbname;port=$port;charset=utf8mb4", $username, $password, [
+            $pdo = new PDO("mysql:host=$host;dbname=$database;charset=utf8mb4", $db_username, $db_password, [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                 PDO::ATTR_EMULATE_PREPARES => false,
             ]);
             
             // Prepare and execute query to find admin user
             $stmt = $pdo->prepare("SELECT admin_id, username, Email, password, BranchName FROM admin WHERE username = ? OR Email = ?");
-            $stmt->execute([$input_username, $input_username]);
+            $stmt->execute([$username, $username]);
             $admin = $stmt->fetch();
             
-            // Check if user exists
             if (!$admin) {
                 $error_message = "Invalid username/email or password.";
             } else {
-                // Check password verification
-                if (!password_verify($input_password, $admin['password'])) {
-                    // Check if password is stored as plain text (not recommended for production)
-                    if ($input_password === $admin['password']) {
-                        // Plain text match - allow login but this is insecure
-                        $admin['password_verified'] = true;
-                    } else {
-                        $error_message = "Invalid username/email or password.";
-                    }
-                } else {
-                    $admin['password_verified'] = true;
+                // Verify password
+                $password_verified = false;
+                
+                if (password_verify($password, $admin['password'])) {
+                    $password_verified = true;
+                } elseif ($password === $admin['password']) {
+                    // Plain text password (not recommended for production)
+                    $password_verified = true;
                 }
                 
-                if (isset($admin['password_verified']) && $admin['password_verified']) {
-                    // Login successful
-                    $_SESSION['admin_logged_in'] = true;
-                    $_SESSION['admin_id'] = $admin['admin_id'];
-                    $_SESSION['admin_username'] = $admin['username'];
-                    $_SESSION['admin_email'] = $admin['Email'];
-                    $_SESSION['admin_branch'] = $admin['BranchName'];
-                    $_SESSION['login_time'] = time();
+                if ($password_verified) {
+                    // Normalize branch name to handle case variations
+                    $branch_name = trim($admin['BranchName']);
+                    $branch_normalized = strtolower(str_replace(' ', '', $branch_name));
                     
-                    // Set remember me cookie if checked (optional)
-                    if ($remember) {
-                        $cookie_token = bin2hex(random_bytes(32));
-                        setcookie('admin_remember', $cookie_token, time() + (86400 * 30), '/', '', false, true);
+                    // Determine branch type
+                    $branch_filter = null;
+                    if (strpos($branch_normalized, 'shaw') !== false) {
+                        $branch_filter = 'AutoTec Shaw';
+                    } elseif (strpos($branch_normalized, 'subic') !== false) {
+                        $branch_filter = 'AutoTec Subic';
                     }
                     
-                    // Update last login time (optional)
-                    try {
-                        $update_stmt = $pdo->prepare("UPDATE admin SET last_login = NOW() WHERE admin_id = ?");
-                        $update_stmt->execute([$admin['admin_id']]);
-                    } catch (PDOException $e) {
-                        // Column might not exist, ignore this error
-                        error_log("Last login update failed: " . $e->getMessage());
+                    // Validate that admin has a valid branch
+                    if (!$branch_filter) {
+                        $error_message = "Your account is not assigned to a valid branch (AutoTec Shaw or AutoTec Subic).";
+                    } else {
+                        // Login successful
+                        $_SESSION['admin_logged_in'] = true;
+                        $_SESSION['admin_id'] = $admin['admin_id'];
+                        $_SESSION['admin_username'] = $admin['username'];
+                        $_SESSION['admin_email'] = $admin['Email'];
+                        $_SESSION['admin_branch'] = $branch_name;
+                        $_SESSION['branch_filter'] = $branch_filter; // This is used for filtering queries
+                        $_SESSION['login_time'] = time();
+                        
+                        // Set remember me cookie if checked
+                        if ($remember) {
+                            $cookie_token = bin2hex(random_bytes(32));
+                            setcookie('admin_remember', $cookie_token, time() + (86400 * 30), '/', '', false, true);
+                        }
+                        
+                        // Update last login time
+                        try {
+                            $update_stmt = $pdo->prepare("UPDATE admin SET last_login = NOW() WHERE admin_id = ?");
+                            $update_stmt->execute([$admin['admin_id']]);
+                        } catch (PDOException $e) {
+                            error_log("Last login update failed: " . $e->getMessage());
+                        }
+                        
+                        // Redirect to dashboard
+                        header('Location: adminDash.php');
+                        exit();
                     }
-                    
-                    // Redirect to dashboard
-                    header('Location: adminDash.php');
-                    exit();
+                } else {
+                    $error_message = "Invalid username/email or password.";
                 }
             }
             
         } catch (PDOException $e) {
-            // Log the error
             error_log("Database error: " . $e->getMessage());
             $error_message = 'Database connection failed. Please try again later.';
         }
@@ -108,7 +123,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - Login</title>
     <style>
-     * {
+        * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
@@ -257,6 +272,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             font-size: 24px;
         }
 
+        .branch-info {
+            background: #f0f9ff;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+            border: 1px solid #bae6fd;
+        }
+
+        .branch-info p {
+            color: #0369a1;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
         @media (max-width: 480px) {
             .login-container {
                 padding: 30px 20px;
@@ -268,7 +298,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             }
         }
 
-        /* Loading animation for form submission */
         .btn-login:disabled {
             opacity: 0.7;
             cursor: not-allowed;
@@ -298,6 +327,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             </div>
             <h1>Admin Login</h1>
             <p>Please sign in to access the dashboard</p>
+        </div>
+
+        <div class="branch-info">
+            <p>🏢 Branch-specific access • AutoTec Shaw & Subic</p>
         </div>
 
         <?php if ($error_message): ?>
@@ -343,14 +376,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     </div>
 
     <script>
-        // Add loading state to login button
         document.getElementById('loginForm').addEventListener('submit', function() {
             const loginBtn = document.getElementById('loginBtn');
             loginBtn.innerHTML = '<span class="loading"></span>Signing In...';
             loginBtn.disabled = true;
         });
 
-        // Focus on username field when page loads
         window.addEventListener('load', function() {
             document.getElementById('username').focus();
         });
