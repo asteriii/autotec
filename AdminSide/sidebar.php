@@ -6,6 +6,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet"/>
     <!-- Sidebar Component -->
+<!-- Sidebar Component -->
 <style>
     .sidebar {
         width: 280px;
@@ -116,7 +117,7 @@
 <div class="sidebar">
     <div class="section">
         <div class="section-title <?php echo (basename($_SERVER['PHP_SELF']) == 'index.php') ? 'active' : ''; ?>">
-            <a href="adminDash.php" style="color: white; text-decoration: none; display: flex; align-items: center; width: 100%;">
+            <a href="index.php" style="color: white; text-decoration: none; display: flex; align-items: center; width: 100%;">
                 <span><i class="fas fa-tachometer-alt"></i> Dashboard</span>
             </a>
         </div>
@@ -169,20 +170,19 @@
             <li><a href="ongoing-logs.php"><i class="fas fa-clock"></i> Ongoing Logs</a></li>
         </ul>
     </div>
-</div>
-  
+
     <div class="section">
-            <div class="section-title" onclick="toggleMenu('master-controls')">
-                <span><i class="fas fa-user-shield"></i> Master Controls</span>
-                <i class="fas fa-chevron-down"></i>
-            </div>
-            <ul class="submenu <?php echo (basename($_SERVER['PHP_SELF']) == 'admin_acc_manage.php') ? 'show' : ''; ?>" id="master-controls">
-                <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'admin_acc_manage.php') ? 'active' : ''; ?>">
-                    <a href="admin_acc_manage.php"><i class="fas fa-users-cog"></i> Admin Accounts Manager</a>
-                </li>
-            </ul>
+        <div class="section-title" onclick="toggleMenu('master-controls')">
+            <span><i class="fas fa-user-shield"></i> Master Controls</span>
+            <i class="fas fa-chevron-down"></i>
         </div>
+        <ul class="submenu <?php echo (basename($_SERVER['PHP_SELF']) == 'admin_acc_manage.php') ? 'show' : ''; ?>" id="master-controls">
+            <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'admin_acc_manage.php') ? 'active' : ''; ?>">
+                <a href="admin_acc_manage.php"><i class="fas fa-users-cog"></i> Admin Accounts Manager</a>
+            </li>
+        </ul>
     </div>
+</div>
 
 <script>
     function toggleMenu(menuId) {

@@ -48,14 +48,6 @@
       cursor: pointer;
     }
 
-    .sidebar .submenu li:hover {
-      text-decoration: underline;
-    }
-
-    .sidebar .active {
-      background-color: #922b20;
-    }
-
     .main {
       flex: 1;
       background-color: #f9f9f9;

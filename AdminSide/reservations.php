@@ -77,16 +77,6 @@ $categories = [
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
         }
 
-        .sidebar {
-            width: 280px;
-            background: linear-gradient(180deg, #c0392b 0%, #a93226 100%);
-            color: white;
-            padding-top: 20px;
-            box-shadow: 4px 0 15px rgba(0,0,0,0.1);
-            position: relative;
-            overflow: hidden;
-        }
-
         .sidebar::before {
             content: '';
             position: absolute;
