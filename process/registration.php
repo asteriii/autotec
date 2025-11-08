@@ -158,8 +158,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     mysqli_stmt_close($checkStmt);
 
-    // Hash password (SECURITY FIX)
-    $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
     // Insert new user with profile picture
     $sql = "INSERT INTO users (Fname, Username, Email, PhoneNumber, Address, password, profile_picture) VALUES (?, ?, ?, ?, ?, ?, ?)";
@@ -174,7 +172,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit();
     }
 
-    mysqli_stmt_bind_param($stmt, "sssssss", $fullName, $username, $email, $phoneNumber, $address, $hashedPassword, $profilePictureName);
+    mysqli_stmt_bind_param($stmt, "sssssss", $fullName, $username, $email, $phoneNumber, $address, $password, $profilePictureName);
 
     if (mysqli_stmt_execute($stmt)) {
         mysqli_stmt_close($stmt);
