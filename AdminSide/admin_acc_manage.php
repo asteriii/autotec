@@ -332,75 +332,7 @@ $result = $stmt->get_result();
 </head>
 <body>
 
-<div class="sidebar">
-    <div class="section">
-        <div class="section-title <?php echo (basename($_SERVER['PHP_SELF']) == 'index.php') ? 'active' : ''; ?>">
-            <a href="adminDash.php" style="color: white; text-decoration: none; display: flex; align-items: center; width: 100%;">
-                <span><i class="fas fa-tachometer-alt"></i> Dashboard</span>
-            </a>
-        </div>
-    </div>
-    
-    <div class="section">
-        <div class="section-title" onclick="toggleMenu('admin-controls')">
-            <span><i class="fas fa-cogs"></i> Admin Controls</span>
-            <i class="fas fa-chevron-down"></i>
-        </div>
-        <ul class="submenu" id="admin-controls">
-            <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'reservations.php') ? 'active' : ''; ?>">
-                <a href="reservations.php"><i class="fas fa-calendar-check"></i> Reservations</a>
-            </li>
-            <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'ongoing-list.php') ? 'active' : ''; ?>">
-                <a href="reschedule.php"><i class="fas fa-clock"></i> Reschedule Request</a>
-            </li>
-            <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'completed-list.php') ? 'active' : ''; ?>">
-                <a href="completed-list.php"><i class="fas fa-check-circle"></i> Completed List</a>
-            </li>
-        </ul>
-    </div>
-    
-    <div class="section">
-        <div class="section-title" onclick="toggleMenu('page-settings')">
-            <span><i class="fas fa-edit"></i> Page Settings</span>
-            <i class="fas fa-chevron-down"></i>
-        </div>
-        <ul class="submenu <?php echo (in_array(basename($_SERVER['PHP_SELF']), ['homepage-edit.php', 'contact-edit.php', 'about-edit.php'])) ? 'show' : ''; ?>" id="page-settings">
-            <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'homepage-edit.php') ? 'active' : ''; ?>">
-                <a href="homepage-edit.php"><i class="fas fa-home"></i> Home Page</a>
-            </li>
-            <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'contact-edit.php') ? 'active' : ''; ?>">
-                <a href="contact-edit.php"><i class="fas fa-envelope"></i> Contact Page</a>
-            </li>
-            <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'about-edit.php') ? 'active' : ''; ?>">
-                <a href="about-edit.php"><i class="fas fa-info-circle"></i> About Page</a>
-            </li>
-        </ul>
-    </div>
-
-    <div class="section">
-        <div class="section-title" onclick="toggleMenu('activity-logs')">
-            <span><i class="fas fa-history"></i> Activity Logs</span>
-            <i class="fas fa-chevron-down"></i>
-        </div>
-        <ul class="submenu" id="activity-logs">
-            <li><a href="page-edits.php"><i class="fas fa-edit"></i> Page Edits</a></li>
-            <li><a href="confirmed-logs.php"><i class="fas fa-check"></i> Confirmed Logs</a></li>
-            <li><a href="ongoing-logs.php"><i class="fas fa-clock"></i> Ongoing Logs</a></li>
-        </ul>
-    </div>
-
-    <div class="section">
-        <div class="section-title" onclick="toggleMenu('master-controls')">
-            <span><i class="fas fa-user-shield"></i> Master Controls</span>
-            <i class="fas fa-chevron-down"></i>
-        </div>
-        <ul class="submenu <?php echo (basename($_SERVER['PHP_SELF']) == 'admin_acc_manage.php') ? 'show' : ''; ?>" id="master-controls">
-            <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'admin_acc_manage.php') ? 'active' : ''; ?>">
-                <a href="admin_acc_manage.php"><i class="fas fa-users-cog"></i> Admin Accounts Manager</a>
-            </li>
-        </ul>
-    </div>
-</div>
+   <?php include 'sidebar.php'; ?>
 
   <!-- Main Content -->
   <div class="main">
