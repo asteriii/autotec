@@ -163,8 +163,8 @@ try {
     }
     $check_stmt->close();
 
-    // FIXED: Check slot availability - allow up to 3 bookings per time slot per branch
-    $max_slots = 3; // Maximum bookings per time slot (3 machines available)
+    // Check slot availability - allow up to 3 bookings per time slot per branch
+    $max_slots = 3;
     
     $slot_check_stmt = $conn->prepare("SELECT COUNT(*) as booking_count FROM reservations WHERE Date = ? AND Time = ? AND BranchName = ?");
     $slot_check_stmt->bind_param("sss", $date, $time, $branchName);
@@ -179,59 +179,111 @@ try {
         throw new Exception("This time slot is fully booked (" . $current_bookings . "/" . $max_slots . " slots taken). Please choose a different time.");
     }
 
-    // Handle payment receipt upload for GCash
+    // ===== IMPROVED GCASH PAYMENT RECEIPT UPLOAD =====
     $paymentReceiptPath = null;
-    if ($paymentMethod === 'gcash' && isset($_FILES['paymentReceipt'])) {
+    
+    if ($paymentMethod === 'gcash') {
+        // Check if file was uploaded
+        if (!isset($_FILES['paymentReceipt']) || $_FILES['paymentReceipt']['error'] === UPLOAD_ERR_NO_FILE) {
+            error_log("GCash payment but no receipt file uploaded");
+            error_log("FILES array: " . print_r($_FILES, true));
+            throw new Exception('Payment receipt is required for GCash payment.');
+        }
+        
         $file = $_FILES['paymentReceipt'];
         
-        // Validate file
-        $allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
-        $fileType = strtolower($file['type']);
+        // Check for upload errors
+        if ($file['error'] !== UPLOAD_ERR_OK) {
+            $uploadErrors = [
+                UPLOAD_ERR_INI_SIZE => 'File exceeds upload_max_filesize directive in php.ini',
+                UPLOAD_ERR_FORM_SIZE => 'File exceeds MAX_FILE_SIZE directive in HTML form',
+                UPLOAD_ERR_PARTIAL => 'File was only partially uploaded',
+                UPLOAD_ERR_NO_TMP_DIR => 'Missing temporary folder',
+                UPLOAD_ERR_CANT_WRITE => 'Failed to write file to disk',
+                UPLOAD_ERR_EXTENSION => 'A PHP extension stopped the file upload'
+            ];
+            $errorMessage = isset($uploadErrors[$file['error']]) ? $uploadErrors[$file['error']] : 'Unknown upload error';
+            throw new Exception('Upload error: ' . $errorMessage);
+        }
         
-        if (!in_array($fileType, $allowedTypes)) {
-            throw new Exception('Invalid file type. Please upload an image (JPEG, PNG, or GIF).');
+        // Validate file type using both MIME type and extension
+        $allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+        
+        $fileMimeType = strtolower($file['type']);
+        $fileExtension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        
+        // Verify file type using finfo (more reliable than $_FILES['type'])
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $detectedMimeType = finfo_file($finfo, $file['tmp_name']);
+        finfo_close($finfo);
+        
+        if (!in_array($detectedMimeType, $allowedMimeTypes) || !in_array($fileExtension, $allowedExtensions)) {
+            throw new Exception('Invalid file type. Please upload an image (JPEG, PNG, GIF, or WebP).');
         }
         
         // Check file size (max 5MB)
-        if ($file['size'] > 5 * 1024 * 1024) {
+        $maxFileSize = 5 * 1024 * 1024; // 5MB in bytes
+        if ($file['size'] > $maxFileSize) {
             throw new Exception('File size too large. Maximum size is 5MB.');
         }
         
+        // Check if file is actually an image
+        $imageInfo = getimagesize($file['tmp_name']);
+        if ($imageInfo === false) {
+            throw new Exception('Uploaded file is not a valid image.');
+        }
+        
+        // Define upload directory (matches your Railway volume structure)
+        $baseUploadDir = $_SERVER['DOCUMENT_ROOT'] . '/uploads/';
+        $uploadDir = $baseUploadDir . 'payment_receipts/';
+        
         // Create upload directory if it doesn't exist
-        $uploadDir = 'uploads/payment_receipts/';
         if (!file_exists($uploadDir)) {
-            if (!mkdir($uploadDir, 0777, true)) {
+            if (!mkdir($uploadDir, 0755, true)) {
                 error_log("Failed to create upload directory: " . $uploadDir);
                 throw new Exception('Failed to create upload directory. Please contact support.');
             }
+            error_log("Created upload directory: " . $uploadDir);
         }
         
-        // Generate unique filename
-        $fileExtension = pathinfo($file['name'], PATHINFO_EXTENSION);
-        $fileName = time() . '_' . uniqid() . '.' . $fileExtension;
+        // Verify directory is writable
+        if (!is_writable($uploadDir)) {
+            error_log("Upload directory is not writable: " . $uploadDir);
+            throw new Exception('Upload directory is not writable. Please contact support.');
+        }
+        
+        // Generate unique filename with sanitized plate number
+        $sanitizedPlateNo = preg_replace('/[^a-zA-Z0-9]/', '_', $plateNo);
+        $timestamp = time();
+        $uniqueId = uniqid();
+        $fileName = "gcash_{$sanitizedPlateNo}_{$timestamp}_{$uniqueId}.{$fileExtension}";
         $uploadPath = $uploadDir . $fileName;
         
         // Move uploaded file
         if (!move_uploaded_file($file['tmp_name'], $uploadPath)) {
+            error_log("Failed to move uploaded file from {$file['tmp_name']} to {$uploadPath}");
             throw new Exception('Failed to upload payment receipt. Please try again.');
         }
         
-        $paymentReceiptPath = $uploadPath;
-    } elseif ($paymentMethod === 'gcash' && !isset($_FILES['paymentReceipt'])) {
-        throw new Exception('Payment receipt is required for GCash payment.');
+        // Store relative path for database (relative to document root)
+        $paymentReceiptPath = 'uploads/payment_receipts/' . $fileName;
+        
+        // Set correct permissions
+        chmod($uploadPath, 0644);
+        
+        error_log("Payment receipt uploaded successfully: " . $paymentReceiptPath);
     }
 
-    // UPDATED: Set payment status - BOTH gcash and onsite start as 'pending'
-    // GCash payments will stay pending until admin verifies the receipt
-    // On-site payments will stay pending until payment is made at the center
+    // Set payment status - both gcash and onsite start as 'pending'
     $paymentStatus = 'pending';
 
     // Generate reference number
     $referenceNumber = 'AT-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -6));
 
-    // Prepare and bind - updated to include payment fields
+    // Prepare and bind
     $stmt = $conn->prepare("INSERT INTO reservations (UserID, PlateNo, Brand, TypeID, CategoryID, Fname, Lname, Mname, PhoneNum, Email, Date, Time, Address, BranchName, PaymentMethod, PaymentStatus, PaymentReceipt, Price, ReferenceNumber) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    $stmt->bind_param("issiissssssssssssds", $userID, $plateNo, $brand, $typeID, $categoryID, $firstName, $lastName, $middleName, $contactNumber, $email, $date, $time, $address, $branchName, $paymentMethod, $paymentStatus, $paymentReceiptPath, $price, $referenceNumber);
+    $stmt->bind_param("issiisssssssssssdss", $userID, $plateNo, $brand, $typeID, $categoryID, $firstName, $lastName, $middleName, $contactNumber, $email, $date, $time, $address, $branchName, $paymentMethod, $paymentStatus, $paymentReceiptPath, $price, $referenceNumber);
 
     // Execute the statement
     if ($stmt->execute()) {
@@ -240,29 +292,37 @@ try {
         // Calculate remaining slots
         $remaining_slots = $max_slots - ($current_bookings + 1);
         
-        // Success response in JSON format
+        // Success response
         echo json_encode([
             'success' => true,
-            'message' => 'Registration successful',
+            'message' => 'Reservation created successfully',
             'referenceNumber' => $referenceNumber,
             'reservationId' => $reservation_id,
             'paymentMethod' => $paymentMethod,
             'paymentStatus' => $paymentStatus,
+            'paymentReceipt' => $paymentReceiptPath,
             'slotsRemaining' => $remaining_slots
         ]);
+        
+        // Optional: Send confirmation email
+        // sendConfirmationEmail($email, $referenceNumber, $firstName, $lastName, $date, $time, $branchName);
+        
     } else {
+        // If database insert fails and file was uploaded, delete the uploaded file
+        if ($paymentReceiptPath && file_exists($_SERVER['DOCUMENT_ROOT'] . '/' . $paymentReceiptPath)) {
+            unlink($_SERVER['DOCUMENT_ROOT'] . '/' . $paymentReceiptPath);
+        }
         throw new Exception("Error creating reservation: " . $stmt->error);
     }
 
-    // Close connections
     $stmt->close();
 
 } catch (Exception $e) {
-    // Log the error for debugging
+    // Log the error
     error_log("Reservation Error: " . $e->getMessage());
     error_log("Stack trace: " . $e->getTraceAsString());
     
-    // Error response in JSON format
+    // Error response
     echo json_encode([
         'success' => false,
         'message' => $e->getMessage(),
@@ -277,7 +337,7 @@ try {
     }
 }
 
-// Optional: Email confirmation function
+// Email confirmation function
 function sendConfirmationEmail($email, $refNumber, $firstName, $lastName, $date, $time, $branch) {
     $to = $email;
     $subject = "AutoTEC Appointment Confirmation - " . $refNumber;
@@ -307,12 +367,10 @@ function sendConfirmationEmail($email, $refNumber, $firstName, $lastName, $date,
     </html>
     ";
     
-    // Headers for HTML email
     $headers = "MIME-Version: 1.0" . "\r\n";
     $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
     $headers .= "From: noreply@autotec.com" . "\r\n";
     
-    // Send email
     mail($to, $subject, $message, $headers);
 }
 ?>

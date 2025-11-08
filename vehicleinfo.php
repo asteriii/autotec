@@ -45,7 +45,6 @@ if (session_status() === PHP_SESSION_NONE) {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <title>Registration - AutoTEC</title>
     <link rel="stylesheet" href="css/registration.css">
-    <link rel="stylesheet" href="css/index.css">
     <style>
         /* Additional styles for branch selection */
         .branch-selection {
@@ -582,8 +581,24 @@ if (session_status() === PHP_SESSION_NONE) {
                         <div class="upload-section">
                             <h4 style="color: #a4133c; margin-bottom: 10px;">Upload Payment Receipt</h4>
                             <p style="color: #666; margin-bottom: 15px;">Please upload a screenshot of your payment confirmation</p>
+                            
+                            <!-- Add file size and format info -->
+                            <div style="background: #fff3e0; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
+                                <small style="color: #666;">
+                                    ✓ Accepted formats: JPG, PNG, GIF, WebP<br>
+                                    ✓ Maximum file size: 5MB<br>
+                                    ✓ Make sure your payment details are clearly visible
+                                </small>
+                            </div>
+                            
                             <div class="file-upload-wrapper">
-                                <input type="file" id="paymentReceipt" class="file-upload-input" accept="image/*" onchange="previewReceipt(this)">
+                                <input type="file" 
+                                    id="paymentReceipt" 
+                                    name="paymentReceipt"
+                                    class="file-upload-input" 
+                                    accept="image/jpeg,image/jpg,image/png,image/gif,image/webp" 
+                                    onchange="previewReceipt(this)"
+                                    required>
                                 <label for="paymentReceipt" class="file-upload-label">
                                     📤 Choose File to Upload
                                 </label>
@@ -617,15 +632,15 @@ if (session_status() === PHP_SESSION_NONE) {
     </div>
 
     <!-- Success Modal -->
-    <div id="successModal" class="modal">
-        <div class="modal-content">
-            <h2>Registration Successful!</h2>
-            <p>Thank you for registering! Your appointment has been confirmed.</p>
-            <p><strong>Reference Number:</strong> <span id="referenceNumber"></span></p>
-            <div id="paymentSuccessMessage"></div>
-            <button class="btn" onclick="closeModal()">Close</button>
-        </div>
+<div id="successModal" class="modal">
+    <div class="modal-content">
+        <h2>Registration Successful!</h2>
+        <p>Thank you for registering! Your appointment has been confirmed.</p>
+        <p><strong>Reference Number:</strong> <span id="referenceNumber"></span></p>
+        <div id="paymentSuccessMessage"></div>
+        <button class="btn" onclick="closeModal()">Close</button>
     </div>
+</div>
 
     <!-- Error Modal -->
     <div id="errorModal" class="error-modal">
@@ -725,21 +740,57 @@ if (session_status() === PHP_SESSION_NONE) {
         }
 
         // Preview payment receipt
+        // Replace your existing previewReceipt function
         function previewReceipt(input) {
             const preview = document.getElementById('receiptPreview');
             
             if (input.files && input.files[0]) {
-                paymentReceiptFile = input.files[0];
+                const file = input.files[0];
+                
+                // Validate file size (5MB = 5 * 1024 * 1024 bytes)
+                const maxSize = 5 * 1024 * 1024;
+                if (file.size > maxSize) {
+                    alert('File size exceeds 5MB. Please choose a smaller file.');
+                    input.value = ''; // Clear the input
+                    preview.innerHTML = '';
+                    paymentReceiptFile = null;
+                    return;
+                }
+                
+                // Validate file type
+                const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+                if (!allowedTypes.includes(file.type.toLowerCase())) {
+                    alert('Invalid file type. Please upload an image file (JPG, PNG, GIF, or WebP).');
+                    input.value = ''; // Clear the input
+                    preview.innerHTML = '';
+                    paymentReceiptFile = null;
+                    return;
+                }
+                
+                paymentReceiptFile = file;
                 const reader = new FileReader();
                 
                 reader.onload = function(e) {
+                    const fileSizeKB = (file.size / 1024).toFixed(2);
                     preview.innerHTML = `
-                        <img src="${e.target.result}" alt="Payment Receipt">
-                        <div class="file-name">✓ ${input.files[0].name}</div>
+                        <img src="${e.target.result}" alt="Payment Receipt" style="max-width: 100%; max-height: 300px; border-radius: 10px; border: 2px solid #e0e0e0;">
+                        <div class="file-name" style="margin-top: 10px; color: #4caf50;">
+                            ✓ ${file.name} (${fileSizeKB} KB)
+                        </div>
                     `;
                 };
                 
-                reader.readAsDataURL(input.files[0]);
+                reader.onerror = function() {
+                    alert('Error reading file. Please try again.');
+                    input.value = '';
+                    preview.innerHTML = '';
+                    paymentReceiptFile = null;
+                };
+                
+                reader.readAsDataURL(file);
+            } else {
+                preview.innerHTML = '';
+                paymentReceiptFile = null;
             }
         }
 
@@ -984,15 +1035,34 @@ if (session_status() === PHP_SESSION_NONE) {
             return true;
         }
 
+        // Replace your existing validatePaymentMethod function
         function validatePaymentMethod() {
             if (!selectedPaymentMethod) {
                 alert('Please select a payment method.');
                 return false;
             }
             
-            if (selectedPaymentMethod === 'gcash' && !paymentReceiptFile) {
-                alert('Please upload your GCash payment receipt.');
-                return false;
+            if (selectedPaymentMethod === 'gcash') {
+                const fileInput = document.getElementById('paymentReceipt');
+                
+                if (!paymentReceiptFile || !fileInput.files[0]) {
+                    alert('Please upload your GCash payment receipt.');
+                    return false;
+                }
+                
+                // Double-check file size
+                const maxSize = 5 * 1024 * 1024; // 5MB
+                if (fileInput.files[0].size > maxSize) {
+                    alert('Payment receipt file is too large. Maximum size is 5MB.');
+                    return false;
+                }
+                
+                // Verify file type
+                const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+                if (!allowedTypes.includes(fileInput.files[0].type.toLowerCase())) {
+                    alert('Invalid payment receipt format. Please upload an image file.');
+                    return false;
+                }
             }
             
             return true;
