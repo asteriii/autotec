@@ -77,16 +77,6 @@ $categories = [
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
         }
 
-        .sidebar {
-            width: 280px;
-            background: linear-gradient(180deg, #c0392b 0%, #a93226 100%);
-            color: white;
-            padding-top: 20px;
-            box-shadow: 4px 0 15px rgba(0,0,0,0.1);
-            position: relative;
-            overflow: hidden;
-        }
-
         .sidebar::before {
             content: '';
             position: absolute;
@@ -464,50 +454,7 @@ $categories = [
 </head>
 <body>
     <!-- Sidebar -->
-    <div class="sidebar">
-        <div class="section">
-            <div class="section-title">
-                <a href="admindash.php" style="color: white; text-decoration: none;">
-                    <i class="fas fa-tachometer-alt"></i> Dashboard
-                </a>
-            </div>
-        </div>
-        
-        <div class="section">
-            <div class="section-title" onclick="toggleMenu('admin-controls')">
-                <span><i class="fas fa-cogs"></i> Admin Controls</span>
-                <i class="fas fa-chevron-down"></i>
-            </div>
-            <ul class="submenu show" id="admin-controls">
-                <li class="active"><a href="reservations.php"><i class="fas fa-calendar-check"></i> Reservations</a></li>
-                <li><a href="completed-list.php"><i class="fas fa-check-circle"></i> Completed List</a></li>
-            </ul>
-        </div>
-        
-        <div class="section">
-            <div class="section-title" onclick="toggleMenu('page-settings')">
-                <span><i class="fas fa-edit"></i> Page Settings</span>
-                <i class="fas fa-chevron-down"></i>
-            </div>
-            <ul class="submenu show" id="page-settings">
-                <li><a href="homepage-edit.php"><i class="fas fa-home"></i> Home Page</a></li>
-                <li><a href="contact-edit.php"><i class="fas fa-envelope"></i> Contact Page</a></li>
-                <li><a href="about-edit.php"><i class="fas fa-info-circle"></i> About Page</a></li>
-            </ul>
-        </div>
-
-        <div class="section">
-            <div class="section-title" onclick="toggleMenu('activity-logs')">
-                <span><i class="fas fa-history"></i> Activity Logs</span>
-                <i class="fas fa-chevron-down"></i>
-            </div>
-            <ul class="submenu" id="activity-logs">
-                <li><i class="fas fa-edit"></i> Page Edits</li>
-                <li><i class="fas fa-check"></i> Confirmed Logs</li>
-                <li><i class="fas fa-clock"></i> Ongoing Logs</li>
-            </ul>
-        </div>
-    </div>
+    <?php include 'sidebar.php'; ?>
 
     <!-- Main Content -->
     <div class="main">

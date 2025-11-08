@@ -13,9 +13,12 @@ function alertAndRedirect($message, $url = 'profile.php') {
     exit();
 }
 
-// Define upload directory using absolute path
+// SIMPLIFIED PATH CONFIGURATION
+// The Dockerfile creates a symlink from /var/www/html/uploads/profile to the volume
+// So we can always use the same path!
 define('UPLOAD_DIR', __DIR__ . '/uploads/profile/');
 define('UPLOAD_DIR_RELATIVE', 'uploads/profile/');
+error_log("Upload directory: " . UPLOAD_DIR);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
@@ -24,14 +27,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Create directory if it doesn't exist
         if (!file_exists(UPLOAD_DIR)) {
             if (!mkdir(UPLOAD_DIR, 0755, true)) {
-                error_log("Failed to create directory: " . UPLOAD_DIR);
-                alertAndRedirect("Failed to create upload directory.");
+                error_log("FAILED to create directory: " . UPLOAD_DIR);
+                error_log("Parent directory exists: " . (file_exists(dirname(UPLOAD_DIR)) ? 'YES' : 'NO'));
+                error_log("Parent directory writable: " . (is_writable(dirname(UPLOAD_DIR)) ? 'YES' : 'NO'));
+                alertAndRedirect("Failed to create upload directory. Please contact administrator.");
             }
+            error_log("Successfully created directory: " . UPLOAD_DIR);
         }
 
         // Check if directory is writable
         if (!is_writable(UPLOAD_DIR)) {
-            error_log("Directory not writable: " . UPLOAD_DIR);
+            error_log("Directory NOT writable: " . UPLOAD_DIR);
             alertAndRedirect("Upload directory is not writable. Please contact administrator.");
         }
 
@@ -42,27 +48,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 switch($_FILES['profile_picture']['error']) {
                     case UPLOAD_ERR_INI_SIZE:
                     case UPLOAD_ERR_FORM_SIZE:
-                        $errorMsg = "File is too large.";
+                        $errorMsg = "File is too large (max 5MB).";
                         break;
                     case UPLOAD_ERR_NO_FILE:
-                        $errorMsg = "No file was uploaded.";
+                        $errorMsg = "No file was selected.";
                         break;
                     default:
                         $errorMsg = "Upload error code: " . $_FILES['profile_picture']['error'];
                 }
             }
+            error_log("Upload error: " . $errorMsg);
             alertAndRedirect($errorMsg);
         }
 
         $fileTmpPath = $_FILES['profile_picture']['tmp_name'];
         $fileName = $_FILES['profile_picture']['name'];
         $fileSize = $_FILES['profile_picture']['size'];
-        
-        // Check if temp file exists
-        if (!file_exists($fileTmpPath)) {
-            error_log("Temporary file not found: " . $fileTmpPath);
-            alertAndRedirect("Upload failed: temporary file not found.");
-        }
         
         // Validate file is actually an image
         $imageInfo = @getimagesize($fileTmpPath);
@@ -96,43 +97,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!empty($user['profile_picture'])) {
             $oldFilePath = UPLOAD_DIR . $user['profile_picture'];
             if (file_exists($oldFilePath)) {
-                if (@unlink($oldFilePath)) {
-                    error_log("Old profile picture deleted: " . $oldFilePath);
-                } else {
-                    error_log("Failed to delete old profile picture: " . $oldFilePath);
-                }
+                @unlink($oldFilePath);
+                error_log("Deleted old profile picture: " . $oldFilePath);
             }
         }
 
         // Generate unique filename
-        $newFileName = 'profile_' . $_SESSION['user_id'] . '_' . uniqid() . '.' . $fileExtension;
+        $newFileName = 'profile_' . $_SESSION['user_id'] . '_' . time() . '.' . $fileExtension;
         $destPath = UPLOAD_DIR . $newFileName;
 
-        // Debug logging
-        error_log("Attempting to move file from: " . $fileTmpPath);
+        error_log("Moving file from: " . $fileTmpPath);
         error_log("To: " . $destPath);
-        error_log("Upload directory exists: " . (file_exists(UPLOAD_DIR) ? 'YES' : 'NO'));
-        error_log("Upload directory writable: " . (is_writable(UPLOAD_DIR) ? 'YES' : 'NO'));
 
         // Move uploaded file
         if (!move_uploaded_file($fileTmpPath, $destPath)) {
-            error_log("move_uploaded_file failed!");
-            error_log("Source: " . $fileTmpPath);
-            error_log("Destination: " . $destPath);
-            error_log("Last PHP error: " . print_r(error_get_last(), true));
-            alertAndRedirect("Error uploading file. Check folder permissions (needs 0755) and PHP upload settings.");
+            error_log("FAILED to move uploaded file!");
+            error_log("PHP Error: " . print_r(error_get_last(), true));
+            alertAndRedirect("Failed to save file. Please try again or contact administrator.");
         }
 
         // Set file permissions
         @chmod($destPath, 0644);
 
-        // Verify file was actually saved
+        // Verify file exists
         if (!file_exists($destPath)) {
-            error_log("File upload failed - file not found after move_uploaded_file");
-            alertAndRedirect("File upload failed - file not found after upload.");
+            error_log("File not found after upload: " . $destPath);
+            alertAndRedirect("Upload verification failed.");
         }
 
-        error_log("File successfully uploaded to: " . $destPath);
+        $fileSize = filesize($destPath);
+        error_log("File uploaded successfully: " . $newFileName . " (Size: " . $fileSize . " bytes)");
 
         // Update database
         $sql = "UPDATE users SET profile_picture = ? WHERE UserID = ?";
@@ -141,24 +135,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         if (!mysqli_stmt_execute($stmt)) {
             mysqli_stmt_close($stmt);
-            // Delete the uploaded file since DB update failed
             @unlink($destPath);
             error_log("Database update failed: " . mysqli_error($conn));
-            alertAndRedirect("Failed to update database: " . mysqli_error($conn));
+            alertAndRedirect("Failed to update profile in database.");
         }
         
         mysqli_stmt_close($stmt);
         
-        // Update session variable
+        // Update session
         $_SESSION['profile_picture'] = $newFileName;
         
-        error_log("Profile picture updated successfully for user: " . $_SESSION['user_id']);
-        
-        // Redirect with success
+        error_log("Profile picture updated successfully for UserID: " . $_SESSION['user_id']);
         alertAndRedirect("Profile picture updated successfully!");
     }
 
-    // Handle profile update (Username, Email, Address)
+    // Handle profile update
     if (isset($_POST['update_profile'])) {
         $username = trim($_POST['username'] ?? '');
         $email = trim($_POST['email'] ?? '');
@@ -168,7 +159,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             alertAndRedirect("All fields are required.");
         }
 
-        // Check if username or email already exists (excluding current user)
+        // Check if username or email exists
         $checkSql = "SELECT UserID FROM users WHERE (Username = ? OR Email = ?) AND UserID != ?";
         $checkStmt = mysqli_prepare($conn, $checkSql);
         mysqli_stmt_bind_param($checkStmt, "ssi", $username, $email, $_SESSION['user_id']);
@@ -183,14 +174,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $sql = "UPDATE users SET Username = ?, Email = ?, Address = ? WHERE UserID = ?";
         $stmt = mysqli_prepare($conn, $sql);
-        if (!$stmt) {
-            alertAndRedirect("Database error: " . mysqli_error($conn));
-        }
         mysqli_stmt_bind_param($stmt, "sssi", $username, $email, $address, $_SESSION['user_id']);
 
         if (mysqli_stmt_execute($stmt)) {
             mysqli_stmt_close($stmt);
-            // Update session variables
             $_SESSION['username'] = $username;
             $_SESSION['email'] = $email;
             alertAndRedirect("Profile updated successfully.");
@@ -209,43 +196,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             alertAndRedirect("Please enter both password fields.");
         }
 
-        // Password validation with regex
-        $passwordPattern = '/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/';
-        
-        if (!preg_match($passwordPattern, $new_password)) {
-            alertAndRedirect("Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&#).");
+        if (strlen($new_password) < 6) {
+            alertAndRedirect("Password must be at least 6 characters long.");
         }
 
         if ($new_password !== $confirm_password) {
             alertAndRedirect("Passwords do not match.");
         }
 
-        // Hash the password (SECURITY FIX)
-        $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
-        
         $sql = "UPDATE users SET password = ? WHERE UserID = ?";
         $stmt = mysqli_prepare($conn, $sql);
-        if (!$stmt) {
-            alertAndRedirect("Database error: " . mysqli_error($conn));
-        }
-        mysqli_stmt_bind_param($stmt, "si", $hashed_password, $_SESSION['user_id']);
+        mysqli_stmt_bind_param($stmt, "si", $new_password, $_SESSION['user_id']);
 
         if (mysqli_stmt_execute($stmt)) {
             mysqli_stmt_close($stmt);
             alertAndRedirect("Password changed successfully.");
         } else {
             mysqli_stmt_close($stmt);
-            alertAndRedirect("Failed to change password: " . mysqli_error($conn));
+            alertAndRedirect("Failed to change password.");
         }
     }
 }
 
-// Fetch current user data
+// Fetch user data
 $sql = "SELECT * FROM users WHERE UserID = ?";
 $stmt = mysqli_prepare($conn, $sql);
-if (!$stmt) {
-    die("Database error: " . mysqli_error($conn));
-}
 mysqli_stmt_bind_param($stmt, "i", $_SESSION['user_id']);
 mysqli_stmt_execute($stmt);
 $result = mysqli_stmt_get_result($stmt);
@@ -259,12 +234,7 @@ if (!$user) {
 // Set profile picture path
 $profilePicturePath = 'pictures/default-avatar.png';
 if (!empty($user['profile_picture'])) {
-    $checkPath = UPLOAD_DIR_RELATIVE . $user['profile_picture'];
-    if (file_exists($checkPath)) {
-        $profilePicturePath = $checkPath . '?v=' . time(); // Add cache buster
-    } else {
-        error_log("Profile picture not found: " . $checkPath);
-    }
+    $profilePicturePath = UPLOAD_DIR_RELATIVE . $user['profile_picture'] . '?v=' . time();
 }
 ?>
 
@@ -567,22 +537,16 @@ if (!empty($user['profile_picture'])) {
 </head>
 <body>
     <?php include 'header.php'; ?>
-
     <div class="container">
         <section class="hero">
             <h1 class="page-title"><span class="highlight">MY</span> PROFILE</h1>
             <div class="breadcrumb">HOME &gt; PROFILE</div>
         </section>
-
         <div class="profile-grid">
             <div class="info-card">
                 <div class="profile-picture-section">
                     <div class="profile-picture-container">
-                        <img src="<?php echo htmlspecialchars($profilePicturePath); ?>" 
-                             alt="Profile Picture" 
-                             class="profile-picture-img"
-                             id="currentProfilePic"
-                             onerror="this.src='pictures/default-avatar.png'">
+                        <img src="<?php echo htmlspecialchars($profilePicturePath); ?>" alt="Profile Picture" class="profile-picture-img" id="currentProfilePic" onerror="this.src='pictures/default-avatar.png'">
                         <div class="profile-picture-overlay" onclick="document.getElementById('profilePictureInput').click()">
                             <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
                                 <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
@@ -591,29 +555,17 @@ if (!empty($user['profile_picture'])) {
                             <span>Change Photo</span>
                         </div>
                     </div>
-                    
                     <form method="post" action="" enctype="multipart/form-data" id="profilePictureForm" class="picture-upload-form">
-                        <label for="profilePictureInput" class="choose-file-btn">
-                            Choose File
-                        </label>
-                        <input type="file" 
-                               name="profile_picture" 
-                               id="profilePictureInput" 
-                               accept="image/*" 
-                               onchange="previewProfilePicture(this)" 
-                               required>
-                        <button type="submit" name="update_profile_picture" class="upload-picture-btn" id="uploadBtn" disabled>
-                            Upload
-                        </button>
+                        <label for="profilePictureInput" class="choose-file-btn">Choose File</label>
+                        <input type="file" name="profile_picture" id="profilePictureInput" accept="image/*" onchange="previewProfilePicture(this)" required>
+                        <button type="submit" name="update_profile_picture" class="upload-picture-btn" id="uploadBtn" disabled>Upload</button>
                     </form>
                     <div class="file-name-display" id="fileName"></div>
                 </div>
-
                 <div class="card-header">
                     <h2>Personal Information</h2>
                     <p>Update your personal details and account information</p>
                 </div>
-                
                 <form method="post" action="">
                     <div class="form-row">
                         <div class="form-group">
@@ -625,7 +577,6 @@ if (!empty($user['profile_picture'])) {
                             <input type="text" name="username" value="<?php echo htmlspecialchars($user['Username']); ?>" required>
                         </div>
                     </div>
-
                     <div class="form-row">
                         <div class="form-group">
                             <label>Email Address</label>
@@ -636,34 +587,23 @@ if (!empty($user['profile_picture'])) {
                             <input type="text" name="address" value="<?php echo htmlspecialchars($user['Address'] ?? ''); ?>" required>
                         </div>
                     </div>
-
                     <button class="save-btn" type="submit" name="update_profile">Save Changes</button>
                 </form>
             </div>
-
             <div class="password-card">
                 <div class="card-header">
                     <h2>Change Password</h2>
                     <p>Keep your account secure with a strong password</p>
                 </div>
-                
                 <form method="post" action="" class="password-form">
                     <div class="form-row">
                         <div class="form-group">
                             <label>New Password</label>
-                            <input 
-                                type="password" 
-                                name="new_password" 
-                                pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$"
-                                title="Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&#)"
-                                required>
-                            <small class="password-hint">
-                                Must contain: 8+ characters, uppercase, lowercase, number, special character (@$!%*?&#)
-                            </small>
+                            <input type="password" name="new_password" minlength="6" required>
                         </div>
                         <div class="form-group">
                             <label>Confirm Password</label>
-                            <input type="password" name="confirm_password" required>
+                            <input type="password" name="confirm_password" minlength="6" required>
                         </div>
                     </div>
                     <button class="save-btn" type="submit" name="change_password">Change Password</button>
@@ -671,18 +611,14 @@ if (!empty($user['profile_picture'])) {
             </div>
         </div>
     </div>
-
     <script>
         function previewProfilePicture(input) {
             const fileName = input.files[0]?.name || '';
             const fileNameDisplay = document.getElementById('fileName');
             const currentProfilePic = document.getElementById('currentProfilePic');
             const uploadBtn = document.getElementById('uploadBtn');
-            
             if (fileName) {
                 const file = input.files[0];
-                
-                // Validate file size
                 if (file.size > 5 * 1024 * 1024) {
                     alert('File size must be less than 5MB');
                     input.value = '';
@@ -690,8 +626,6 @@ if (!empty($user['profile_picture'])) {
                     uploadBtn.disabled = true;
                     return;
                 }
-                
-                // Validate file type
                 const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
                 if (!validTypes.includes(file.type)) {
                     alert('Only JPG, JPEG, PNG, and GIF files are allowed');
@@ -700,15 +634,10 @@ if (!empty($user['profile_picture'])) {
                     uploadBtn.disabled = true;
                     return;
                 }
-                
                 fileNameDisplay.textContent = 'Selected: ' + fileName;
                 uploadBtn.disabled = false;
-                
-                // Preview the image
                 const reader = new FileReader();
-                reader.onload = function(e) {
-                    currentProfilePic.src = e.target.result;
-                };
+                reader.onload = function(e) { currentProfilePic.src = e.target.result; };
                 reader.readAsDataURL(file);
             } else {
                 fileNameDisplay.textContent = '';
