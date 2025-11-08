@@ -132,8 +132,8 @@
             <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'reservations.php') ? 'active' : ''; ?>">
                 <a href="reservations.php"><i class="fas fa-calendar-check"></i> Reservations</a>
             </li>
-            <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'ongoing-list.php') ? 'active' : ''; ?>">
-                <a href="reschedule.php"><i class="fas fa-clock"></i> Reschedule Request</a>
+            <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'reschedule.php') ? 'active' : ''; ?>">
+                <a href="ongoing-list.php"><i class="fas fa-clock"></i> Reschedule Request</a>
             </li>
             <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'completed-list.php') ? 'active' : ''; ?>">
                 <a href="completed-list.php"><i class="fas fa-check-circle"></i> Completed List</a>
@@ -149,6 +149,9 @@
         <ul class="submenu <?php echo (in_array(basename($_SERVER['PHP_SELF']), ['homepage-edit.php', 'contact-edit.php', 'about-edit.php'])) ? 'show' : ''; ?>" id="page-settings">
             <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'homepage-edit.php') ? 'active' : ''; ?>">
                 <a href="homepage-edit.php"><i class="fas fa-home"></i> Home Page</a>
+            </li>
+              <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'reservation-edit.php') ? 'active' : ''; ?>">
+                <a href="reservation-edit.php"><i class="fas fa-clock"></i> Reservation Page</a>
             </li>
             <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'contact-edit.php') ? 'active' : ''; ?>">
                 <a href="contact-edit.php"><i class="fas fa-envelope"></i> Contact Page</a>
