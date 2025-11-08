@@ -1,9 +1,17 @@
 <?php
 require_once '../db.php';
 
-// Define upload directory - works with Railway symlink
-define('UPLOAD_DIR', __DIR__ . '/../uploads/branches/');
+// Define upload directory - go up one level from AdminSide to root
+define('UPLOAD_DIR', dirname(__DIR__) . '/uploads/branches/');
 define('UPLOAD_DIR_RELATIVE', 'uploads/branches/');
+
+// Debug logging
+error_log("=== ABOUT-EDIT.PHP ===");
+error_log("Current directory: " . __DIR__);
+error_log("Parent directory: " . dirname(__DIR__));
+error_log("Upload directory: " . UPLOAD_DIR);
+error_log("Upload dir exists: " . (file_exists(UPLOAD_DIR) ? 'YES' : 'NO'));
+error_log("======================");
 
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
@@ -627,11 +635,26 @@ $branches = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <div class="branch-content">
                         <div class="info-section">
                             <h4><i class="fas fa-image"></i> Branch Image</h4>
-                            <?php if (!empty($branch['Picture']) && file_exists($branch['Picture'])): ?>
-                                <img src="<?php echo htmlspecialchars($branch['Picture']); ?>" alt="Branch Image" class="branch-image" onerror="this.parentElement.innerHTML='<div class=\'no-image\'><i class=\'fas fa-image\' style=\'font-size: 48px; opacity: 0.5;\'></i></div>'">
+                            <?php 
+                            // Build the web-accessible path for display
+                            $displayPath = '';
+                            if (!empty($branch['Picture'])) {
+                                // Picture should be like: uploads/branches/branch_1_123456.jpg
+                                $displayPath = '../' . $branch['Picture'];
+                            }
+                            
+                            // Check if file exists
+                            $fileExists = !empty($displayPath) && file_exists(dirname(__DIR__) . '/' . $branch['Picture']);
+                            ?>
+                            
+                            <?php if ($fileExists): ?>
+                                <img src="<?php echo htmlspecialchars($displayPath); ?>" 
+                                     alt="Branch Image" 
+                                     class="branch-image">
                             <?php else: ?>
                                 <div class="no-image">
                                     <i class="fas fa-image" style="font-size: 48px; opacity: 0.5;"></i>
+                                    <p style="margin-top: 10px; font-size: 12px;">No image uploaded</p>
                                 </div>
                             <?php endif; ?>
                             

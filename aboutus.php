@@ -273,28 +273,29 @@ if ($result) {
               <?php 
                 // Get the image path from database
                 $imagePath = '';
+                $imageExists = false;
                 
                 if (!empty($entry['Picture'])) {
                     // The Picture field should contain: uploads/branches/filename.jpg
                     $imagePath = $entry['Picture'];
                     
-                    // Clean up any potential issues with the path
+                    // Clean up path
                     $imagePath = str_replace('\\', '/', $imagePath);
                     $imagePath = ltrim($imagePath, '/');
+                    
+                    // Check if file exists
+                    $imageExists = file_exists($imagePath);
+                    
+                    // Debug
+                    error_log("Branch ID " . $entry['AboutID'] . " - Picture: " . $entry['Picture']);
+                    error_log("Cleaned path: " . $imagePath);
+                    error_log("File exists: " . ($imageExists ? 'YES' : 'NO'));
                 }
-                
-                // Check if image exists, otherwise use default
-                $imageExists = !empty($imagePath) && file_exists($imagePath);
               ?>
               
-              <?php if ($imageExists): ?>
-                <img src="<?php echo htmlspecialchars($imagePath); ?>" 
-                     alt="<?php echo htmlspecialchars($entry['BranchName']); ?>"
-                     onerror="this.src='pictures/branches/default-branch.jpg'; this.onerror=null;">
-              <?php else: ?>
-                <img src="pictures/branches/default-branch.jpg" 
-                     alt="Default Branch Image">
-              <?php endif; ?>
+              <img src="<?php echo $imageExists ? htmlspecialchars($imagePath) : 'pictures/branches/default-branch.jpg'; ?>" 
+                   alt="<?php echo htmlspecialchars($entry['BranchName']); ?>"
+                   onerror="console.error('Image failed to load:', this.src); this.src='pictures/branches/default-branch.jpg'; this.onerror=null;">
             </div>
             
             <div class="branch-info">
