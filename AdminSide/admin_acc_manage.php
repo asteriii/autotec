@@ -291,34 +291,7 @@ $result = $stmt->get_result();
     }
 
     /* ===== adminDash sidebar/topbar styles appended so red theme matches exactly ===== */
-    /* these are the sidebar/topbar rules copied from adminDash.php (appended to take precedence) */
-    .sidebar {
-        width: 280px;
-        background: linear-gradient(180deg, #a4133c 0%, #ff4d6d 100%);
-        color: white;
-        padding-top: 20px;
-        box-shadow: 4px 0 15px rgba(0,0,0,0.1);
-        position: relative;
-        overflow: hidden;
-    }
-
-    .sidebar::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.03)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.03)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
-        opacity: 0.3;
-    }
-
-    .sidebar .section {
-        padding: 0 20px;
-        position: relative;
-        z-index: 1;
-    }
-
+  
     .section-title {
         padding: 15px 0;
         cursor: pointer;
@@ -357,26 +330,6 @@ $result = $stmt->get_result();
     @keyframes slideDown {
         from { opacity: 0; transform: translateY(-10px); }
         to { opacity: 1; transform: translateY(0); }
-    }
-
-    .submenu li {
-        padding: 12px 0;
-        font-size: 14px;
-        cursor: pointer;
-        border-radius: 6px;
-        margin: 2px 0;
-        transition: all 0.3s ease;
-    }
-
-    .submenu li:hover {
-        background-color: rgba(255,255,255,0.1);
-        padding-left: 10px;
-    }
-
-    .submenu li a {
-        color: white;
-        text-decoration: none;
-        display: block;
     }
 
     .topbar {
