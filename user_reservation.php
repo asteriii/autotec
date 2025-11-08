@@ -247,7 +247,7 @@ mysqli_stmt_close($user_stmt);
             font-weight: 600;
         }
 
-        /* Payment Status Badge */
+        /* Payment Status Badge - UPDATED */
         .payment-badge {
             padding: 6px 12px;
             border-radius: 15px;
@@ -276,6 +276,33 @@ mysqli_stmt_close($user_stmt);
             font-size: 11px;
             color: #666;
             margin-top: 5px;
+        }
+
+        /* Payment Info Box - NEW */
+        .payment-info-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 10px;
+            font-size: 11px;
+            color: #856404;
+        }
+
+        .payment-info-box.pending-gcash {
+            background: #fff3cd;
+            border-left-color: #ffc107;
+        }
+
+        .payment-info-box.pending-onsite {
+            background: #e7f3ff;
+            border-left-color: #2196F3;
+            color: #0c5460;
+        }
+
+        .payment-info-box strong {
+            display: block;
+            margin-bottom: 3px;
         }
 
         /* Action Buttons */
@@ -673,12 +700,14 @@ mysqli_stmt_close($user_stmt);
                     <div class="empty-icon">📋</div>
                     <h2 class="empty-title">No Reservations Yet</h2>
                     <p class="empty-description">You haven't made any reservations yet. Start by booking your first service!</p>
-                    <a href="vehicleinfo.php" class="btn btn-primary">Make a Reservation</a>
+                    <a href="registration.php" class="btn btn-primary">Make a Reservation</a>
                 </div>
             <?php else: ?>
                 <?php foreach ($reservations as $reservation): 
                     $isPast = strtotime($reservation['Date']) < strtotime('today');
                     $canModify = !$isPast && strtotime($reservation['Date'] . ' ' . $reservation['Time']) > strtotime('+24 hours');
+                    $paymentStatus = $reservation['PaymentStatus'] ?? 'pending';
+                    $paymentMethod = $reservation['PaymentMethod'] ?? 'onsite';
                 ?>
                     <div class="reservation-card" 
                          data-date="<?php echo htmlspecialchars($reservation['Date']); ?>"
@@ -692,15 +721,32 @@ mysqli_stmt_close($user_stmt);
                                 </div>
                                 <div class="payment-method">
                                     <?php 
-                                    $paymentMethod = $reservation['PaymentMethod'] ?? 'onsite';
                                     echo $paymentMethod === 'gcash' ? '💳 GCash' : '🏢 On-Site Payment';
                                     ?>
                                 </div>
                             </div>
-                            <span class="payment-badge <?php echo strtolower($reservation['PaymentStatus'] ?? 'pending'); ?>">
-                                <?php echo strtoupper($reservation['PaymentStatus'] ?? 'PENDING'); ?>
+                            <span class="payment-badge <?php echo strtolower($paymentStatus); ?>">
+                                <?php echo strtoupper($paymentStatus); ?>
                             </span>
                         </div>
+
+                        <!-- Payment Status Info - UPDATED -->
+                        <?php if ($paymentStatus === 'pending'): ?>
+                            <div class="payment-info-box <?php echo $paymentMethod === 'gcash' ? 'pending-gcash' : 'pending-onsite'; ?>">
+                                <?php if ($paymentMethod === 'gcash'): ?>
+                                    <strong>⏳ Payment Verification Pending</strong>
+                                    Your GCash payment receipt is being verified by our team. You will be notified once approved.
+                                <?php else: ?>
+                                    <strong>💰 Payment Required</strong>
+                                    Please pay at the testing center before your appointment. Download your receipt below.
+                                <?php endif; ?>
+                            </div>
+                        <?php elseif ($paymentStatus === 'verified' || $paymentStatus === 'paid'): ?>
+                            <div class="payment-info-box" style="background: #d4edda; border-left-color: #28a745; color: #155724;">
+                                <strong>✓ Payment Confirmed</strong>
+                                Your payment has been verified. See you on your appointment date!
+                            </div>
+                        <?php endif; ?>
                         
                         <div class="card-info">
                             <div class="info-item">
@@ -737,14 +783,14 @@ mysqli_stmt_close($user_stmt);
 
                         <div class="action-buttons">
                             <button class="action-btn primary" onclick="generatePDF(<?php echo $reservation['ReservationID']; ?>)">
-                                Receipt
+                                📄 Receipt
                             </button>
-                            <?php if ($canModify): ?>
+                            <?php if ($canModify && $paymentStatus === 'pending'): ?>
                                 <button class="action-btn" onclick="openRescheduleModal(<?php echo $reservation['ReservationID']; ?>)">
-                                    Reschedule
+                                    📅 Reschedule
                                 </button>
                                 <button class="action-btn cancel" onclick="confirmCancel(<?php echo $reservation['ReservationID']; ?>)">
-                                    Cancel
+                                    ❌ Cancel
                                 </button>
                             <?php endif; ?>
                         </div>
@@ -1032,7 +1078,7 @@ mysqli_stmt_close($user_stmt);
             }
         });
 
-        // PDF Generation Function with Payment Info
+        // PDF Generation Function with Payment Info - UPDATED
         function generatePDF(reservationId) {
             showMessage('Generating receipt...', 'info');
             
@@ -1140,19 +1186,30 @@ mysqli_stmt_close($user_stmt);
             const refNumber = data.ReferenceNumber || `NO-${reservationId}`;
             doc.text(refNumber, 185, 63, { align: 'right' });
             
-            // Payment status section
+            // Payment status section - UPDATED TO SHOW PENDING STATUS
             let yPos = 72;
             const paymentMethod = data.PaymentMethod || 'onsite';
             const paymentStatus = data.PaymentStatus || 'pending';
             
-            addColoredRect(20, yPos, 170, 10, paymentStatus === 'paid' ? '#d4edda' : '#fff3cd');
+            // Set background color based on status
+            let statusBgColor = '#fff3cd'; // pending yellow
+            if (paymentStatus === 'paid' || paymentStatus === 'verified') {
+                statusBgColor = '#d4edda'; // green
+            }
+            
+            addColoredRect(20, yPos, 170, 10, statusBgColor);
             doc.setTextColor(51, 51, 51);
             doc.setFontSize(10);
             doc.setFont('helvetica', 'bold');
             doc.text('Payment Status:', 25, yPos + 6);
             
-            const statusColor = paymentStatus === 'paid' ? '#155724' : '#856404';
-            const statusRgb = hexToRgb(statusColor);
+            // Set text color based on status
+            let statusTextColor = '#856404'; // pending yellow text
+            if (paymentStatus === 'paid' || paymentStatus === 'verified') {
+                statusTextColor = '#155724'; // green text
+            }
+            
+            const statusRgb = hexToRgb(statusTextColor);
             doc.setTextColor(statusRgb.r, statusRgb.g, statusRgb.b);
             doc.text(paymentStatus.toUpperCase(), 70, yPos + 6);
             
@@ -1293,20 +1350,53 @@ mysqli_stmt_close($user_stmt);
             doc.setFontSize(12);
             doc.text(`Php ${amount.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`, 185, yPos + 12, { align: 'right' });
             
-            // Payment Instructions (only for on-site)
-            if (paymentMethod === 'onsite' && paymentStatus === 'pending') {
+            // Payment Instructions - UPDATED TO SHOW FOR BOTH PENDING STATUSES
+            if (paymentStatus === 'pending') {
                 yPos += 25;
-                addColoredRect(20, yPos - 3, 170, 20, '#fff3cd');
                 
-                doc.setTextColor(133, 100, 4);
+                if (paymentMethod === 'gcash') {
+                    // GCash pending verification message
+                    addColoredRect(20, yPos - 3, 170, 25, '#fff3cd');
+                    
+                    doc.setTextColor(133, 100, 4);
+                    doc.setFontSize(10);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text('PAYMENT VERIFICATION PENDING:', 25, yPos + 3);
+                    
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(8);
+                    doc.text('• Your GCash payment receipt is being verified by our team', 25, yPos + 10);
+                    doc.text('• You will be notified once your payment is approved', 25, yPos + 15);
+                    doc.text('• Please wait for confirmation before your appointment date', 25, yPos + 20);
+                } else {
+                    // On-site payment instructions
+                    addColoredRect(20, yPos - 3, 170, 25, '#e7f3ff');
+                    
+                    doc.setTextColor(12, 84, 96);
+                    doc.setFontSize(10);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text('PAYMENT INSTRUCTIONS:', 25, yPos + 3);
+                    
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(8);
+                    doc.text('• Payment must be made at the testing center before your appointment', 25, yPos + 10);
+                    doc.text('• Please bring this receipt and exact amount', 25, yPos + 15);
+                    doc.text('• Cash payment only at the testing center', 25, yPos + 20);
+                }
+            } else if (paymentStatus === 'paid' || paymentStatus === 'verified') {
+                // Payment confirmed message
+                yPos += 25;
+                addColoredRect(20, yPos - 3, 170, 20, '#d4edda');
+                
+                doc.setTextColor(21, 87, 36);
                 doc.setFontSize(10);
                 doc.setFont('helvetica', 'bold');
-                doc.text('PAYMENT INSTRUCTIONS:', 25, yPos + 3);
+                doc.text('PAYMENT CONFIRMED:', 25, yPos + 3);
                 
                 doc.setFont('helvetica', 'normal');
                 doc.setFontSize(8);
-                doc.text('• Payment must be made at the testing center before your appointment', 25, yPos + 10);
-                doc.text('• Please bring this receipt and exact amount', 25, yPos + 15);
+                doc.text('• Your payment has been verified and confirmed', 25, yPos + 10);
+                doc.text('• Please arrive on time for your scheduled appointment', 25, yPos + 15);
             }
             
             // Important Notes
