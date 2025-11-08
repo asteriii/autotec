@@ -133,7 +133,7 @@
                 <a href="reservations.php"><i class="fas fa-calendar-check"></i> Reservations</a>
             </li>
             <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'ongoing-list.php') ? 'active' : ''; ?>">
-                <a href="ongoing-list.php"><i class="fas fa-clock"></i> Ongoing List</a>
+                <a href="reschedule.php"><i class="fas fa-clock"></i> Reschedule Request</a>
             </li>
             <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'completed-list.php') ? 'active' : ''; ?>">
                 <a href="completed-list.php"><i class="fas fa-check-circle"></i> Completed List</a>
