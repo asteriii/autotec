@@ -13,18 +13,12 @@ function alertAndRedirect($message, $url = 'profile.php') {
     exit();
 }
 
-// FIXED: Use Railway volume path or fallback to local path
-$baseUploadDir = getenv('RAILWAY_VOLUME_MOUNT_PATH') ?: __DIR__;
-define('UPLOAD_DIR', $baseUploadDir . '/uploads/profile/');
+// SIMPLIFIED PATH CONFIGURATION
+// The Dockerfile creates a symlink from /var/www/html/uploads/profile to the volume
+// So we can always use the same path!
+define('UPLOAD_DIR', __DIR__ . '/uploads/profile/');
 define('UPLOAD_DIR_RELATIVE', 'uploads/profile/');
-
-// TEMPORARY DEBUG - Check logs in Railway
-error_log("=== PROFILE.PHP DEBUG ===");
-error_log("BASE_UPLOAD_DIR: " . $baseUploadDir);
-error_log("UPLOAD_DIR: " . UPLOAD_DIR);
-error_log("UPLOAD_DIR_RELATIVE: " . UPLOAD_DIR_RELATIVE);
-error_log("RAILWAY_VOLUME_MOUNT_PATH: " . getenv('RAILWAY_VOLUME_MOUNT_PATH'));
-error_log("========================");
+error_log("Upload directory: " . UPLOAD_DIR);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
@@ -33,14 +27,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Create directory if it doesn't exist
         if (!file_exists(UPLOAD_DIR)) {
             if (!mkdir(UPLOAD_DIR, 0755, true)) {
-                error_log("Failed to create directory: " . UPLOAD_DIR);
-                alertAndRedirect("Failed to create upload directory.");
+                error_log("FAILED to create directory: " . UPLOAD_DIR);
+                error_log("Parent directory exists: " . (file_exists(dirname(UPLOAD_DIR)) ? 'YES' : 'NO'));
+                error_log("Parent directory writable: " . (is_writable(dirname(UPLOAD_DIR)) ? 'YES' : 'NO'));
+                alertAndRedirect("Failed to create upload directory. Please contact administrator.");
             }
+            error_log("Successfully created directory: " . UPLOAD_DIR);
         }
 
         // Check if directory is writable
         if (!is_writable(UPLOAD_DIR)) {
-            error_log("Directory not writable: " . UPLOAD_DIR);
+            error_log("Directory NOT writable: " . UPLOAD_DIR);
             alertAndRedirect("Upload directory is not writable. Please contact administrator.");
         }
 
@@ -51,27 +48,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 switch($_FILES['profile_picture']['error']) {
                     case UPLOAD_ERR_INI_SIZE:
                     case UPLOAD_ERR_FORM_SIZE:
-                        $errorMsg = "File is too large.";
+                        $errorMsg = "File is too large (max 5MB).";
                         break;
                     case UPLOAD_ERR_NO_FILE:
-                        $errorMsg = "No file was uploaded.";
+                        $errorMsg = "No file was selected.";
                         break;
                     default:
                         $errorMsg = "Upload error code: " . $_FILES['profile_picture']['error'];
                 }
             }
+            error_log("Upload error: " . $errorMsg);
             alertAndRedirect($errorMsg);
         }
 
         $fileTmpPath = $_FILES['profile_picture']['tmp_name'];
         $fileName = $_FILES['profile_picture']['name'];
         $fileSize = $_FILES['profile_picture']['size'];
-        
-        // Check if temp file exists
-        if (!file_exists($fileTmpPath)) {
-            error_log("Temporary file not found: " . $fileTmpPath);
-            alertAndRedirect("Upload failed: temporary file not found.");
-        }
         
         // Validate file is actually an image
         $imageInfo = @getimagesize($fileTmpPath);
@@ -105,43 +97,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!empty($user['profile_picture'])) {
             $oldFilePath = UPLOAD_DIR . $user['profile_picture'];
             if (file_exists($oldFilePath)) {
-                if (@unlink($oldFilePath)) {
-                    error_log("Old profile picture deleted: " . $oldFilePath);
-                } else {
-                    error_log("Failed to delete old profile picture: " . $oldFilePath);
-                }
+                @unlink($oldFilePath);
+                error_log("Deleted old profile picture: " . $oldFilePath);
             }
         }
 
         // Generate unique filename
-        $newFileName = 'profile_' . $_SESSION['user_id'] . '_' . uniqid() . '.' . $fileExtension;
+        $newFileName = 'profile_' . $_SESSION['user_id'] . '_' . time() . '.' . $fileExtension;
         $destPath = UPLOAD_DIR . $newFileName;
 
-        // Debug logging
-        error_log("Attempting to move file from: " . $fileTmpPath);
+        error_log("Moving file from: " . $fileTmpPath);
         error_log("To: " . $destPath);
-        error_log("Upload directory exists: " . (file_exists(UPLOAD_DIR) ? 'YES' : 'NO'));
-        error_log("Upload directory writable: " . (is_writable(UPLOAD_DIR) ? 'YES' : 'NO'));
 
         // Move uploaded file
         if (!move_uploaded_file($fileTmpPath, $destPath)) {
-            error_log("move_uploaded_file failed!");
-            error_log("Source: " . $fileTmpPath);
-            error_log("Destination: " . $destPath);
-            error_log("Last PHP error: " . print_r(error_get_last(), true));
-            alertAndRedirect("Error uploading file. Check folder permissions (needs 0755) and PHP upload settings.");
+            error_log("FAILED to move uploaded file!");
+            error_log("PHP Error: " . print_r(error_get_last(), true));
+            alertAndRedirect("Failed to save file. Please try again or contact administrator.");
         }
 
         // Set file permissions
         @chmod($destPath, 0644);
 
-        // Verify file was actually saved
+        // Verify file exists
         if (!file_exists($destPath)) {
-            error_log("File upload failed - file not found after move_uploaded_file");
-            alertAndRedirect("File upload failed - file not found after upload.");
+            error_log("File not found after upload: " . $destPath);
+            alertAndRedirect("Upload verification failed.");
         }
 
-        error_log("File successfully uploaded to: " . $destPath);
+        $fileSize = filesize($destPath);
+        error_log("File uploaded successfully: " . $newFileName . " (Size: " . $fileSize . " bytes)");
 
         // Update database
         $sql = "UPDATE users SET profile_picture = ? WHERE UserID = ?";
@@ -150,24 +135,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         if (!mysqli_stmt_execute($stmt)) {
             mysqli_stmt_close($stmt);
-            // Delete the uploaded file since DB update failed
             @unlink($destPath);
             error_log("Database update failed: " . mysqli_error($conn));
-            alertAndRedirect("Failed to update database: " . mysqli_error($conn));
+            alertAndRedirect("Failed to update profile in database.");
         }
         
         mysqli_stmt_close($stmt);
         
-        // Update session variable
+        // Update session
         $_SESSION['profile_picture'] = $newFileName;
         
-        error_log("Profile picture updated successfully for user: " . $_SESSION['user_id']);
-        
-        // Redirect with success
+        error_log("Profile picture updated successfully for UserID: " . $_SESSION['user_id']);
         alertAndRedirect("Profile picture updated successfully!");
     }
 
-    // Handle profile update (Username, Email, Address)
+    // Handle profile update
     if (isset($_POST['update_profile'])) {
         $username = trim($_POST['username'] ?? '');
         $email = trim($_POST['email'] ?? '');
@@ -177,7 +159,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             alertAndRedirect("All fields are required.");
         }
 
-        // Check if username or email already exists (excluding current user)
+        // Check if username or email exists
         $checkSql = "SELECT UserID FROM users WHERE (Username = ? OR Email = ?) AND UserID != ?";
         $checkStmt = mysqli_prepare($conn, $checkSql);
         mysqli_stmt_bind_param($checkStmt, "ssi", $username, $email, $_SESSION['user_id']);
@@ -192,14 +174,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $sql = "UPDATE users SET Username = ?, Email = ?, Address = ? WHERE UserID = ?";
         $stmt = mysqli_prepare($conn, $sql);
-        if (!$stmt) {
-            alertAndRedirect("Database error: " . mysqli_error($conn));
-        }
         mysqli_stmt_bind_param($stmt, "sssi", $username, $email, $address, $_SESSION['user_id']);
 
         if (mysqli_stmt_execute($stmt)) {
             mysqli_stmt_close($stmt);
-            // Update session variables
             $_SESSION['username'] = $username;
             $_SESSION['email'] = $email;
             alertAndRedirect("Profile updated successfully.");
@@ -218,11 +196,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             alertAndRedirect("Please enter both password fields.");
         }
 
-        // Password validation with regex
-        $passwordPattern = '/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/';
-        
-        if (!preg_match($passwordPattern, $new_password)) {
-            alertAndRedirect("Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&#).");
+        if (strlen($new_password) < 6) {
+            alertAndRedirect("Password must be at least 6 characters long.");
         }
 
         if ($new_password !== $confirm_password) {
@@ -231,9 +206,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $sql = "UPDATE users SET password = ? WHERE UserID = ?";
         $stmt = mysqli_prepare($conn, $sql);
-        if (!$stmt) {
-            alertAndRedirect("Database error: " . mysqli_error($conn));
-        }
         mysqli_stmt_bind_param($stmt, "si", $new_password, $_SESSION['user_id']);
 
         if (mysqli_stmt_execute($stmt)) {
@@ -241,17 +213,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             alertAndRedirect("Password changed successfully.");
         } else {
             mysqli_stmt_close($stmt);
-            alertAndRedirect("Failed to change password: " . mysqli_error($conn));
+            alertAndRedirect("Failed to change password.");
         }
     }
 }
 
-// Fetch current user data
+// Fetch user data
 $sql = "SELECT * FROM users WHERE UserID = ?";
 $stmt = mysqli_prepare($conn, $sql);
-if (!$stmt) {
-    die("Database error: " . mysqli_error($conn));
-}
 mysqli_stmt_bind_param($stmt, "i", $_SESSION['user_id']);
 mysqli_stmt_execute($stmt);
 $result = mysqli_stmt_get_result($stmt);
@@ -262,13 +231,10 @@ if (!$user) {
     die("User not found.");
 }
 
-// FIXED: Set profile picture path - Simplified to avoid hanging
+// Set profile picture path
 $profilePicturePath = 'pictures/default-avatar.png';
 if (!empty($user['profile_picture'])) {
-    // Don't use file_exists() which can cause hanging on Railway
-    // Just trust the database and use onerror in img tag as fallback
     $profilePicturePath = UPLOAD_DIR_RELATIVE . $user['profile_picture'] . '?v=' . time();
-    error_log("Profile picture set to: " . $profilePicturePath);
 }
 ?>
 
@@ -280,313 +246,59 @@ if (!empty($user['profile_picture'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f5f5f5;
-            color: #333;
-            line-height: 1.6;
-            min-height: 100vh;
-        }
-
-        .container {
-            max-width: 1000px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-
-        .hero {
-            background: linear-gradient(135deg, #e8f4f8 0%, #d1e7dd 100%);
-            padding: 40px;
-            border-radius: 15px;
-            margin-bottom: 30px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            text-align: center;
-        }
-
-        .page-title {
-            font-size: 2.5em;
-            color: #333;
-            margin-bottom: 10px;
-            font-weight: 600;
-        }
-
-        .page-title .highlight {
-            color: #bd1e51;
-        }
-
-        .breadcrumb {
-            color: #666;
-            font-size: 14px;
-            font-weight: 500;
-            letter-spacing: 1px;
-        }
-
-        .profile-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
-            margin-bottom: 30px;
-        }
-
-        .info-card, .password-card {
-            background: white;
-            border-radius: 20px;
-            padding: 40px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-
-        .info-card:hover, .password-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.12);
-        }
-
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 25px;
-            margin-bottom: 25px;
-        }
-
-        .password-form .form-row {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        .form-group {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .form-group label {
-            color: #555;
-            font-weight: 500;
-            margin-bottom: 8px;
-            font-size: 14px;
-        }
-
-        .form-group input {
-            padding: 12px 16px;
-            border: 2px solid #e1e5e9;
-            border-radius: 10px;
-            font-size: 16px;
-            font-family: 'Inter', sans-serif;
-            transition: all 0.3s ease;
-            background-color: #fff;
-        }
-
-        .form-group input:focus {
-            outline: none;
-            border-color: #bd1e51;
-            box-shadow: 0 0 0 3px rgba(189, 30, 81, 0.1);
-        }
-
-        .form-group input:disabled {
-            background-color: #f8f9fa;
-            color: #6c757d;
-            cursor: not-allowed;
-        }
-
-        .password-hint {
-            display: block;
-            font-size: 11px;
-            color: #666;
-            margin-top: 4px;
-            line-height: 1.4;
-        }
-
-        .save-btn {
-            background: linear-gradient(135deg, #bd1e51, #d63969);
-            color: white;
-            border: none;
-            padding: 14px 30px;
-            border-radius: 25px;
-            font-size: 16px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: block;
-            margin: 0 auto;
-            min-width: 180px;
-        }
-
-        .save-btn:hover {
-            background: linear-gradient(135deg, #a01a45, #bd1e51);
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(189, 30, 81, 0.3);
-        }
-
-        .profile-picture-section {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-
-        .profile-picture-container {
-            position: relative;
-            width: 150px;
-            height: 150px;
-            margin: 0 auto 20px;
-            border-radius: 50%;
-            overflow: hidden;
-            box-shadow: 0 8px 25px rgba(189, 30, 81, 0.2);
-            transition: all 0.3s ease;
-        }
-
-        .profile-picture-container:hover {
-            transform: scale(1.05);
-            box-shadow: 0 12px 35px rgba(189, 30, 81, 0.3);
-        }
-
-        .profile-picture-img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            background: linear-gradient(135deg, #bd1e51, #d63969);
-        }
-
-        .profile-picture-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(189, 30, 81, 0.85);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-            cursor: pointer;
-        }
-
-        .profile-picture-container:hover .profile-picture-overlay {
-            opacity: 1;
-        }
-
-        .profile-picture-overlay svg {
-            width: 40px;
-            height: 40px;
-            margin-bottom: 8px;
-        }
-
-        .profile-picture-overlay span {
-            color: white;
-            font-size: 14px;
-            font-weight: 500;
-        }
-
-        .card-header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-
-        .card-header h2 {
-            color: #bd1e51;
-            font-size: 24px;
-            font-weight: 600;
-            margin-bottom: 8px;
-        }
-
-        .card-header p {
-            color: #666;
-            font-size: 14px;
-        }
-
-        .picture-upload-form {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            justify-content: center;
-            margin-top: 15px;
-        }
-
-        .picture-upload-form input[type="file"] {
-            display: none;
-        }
-
-        .choose-file-btn {
-            background: #f0f0f0;
-            color: #666;
-            border: 2px solid #e1e5e9;
-            padding: 8px 20px;
-            border-radius: 20px;
-            font-size: 13px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .choose-file-btn:hover {
-            background: #e0e0e0;
-            border-color: #bd1e51;
-        }
-
-        .upload-picture-btn {
-            background: linear-gradient(135deg, #bd1e51, #d63969);
-            color: white;
-            border: none;
-            padding: 8px 20px;
-            border-radius: 20px;
-            font-size: 13px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .upload-picture-btn:hover:not(:disabled) {
-            background: linear-gradient(135deg, #a01a45, #bd1e51);
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(189, 30, 81, 0.3);
-        }
-
-        .upload-picture-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .file-name-display {
-            font-size: 12px;
-            color: #666;
-            margin-top: 8px;
-            min-height: 18px;
-        }
-
-        @media (max-width: 768px) {
-            .profile-grid {
-                grid-template-columns: 1fr;
-            }
-            .form-row {
-                grid-template-columns: 1fr;
-            }
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background-color: #f5f5f5; color: #333; line-height: 1.6; min-height: 100vh; }
+        .container { max-width: 1000px; margin: 0 auto; padding: 20px; }
+        .hero { background: linear-gradient(135deg, #e8f4f8 0%, #d1e7dd 100%); padding: 40px; border-radius: 15px; margin-bottom: 30px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); text-align: center; }
+        .page-title { font-size: 2.5em; color: #333; margin-bottom: 10px; font-weight: 600; }
+        .page-title .highlight { color: #bd1e51; }
+        .breadcrumb { color: #666; font-size: 14px; font-weight: 500; letter-spacing: 1px; }
+        .profile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px; }
+        .info-card, .password-card { background: white; border-radius: 20px; padding: 40px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08); transition: transform 0.3s ease, box-shadow 0.3s ease; }
+        .info-card:hover, .password-card:hover { transform: translateY(-5px); box-shadow: 0 15px 40px rgba(0, 0, 0, 0.12); }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-bottom: 25px; }
+        .password-form .form-row { display: flex; flex-direction: column; gap: 20px; }
+        .form-group { display: flex; flex-direction: column; }
+        .form-group label { color: #555; font-weight: 500; margin-bottom: 8px; font-size: 14px; }
+        .form-group input { padding: 12px 16px; border: 2px solid #e1e5e9; border-radius: 10px; font-size: 16px; font-family: 'Inter', sans-serif; transition: all 0.3s ease; background-color: #fff; }
+        .form-group input:focus { outline: none; border-color: #bd1e51; box-shadow: 0 0 0 3px rgba(189, 30, 81, 0.1); }
+        .form-group input:disabled { background-color: #f8f9fa; color: #6c757d; cursor: not-allowed; }
+        .save-btn { background: linear-gradient(135deg, #bd1e51, #d63969); color: white; border: none; padding: 14px 30px; border-radius: 25px; font-size: 16px; font-weight: 500; cursor: pointer; transition: all 0.3s ease; display: block; margin: 0 auto; min-width: 180px; }
+        .save-btn:hover { background: linear-gradient(135deg, #a01a45, #bd1e51); transform: translateY(-2px); box-shadow: 0 8px 25px rgba(189, 30, 81, 0.3); }
+        .profile-picture-section { text-align: center; margin-bottom: 30px; }
+        .profile-picture-container { position: relative; width: 150px; height: 150px; margin: 0 auto 20px; border-radius: 50%; overflow: hidden; box-shadow: 0 8px 25px rgba(189, 30, 81, 0.2); transition: all 0.3s ease; }
+        .profile-picture-container:hover { transform: scale(1.05); box-shadow: 0 12px 35px rgba(189, 30, 81, 0.3); }
+        .profile-picture-img { width: 100%; height: 100%; object-fit: cover; background: linear-gradient(135deg, #bd1e51, #d63969); }
+        .profile-picture-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(189, 30, 81, 0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease; cursor: pointer; }
+        .profile-picture-container:hover .profile-picture-overlay { opacity: 1; }
+        .profile-picture-overlay svg { width: 40px; height: 40px; margin-bottom: 8px; }
+        .profile-picture-overlay span { color: white; font-size: 14px; font-weight: 500; }
+        .card-header { text-align: center; margin-bottom: 30px; }
+        .card-header h2 { color: #bd1e51; font-size: 24px; font-weight: 600; margin-bottom: 8px; }
+        .card-header p { color: #666; font-size: 14px; }
+        .picture-upload-form { display: flex; align-items: center; gap: 15px; justify-content: center; margin-top: 15px; }
+        .picture-upload-form input[type="file"] { display: none; }
+        .choose-file-btn { background: #f0f0f0; color: #666; border: 2px solid #e1e5e9; padding: 8px 20px; border-radius: 20px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.3s ease; }
+        .choose-file-btn:hover { background: #e0e0e0; border-color: #bd1e51; }
+        .upload-picture-btn { background: linear-gradient(135deg, #bd1e51, #d63969); color: white; border: none; padding: 8px 20px; border-radius: 20px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.3s ease; }
+        .upload-picture-btn:hover:not(:disabled) { background: linear-gradient(135deg, #a01a45, #bd1e51); transform: translateY(-2px); box-shadow: 0 5px 15px rgba(189, 30, 81, 0.3); }
+        .upload-picture-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .file-name-display { font-size: 12px; color: #666; margin-top: 8px; min-height: 18px; }
+        @media (max-width: 768px) { .profile-grid { grid-template-columns: 1fr; } .form-row { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
     <?php include 'header.php'; ?>
-
     <div class="container">
         <section class="hero">
             <h1 class="page-title"><span class="highlight">MY</span> PROFILE</h1>
             <div class="breadcrumb">HOME &gt; PROFILE</div>
         </section>
-
         <div class="profile-grid">
             <div class="info-card">
                 <div class="profile-picture-section">
                     <div class="profile-picture-container">
-                        <img src="<?php echo htmlspecialchars($profilePicturePath); ?>" 
-                             alt="Profile Picture" 
-                             class="profile-picture-img"
-                             id="currentProfilePic"
-                             onerror="this.src='pictures/default-avatar.png'">
+                        <img src="<?php echo htmlspecialchars($profilePicturePath); ?>" alt="Profile Picture" class="profile-picture-img" id="currentProfilePic" onerror="this.src='pictures/default-avatar.png'">
                         <div class="profile-picture-overlay" onclick="document.getElementById('profilePictureInput').click()">
                             <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
                                 <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
@@ -595,29 +307,17 @@ if (!empty($user['profile_picture'])) {
                             <span>Change Photo</span>
                         </div>
                     </div>
-                    
                     <form method="post" action="" enctype="multipart/form-data" id="profilePictureForm" class="picture-upload-form">
-                        <label for="profilePictureInput" class="choose-file-btn">
-                            Choose File
-                        </label>
-                        <input type="file" 
-                               name="profile_picture" 
-                               id="profilePictureInput" 
-                               accept="image/*" 
-                               onchange="previewProfilePicture(this)" 
-                               required>
-                        <button type="submit" name="update_profile_picture" class="upload-picture-btn" id="uploadBtn" disabled>
-                            Upload
-                        </button>
+                        <label for="profilePictureInput" class="choose-file-btn">Choose File</label>
+                        <input type="file" name="profile_picture" id="profilePictureInput" accept="image/*" onchange="previewProfilePicture(this)" required>
+                        <button type="submit" name="update_profile_picture" class="upload-picture-btn" id="uploadBtn" disabled>Upload</button>
                     </form>
                     <div class="file-name-display" id="fileName"></div>
                 </div>
-
                 <div class="card-header">
                     <h2>Personal Information</h2>
                     <p>Update your personal details and account information</p>
                 </div>
-                
                 <form method="post" action="">
                     <div class="form-row">
                         <div class="form-group">
@@ -629,7 +329,6 @@ if (!empty($user['profile_picture'])) {
                             <input type="text" name="username" value="<?php echo htmlspecialchars($user['Username']); ?>" required>
                         </div>
                     </div>
-
                     <div class="form-row">
                         <div class="form-group">
                             <label>Email Address</label>
@@ -640,34 +339,23 @@ if (!empty($user['profile_picture'])) {
                             <input type="text" name="address" value="<?php echo htmlspecialchars($user['Address'] ?? ''); ?>" required>
                         </div>
                     </div>
-
                     <button class="save-btn" type="submit" name="update_profile">Save Changes</button>
                 </form>
             </div>
-
             <div class="password-card">
                 <div class="card-header">
                     <h2>Change Password</h2>
                     <p>Keep your account secure with a strong password</p>
                 </div>
-                
                 <form method="post" action="" class="password-form">
                     <div class="form-row">
                         <div class="form-group">
                             <label>New Password</label>
-                            <input 
-                                type="password" 
-                                name="new_password" 
-                                pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$"
-                                title="Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&#)"
-                                required>
-                            <small class="password-hint">
-                                Must contain: 8+ characters, uppercase, lowercase, number, special character (@$!%*?&#)
-                            </small>
+                            <input type="password" name="new_password" minlength="6" required>
                         </div>
                         <div class="form-group">
                             <label>Confirm Password</label>
-                            <input type="password" name="confirm_password" required>
+                            <input type="password" name="confirm_password" minlength="6" required>
                         </div>
                     </div>
                     <button class="save-btn" type="submit" name="change_password">Change Password</button>
@@ -675,18 +363,14 @@ if (!empty($user['profile_picture'])) {
             </div>
         </div>
     </div>
-
     <script>
         function previewProfilePicture(input) {
             const fileName = input.files[0]?.name || '';
             const fileNameDisplay = document.getElementById('fileName');
             const currentProfilePic = document.getElementById('currentProfilePic');
             const uploadBtn = document.getElementById('uploadBtn');
-            
             if (fileName) {
                 const file = input.files[0];
-                
-                // Validate file size
                 if (file.size > 5 * 1024 * 1024) {
                     alert('File size must be less than 5MB');
                     input.value = '';
@@ -694,8 +378,6 @@ if (!empty($user['profile_picture'])) {
                     uploadBtn.disabled = true;
                     return;
                 }
-                
-                // Validate file type
                 const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
                 if (!validTypes.includes(file.type)) {
                     alert('Only JPG, JPEG, PNG, and GIF files are allowed');
@@ -704,15 +386,10 @@ if (!empty($user['profile_picture'])) {
                     uploadBtn.disabled = true;
                     return;
                 }
-                
                 fileNameDisplay.textContent = 'Selected: ' + fileName;
                 uploadBtn.disabled = false;
-                
-                // Preview the image
                 const reader = new FileReader();
-                reader.onload = function(e) {
-                    currentProfilePic.src = e.target.result;
-                };
+                reader.onload = function(e) { currentProfilePic.src = e.target.result; };
                 reader.readAsDataURL(file);
             } else {
                 fileNameDisplay.textContent = '';
