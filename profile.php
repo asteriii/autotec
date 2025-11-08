@@ -13,8 +13,9 @@ function alertAndRedirect($message, $url = 'profile.php') {
     exit();
 }
 
-// Define upload directory using absolute path
-define('UPLOAD_DIR', __DIR__ . '/uploads/profile/');
+// FIXED: Use Railway volume path or fallback to local path
+$baseUploadDir = getenv('RAILWAY_VOLUME_MOUNT_PATH') ?: __DIR__;
+define('UPLOAD_DIR', $baseUploadDir . '/uploads/profile/');
 define('UPLOAD_DIR_RELATIVE', 'uploads/profile/');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

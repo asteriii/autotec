@@ -28,12 +28,16 @@ if (!isset($conn)) {
         <div class="auth-buttons">
             <?php if (isset($_SESSION['user_id'])): ?>
                 <?php
+                // FIXED: Use Railway volume path or fallback to local path
+                $baseUploadDir = getenv('RAILWAY_VOLUME_MOUNT_PATH') ?: __DIR__;
+                $uploadDirRelative = 'uploads/profile/';
+                
                 // Fetch user profile picture
                 $userProfilePic = 'pictures/default-avatar.png';
                 
                 // First, try to get from session (faster)
                 if (isset($_SESSION['profile_picture']) && !empty($_SESSION['profile_picture'])) {
-                    $profilePath = 'uploads/profile/' . $_SESSION['profile_picture'];
+                    $profilePath = $uploadDirRelative . $_SESSION['profile_picture'];
                     if (file_exists($profilePath)) {
                         $userProfilePic = $profilePath;
                     }
@@ -51,7 +55,7 @@ if (!isset($conn)) {
                         
                         if ($row = mysqli_fetch_assoc($result)) {
                             if (!empty($row['profile_picture'])) {
-                                $profilePath = 'uploads/profile/' . $row['profile_picture'];
+                                $profilePath = $uploadDirRelative . $row['profile_picture'];
                                 if (file_exists($profilePath)) {
                                     $userProfilePic = $profilePath;
                                     // Update session for next time

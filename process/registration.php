@@ -24,7 +24,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Password validation with regex
-    // At least 8 characters, 1 uppercase, 1 lowercase, 1 number, 1 special character
     $passwordPattern = '/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/';
     
     if (!preg_match($passwordPattern, $password)) {
@@ -38,10 +37,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Handle profile picture upload
+    // FIXED: Use Railway volume path or fallback to local path
+    $baseUploadDir = getenv('RAILWAY_VOLUME_MOUNT_PATH') ?: __DIR__ . '/..';
+    $uploadDir = $baseUploadDir . '/uploads/profile/';
+    
     $profilePictureName = null;
     if (isset($_FILES['profilePicture']) && $_FILES['profilePicture']['error'] === UPLOAD_ERR_OK) {
-        // Use absolute path from document root
-        $uploadDir = __DIR__ . '/../uploads/profile/';
         
         // Debug: Log the actual path being used
         error_log("Upload directory: " . $uploadDir);
@@ -54,6 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 echo "<script>alert('Failed to create upload directory. Please contact administrator.'); window.location.href='../index.php';</script>";
                 exit();
             }
+            error_log("Created directory: " . $uploadDir);
         }
 
         // Check if directory is writable
@@ -66,9 +68,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $fileTmpPath = $_FILES['profilePicture']['tmp_name'];
         $fileName = $_FILES['profilePicture']['name'];
         $fileSize = $_FILES['profilePicture']['size'];
-        $fileType = $_FILES['profilePicture']['type'];
         
-        // Additional validation: Check if file actually exists
+        // Check if file actually exists
         if (!file_exists($fileTmpPath)) {
             error_log("Temporary file not found: " . $fileTmpPath);
             echo "<script>alert('Upload failed: temporary file not found.'); window.location.href='../index.php';</script>";
@@ -106,7 +107,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     error_log("File uploaded successfully: " . $destPath);
                 } else {
                     error_log("move_uploaded_file failed. Temp: " . $fileTmpPath . " Dest: " . $destPath);
-                    error_log("Last error: " . error_get_last()['message']);
+                    error_log("Last error: " . print_r(error_get_last(), true));
                     echo "<script>alert('Error uploading profile picture. Check folder permissions and PHP configuration.'); window.location.href='../index.php';</script>";
                     exit();
                 }
@@ -157,6 +158,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     mysqli_stmt_close($checkStmt);
 
+    // Hash password (SECURITY FIX)
+    $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+
     // Insert new user with profile picture
     $sql = "INSERT INTO users (Fname, Username, Email, PhoneNumber, Address, password, profile_picture) VALUES (?, ?, ?, ?, ?, ?, ?)";
     $stmt = mysqli_prepare($conn, $sql);
@@ -170,7 +174,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit();
     }
 
-    mysqli_stmt_bind_param($stmt, "sssssss", $fullName, $username, $email, $phoneNumber, $address, $password, $profilePictureName);
+    mysqli_stmt_bind_param($stmt, "sssssss", $fullName, $username, $email, $phoneNumber, $address, $hashedPassword, $profilePictureName);
 
     if (mysqli_stmt_execute($stmt)) {
         mysqli_stmt_close($stmt);
