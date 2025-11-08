@@ -246,45 +246,293 @@ if (!empty($user['profile_picture'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; background-color: #f5f5f5; color: #333; line-height: 1.6; min-height: 100vh; }
-        .container { max-width: 1000px; margin: 0 auto; padding: 20px; }
-        .hero { background: linear-gradient(135deg, #e8f4f8 0%, #d1e7dd 100%); padding: 40px; border-radius: 15px; margin-bottom: 30px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); text-align: center; }
-        .page-title { font-size: 2.5em; color: #333; margin-bottom: 10px; font-weight: 600; }
-        .page-title .highlight { color: #bd1e51; }
-        .breadcrumb { color: #666; font-size: 14px; font-weight: 500; letter-spacing: 1px; }
-        .profile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px; }
-        .info-card, .password-card { background: white; border-radius: 20px; padding: 40px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08); transition: transform 0.3s ease, box-shadow 0.3s ease; }
-        .info-card:hover, .password-card:hover { transform: translateY(-5px); box-shadow: 0 15px 40px rgba(0, 0, 0, 0.12); }
-        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-bottom: 25px; }
-        .password-form .form-row { display: flex; flex-direction: column; gap: 20px; }
-        .form-group { display: flex; flex-direction: column; }
-        .form-group label { color: #555; font-weight: 500; margin-bottom: 8px; font-size: 14px; }
-        .form-group input { padding: 12px 16px; border: 2px solid #e1e5e9; border-radius: 10px; font-size: 16px; font-family: 'Inter', sans-serif; transition: all 0.3s ease; background-color: #fff; }
-        .form-group input:focus { outline: none; border-color: #bd1e51; box-shadow: 0 0 0 3px rgba(189, 30, 81, 0.1); }
-        .form-group input:disabled { background-color: #f8f9fa; color: #6c757d; cursor: not-allowed; }
-        .save-btn { background: linear-gradient(135deg, #bd1e51, #d63969); color: white; border: none; padding: 14px 30px; border-radius: 25px; font-size: 16px; font-weight: 500; cursor: pointer; transition: all 0.3s ease; display: block; margin: 0 auto; min-width: 180px; }
-        .save-btn:hover { background: linear-gradient(135deg, #a01a45, #bd1e51); transform: translateY(-2px); box-shadow: 0 8px 25px rgba(189, 30, 81, 0.3); }
-        .profile-picture-section { text-align: center; margin-bottom: 30px; }
-        .profile-picture-container { position: relative; width: 150px; height: 150px; margin: 0 auto 20px; border-radius: 50%; overflow: hidden; box-shadow: 0 8px 25px rgba(189, 30, 81, 0.2); transition: all 0.3s ease; }
-        .profile-picture-container:hover { transform: scale(1.05); box-shadow: 0 12px 35px rgba(189, 30, 81, 0.3); }
-        .profile-picture-img { width: 100%; height: 100%; object-fit: cover; background: linear-gradient(135deg, #bd1e51, #d63969); }
-        .profile-picture-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(189, 30, 81, 0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s ease; cursor: pointer; }
-        .profile-picture-container:hover .profile-picture-overlay { opacity: 1; }
-        .profile-picture-overlay svg { width: 40px; height: 40px; margin-bottom: 8px; }
-        .profile-picture-overlay span { color: white; font-size: 14px; font-weight: 500; }
-        .card-header { text-align: center; margin-bottom: 30px; }
-        .card-header h2 { color: #bd1e51; font-size: 24px; font-weight: 600; margin-bottom: 8px; }
-        .card-header p { color: #666; font-size: 14px; }
-        .picture-upload-form { display: flex; align-items: center; gap: 15px; justify-content: center; margin-top: 15px; }
-        .picture-upload-form input[type="file"] { display: none; }
-        .choose-file-btn { background: #f0f0f0; color: #666; border: 2px solid #e1e5e9; padding: 8px 20px; border-radius: 20px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.3s ease; }
-        .choose-file-btn:hover { background: #e0e0e0; border-color: #bd1e51; }
-        .upload-picture-btn { background: linear-gradient(135deg, #bd1e51, #d63969); color: white; border: none; padding: 8px 20px; border-radius: 20px; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.3s ease; }
-        .upload-picture-btn:hover:not(:disabled) { background: linear-gradient(135deg, #a01a45, #bd1e51); transform: translateY(-2px); box-shadow: 0 5px 15px rgba(189, 30, 81, 0.3); }
-        .upload-picture-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        .file-name-display { font-size: 12px; color: #666; margin-top: 8px; min-height: 18px; }
-        @media (max-width: 768px) { .profile-grid { grid-template-columns: 1fr; } .form-row { grid-template-columns: 1fr; } }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .hero {
+            background: linear-gradient(135deg, #e8f4f8 0%, #d1e7dd 100%);
+            padding: 40px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .page-title {
+            font-size: 2.5em;
+            color: #333;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .page-title .highlight {
+            color: #bd1e51;
+        }
+
+        .breadcrumb {
+            color: #666;
+            font-size: 14px;
+            font-weight: 500;
+            letter-spacing: 1px;
+        }
+
+        .profile-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .info-card, .password-card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .info-card:hover, .password-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.12);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            margin-bottom: 25px;
+        }
+
+        .password-form .form-row {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            color: #555;
+            font-weight: 500;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .form-group input {
+            padding: 12px 16px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-size: 16px;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.3s ease;
+            background-color: #fff;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #bd1e51;
+            box-shadow: 0 0 0 3px rgba(189, 30, 81, 0.1);
+        }
+
+        .form-group input:disabled {
+            background-color: #f8f9fa;
+            color: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .password-hint {
+            display: block;
+            font-size: 11px;
+            color: #666;
+            margin-top: 4px;
+            line-height: 1.4;
+        }
+
+        .save-btn {
+            background: linear-gradient(135deg, #bd1e51, #d63969);
+            color: white;
+            border: none;
+            padding: 14px 30px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: block;
+            margin: 0 auto;
+            min-width: 180px;
+        }
+
+        .save-btn:hover {
+            background: linear-gradient(135deg, #a01a45, #bd1e51);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(189, 30, 81, 0.3);
+        }
+
+        .profile-picture-section {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .profile-picture-container {
+            position: relative;
+            width: 150px;
+            height: 150px;
+            margin: 0 auto 20px;
+            border-radius: 50%;
+            overflow: hidden;
+            box-shadow: 0 8px 25px rgba(189, 30, 81, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .profile-picture-container:hover {
+            transform: scale(1.05);
+            box-shadow: 0 12px 35px rgba(189, 30, 81, 0.3);
+        }
+
+        .profile-picture-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            background: linear-gradient(135deg, #bd1e51, #d63969);
+        }
+
+        .profile-picture-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(189, 30, 81, 0.85);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            cursor: pointer;
+        }
+
+        .profile-picture-container:hover .profile-picture-overlay {
+            opacity: 1;
+        }
+
+        .profile-picture-overlay svg {
+            width: 40px;
+            height: 40px;
+            margin-bottom: 8px;
+        }
+
+        .profile-picture-overlay span {
+            color: white;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .card-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .card-header h2 {
+            color: #bd1e51;
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .card-header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .picture-upload-form {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 15px;
+        }
+
+        .picture-upload-form input[type="file"] {
+            display: none;
+        }
+
+        .choose-file-btn {
+            background: #f0f0f0;
+            color: #666;
+            border: 2px solid #e1e5e9;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .choose-file-btn:hover {
+            background: #e0e0e0;
+            border-color: #bd1e51;
+        }
+
+        .upload-picture-btn {
+            background: linear-gradient(135deg, #bd1e51, #d63969);
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .upload-picture-btn:hover:not(:disabled) {
+            background: linear-gradient(135deg, #a01a45, #bd1e51);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(189, 30, 81, 0.3);
+        }
+
+        .upload-picture-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .file-name-display {
+            font-size: 12px;
+            color: #666;
+            margin-top: 8px;
+            min-height: 18px;
+        }
+
+        @media (max-width: 768px) {
+            .profile-grid {
+                grid-template-columns: 1fr;
+            }
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body>
