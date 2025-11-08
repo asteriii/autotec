@@ -24,35 +24,48 @@ if [ -n "$RAILWAY_VOLUME_MOUNT_PATH" ]; then\n\
     echo "=== Railway Volume Setup ==="\n\
     echo "Volume path: $RAILWAY_VOLUME_MOUNT_PATH"\n\
     \n\
-    # Create profile directory in volume\n\
+    # Create directories in volume\n\
     mkdir -p "$RAILWAY_VOLUME_MOUNT_PATH/profile"\n\
+    mkdir -p "$RAILWAY_VOLUME_MOUNT_PATH/branches"\n\
     \n\
     # Set permissions\n\
     chmod 755 "$RAILWAY_VOLUME_MOUNT_PATH"\n\
     chmod 755 "$RAILWAY_VOLUME_MOUNT_PATH/profile"\n\
+    chmod 755 "$RAILWAY_VOLUME_MOUNT_PATH/branches"\n\
     chown -R www-data:www-data "$RAILWAY_VOLUME_MOUNT_PATH"\n\
     \n\
     # Create uploads directory in web root if it does not exist\n\
     mkdir -p /var/www/html/uploads\n\
     \n\
-    # Create symlink from web uploads to volume\n\
+    # Create symlinks from web uploads to volume\n\
     if [ ! -L "/var/www/html/uploads/profile" ]; then\n\
         ln -sf "$RAILWAY_VOLUME_MOUNT_PATH/profile" /var/www/html/uploads/profile\n\
         echo "✓ Symlink created: /var/www/html/uploads/profile -> $RAILWAY_VOLUME_MOUNT_PATH/profile"\n\
     else\n\
-        echo "✓ Symlink already exists"\n\
+        echo "✓ Profile symlink already exists"\n\
+    fi\n\
+    \n\
+    if [ ! -L "/var/www/html/uploads/branches" ]; then\n\
+        ln -sf "$RAILWAY_VOLUME_MOUNT_PATH/branches" /var/www/html/uploads/branches\n\
+        echo "✓ Symlink created: /var/www/html/uploads/branches -> $RAILWAY_VOLUME_MOUNT_PATH/branches"\n\
+    else\n\
+        echo "✓ Branches symlink already exists"\n\
     fi\n\
     \n\
     # Verify setup\n\
-    echo "Upload directory exists: $([ -d /var/www/html/uploads/profile ] && echo YES || echo NO)"\n\
-    echo "Upload directory writable: $([ -w /var/www/html/uploads/profile ] && echo YES || echo NO)"\n\
+    echo "Profile directory exists: $([ -d /var/www/html/uploads/profile ] && echo YES || echo NO)"\n\
+    echo "Profile directory writable: $([ -w /var/www/html/uploads/profile ] && echo YES || echo NO)"\n\
+    echo "Branches directory exists: $([ -d /var/www/html/uploads/branches ] && echo YES || echo NO)"\n\
+    echo "Branches directory writable: $([ -w /var/www/html/uploads/branches ] && echo YES || echo NO)"\n\
     ls -la /var/www/html/uploads/ || true\n\
     echo "=========================="\n\
 else\n\
     echo "⚠ No Railway volume detected - using local storage"\n\
-    # Create local uploads directory\n\
+    # Create local uploads directories\n\
     mkdir -p /var/www/html/uploads/profile\n\
+    mkdir -p /var/www/html/uploads/branches\n\
     chmod 755 /var/www/html/uploads/profile\n\
+    chmod 755 /var/www/html/uploads/branches\n\
     chown -R www-data:www-data /var/www/html/uploads\n\
 fi\n\
 \n\

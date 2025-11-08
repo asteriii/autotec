@@ -1,6 +1,10 @@
 <?php
 require_once '../db.php';
 
+// Define upload directory - works with Railway symlink
+define('UPLOAD_DIR', __DIR__ . '/../uploads/branches/');
+define('UPLOAD_DIR_RELATIVE', 'uploads/branches/');
+
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
     if ($_POST['action'] == 'update') {
@@ -9,36 +13,89 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
         $mapLink = $_POST['MapLink'];
         $description = $_POST['Description'];
         
-        // Handle file upload
-        $picture = null;
-        if (isset($_FILES['Picture']) && $_FILES['Picture']['error'] == 0) {
-            $uploadDir = 'uploads/branches/';
-            if (!file_exists($uploadDir)) {
-                mkdir($uploadDir, 0777, true);
-            }
-            
-            $fileName = time() . '_' . $_FILES['Picture']['name'];
-            $uploadPath = $uploadDir . $fileName;
-            
-            if (move_uploaded_file($_FILES['Picture']['tmp_name'], $uploadPath)) {
-                $picture = $fileName;
+        // Create upload directory if it doesn't exist
+        if (!file_exists(UPLOAD_DIR)) {
+            if (!mkdir(UPLOAD_DIR, 0755, true)) {
+                error_log("Failed to create directory: " . UPLOAD_DIR);
+                $error_message = "Failed to create upload directory.";
             }
         }
         
-        try {
-            if ($picture) {
-                $sql = "UPDATE about_us SET BranchName = ?, Picture = ?, MapLink = ?, Description = ? WHERE AboutID = ?";
-                $stmt = $pdo->prepare($sql);
-                $stmt->execute([$branchName, $uploadPath, $mapLink, $description, $aboutID]);
-            } else {
-                $sql = "UPDATE about_us SET BranchName = ?, MapLink = ?, Description = ? WHERE AboutID = ?";
-                $stmt = $pdo->prepare($sql);
-                $stmt->execute([$branchName, $mapLink, $description, $aboutID]);
-            }
+        // Handle file upload
+        $pictureFileName = null;
+        if (isset($_FILES['Picture']) && $_FILES['Picture']['error'] == UPLOAD_ERR_OK) {
             
-            $success_message = "Branch information updated successfully!";
-        } catch(PDOException $e) {
-            $error_message = "Error updating branch: " . $e->getMessage();
+            $fileTmpPath = $_FILES['Picture']['tmp_name'];
+            $fileName = $_FILES['Picture']['name'];
+            $fileSize = $_FILES['Picture']['size'];
+            $fileNameCmps = explode(".", $fileName);
+            $fileExtension = strtolower(end($fileNameCmps));
+            
+            // Allowed extensions
+            $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif'];
+            
+            if (in_array($fileExtension, $allowedExtensions)) {
+                if ($fileSize <= 5 * 1024 * 1024) { // 5MB max
+                    // Validate it's actually an image
+                    $imageInfo = @getimagesize($fileTmpPath);
+                    if ($imageInfo !== false) {
+                        // Generate unique filename
+                        $newFileName = 'branch_' . $aboutID . '_' . time() . '.' . $fileExtension;
+                        $destPath = UPLOAD_DIR . $newFileName;
+                        
+                        // Get old picture to delete
+                        $oldPictureSql = "SELECT Picture FROM about_us WHERE AboutID = ?";
+                        $oldStmt = $pdo->prepare($oldPictureSql);
+                        $oldStmt->execute([$aboutID]);
+                        $oldPicture = $oldStmt->fetchColumn();
+                        
+                        // Move uploaded file
+                        if (move_uploaded_file($fileTmpPath, $destPath)) {
+                            @chmod($destPath, 0644);
+                            $pictureFileName = UPLOAD_DIR_RELATIVE . $newFileName;
+                            
+                            // Delete old picture if exists
+                            if ($oldPicture && file_exists($oldPicture)) {
+                                @unlink($oldPicture);
+                            }
+                            
+                            error_log("Branch image uploaded: " . $pictureFileName);
+                        } else {
+                            error_log("Failed to move uploaded file");
+                            $error_message = "Failed to upload image.";
+                        }
+                    } else {
+                        $error_message = "Invalid image file.";
+                    }
+                } else {
+                    $error_message = "Image size must be less than 5MB.";
+                }
+            } else {
+                $error_message = "Invalid file type. Only JPG, JPEG, PNG, and GIF allowed.";
+            }
+        }
+        
+        // Update database
+        if (!isset($error_message)) {
+            try {
+                if ($pictureFileName) {
+                    // Update with new picture
+                    $sql = "UPDATE about_us SET BranchName = ?, Picture = ?, MapLink = ?, Description = ? WHERE AboutID = ?";
+                    $stmt = $pdo->prepare($sql);
+                    $stmt->execute([$branchName, $pictureFileName, $mapLink, $description, $aboutID]);
+                } else {
+                    // Update without changing picture
+                    $sql = "UPDATE about_us SET BranchName = ?, MapLink = ?, Description = ? WHERE AboutID = ?";
+                    $stmt = $pdo->prepare($sql);
+                    $stmt->execute([$branchName, $mapLink, $description, $aboutID]);
+                }
+                
+                $success_message = "Branch information updated successfully!";
+                error_log("Branch updated successfully - AboutID: " . $aboutID);
+            } catch(PDOException $e) {
+                $error_message = "Error updating branch: " . $e->getMessage();
+                error_log("Database error: " . $e->getMessage());
+            }
         }
     }
 }
@@ -313,6 +370,19 @@ $branches = $stmt->fetchAll(PDO::FETCH_ASSOC);
             box-shadow: 0 6px 20px rgba(0,0,0,0.15);
         }
 
+        .no-image {
+            width: 100%;
+            max-width: 400px;
+            height: 200px;
+            background: #f7fafc;
+            border: 2px dashed #cbd5e0;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #718096;
+        }
+
         .map-container {
             border-radius: 12px;
             overflow: hidden;
@@ -357,7 +427,6 @@ $branches = $stmt->fetchAll(PDO::FETCH_ASSOC);
             box-shadow: 0 4px 15px rgba(49, 130, 206, 0.4);
         }
 
-        /* Modal Styles */
         .modal {
             display: none;
             position: fixed;
@@ -388,14 +457,8 @@ $branches = $stmt->fetchAll(PDO::FETCH_ASSOC);
         }
 
         @keyframes modalSlideIn {
-            from { 
-                opacity: 0; 
-                transform: translateY(-50px) scale(0.9); 
-            }
-            to { 
-                opacity: 1; 
-                transform: translateY(0) scale(1); 
-            }
+            from { opacity: 0; transform: translateY(-50px) scale(0.9); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
         }
 
         .modal-header {
@@ -513,11 +576,9 @@ $branches = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 z-index: 1000;
                 height: 100vh;
             }
-
             .branch-content {
                 grid-template-columns: 1fr;
             }
-
             .modal-content {
                 width: 95%;
                 padding: 20px;
@@ -528,11 +589,8 @@ $branches = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <body>
    <?php include 'sidebar.php'; ?>
 
-    <!-- Main Content -->
     <div class="main">
-       
-        <!-- Topbar -->
-          <div class="topbar">
+        <div class="topbar">
             <div class="logo">
                 <i class="fas fa-car"></i> AutoTec Admin
             </div>
@@ -569,13 +627,10 @@ $branches = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <div class="branch-content">
                         <div class="info-section">
                             <h4><i class="fas fa-image"></i> Branch Image</h4>
-                            <?php 
-                            $imagePath = str_replace('C:\\xampp\\htdocs\\autotec\\pictures\\branches\\', 'uploads/branches/', $branch['Picture']);
-                            if (file_exists($imagePath)): 
-                            ?>
-                                <img src="<?php echo htmlspecialchars($imagePath); ?>" alt="Branch Image" class="branch-image">
+                            <?php if (!empty($branch['Picture']) && file_exists($branch['Picture'])): ?>
+                                <img src="<?php echo htmlspecialchars($branch['Picture']); ?>" alt="Branch Image" class="branch-image" onerror="this.parentElement.innerHTML='<div class=\'no-image\'><i class=\'fas fa-image\' style=\'font-size: 48px; opacity: 0.5;\'></i></div>'">
                             <?php else: ?>
-                                <div style="width: 100%; height: 200px; background: #f7fafc; border: 2px dashed #cbd5e0; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #718096;">
+                                <div class="no-image">
                                     <i class="fas fa-image" style="font-size: 48px; opacity: 0.5;"></i>
                                 </div>
                             <?php endif; ?>
@@ -614,7 +669,6 @@ $branches = $stmt->fetchAll(PDO::FETCH_ASSOC);
         </div>
     </div>
 
-    <!-- Edit Modal -->
     <div id="editModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -636,7 +690,7 @@ $branches = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <div class="form-group">
                     <label><i class="fas fa-image"></i> Branch Image</label>
                     <input type="file" name="Picture" accept="image/*">
-                    <small style="color: #718096; font-size: 12px;">Leave blank to keep current image</small>
+                    <small style="color: #718096; font-size: 12px;">Leave blank to keep current image (Max 5MB)</small>
                 </div>
 
                 <div class="form-group">
@@ -665,13 +719,9 @@ $branches = $stmt->fetchAll(PDO::FETCH_ASSOC);
         function toggleMenu(id) {
             const menu = document.getElementById(id);
             const isVisible = menu.classList.contains('show');
-            
-            // Hide all submenus first
             document.querySelectorAll('.submenu').forEach(submenu => {
                 submenu.classList.remove('show');
             });
-            
-            // Show the clicked menu if it wasn't visible
             if (!isVisible) {
                 menu.classList.add('show');
             }
@@ -689,7 +739,6 @@ $branches = $stmt->fetchAll(PDO::FETCH_ASSOC);
             document.getElementById('editModal').classList.remove('show');
         }
 
-        // Close modal on outside click
         window.onclick = function(event) {
             const modal = document.getElementById('editModal');
             if (event.target === modal) {
@@ -697,22 +746,17 @@ $branches = $stmt->fetchAll(PDO::FETCH_ASSOC);
             }
         }
 
-        // Close modal on escape key
         document.addEventListener('keydown', function(event) {
             if (event.key === 'Escape') {
                 closeModal();
             }
         });
 
-        // Form submission with loading state
         document.getElementById('editForm').addEventListener('submit', function(e) {
             const submitBtn = this.querySelector('button[type="submit"]');
             const originalText = submitBtn.innerHTML;
-            
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
             submitBtn.disabled = true;
-            
-            // Reset on form completion (success or error)
             setTimeout(() => {
                 submitBtn.innerHTML = originalText;
                 submitBtn.disabled = false;

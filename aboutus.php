@@ -33,42 +33,42 @@ if ($result) {
       color: #333;
       line-height: 1.6;
     }
-    /* Main Content */
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-    /* Hero Section */
-        .hero {
-            background: linear-gradient(135deg, #e8f4f8 0%, #d1e7dd 100%);
-            padding: 40px;
-            border-radius: 10px;
-            margin-bottom: 30px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            text-align: center;
-        }
-        .hero h1 {
-            font-size: 2.5em;
-            color: #333;
-            margin-bottom: 20px;
-        }
-        .hero h1 .highlight {
-            color: #a4133c;
-        }
-        .hero p {
-            font-size: 1.1em;
-            color: #666;
-            max-width: 600px;
-            margin: 0 auto;
-        }
-    /* Content Grid */
+
+    .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .hero {
+        background: linear-gradient(135deg, #e8f4f8 0%, #d1e7dd 100%);
+        padding: 40px;
+        border-radius: 10px;
+        margin-bottom: 30px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        text-align: center;
+    }
+    .hero h1 {
+        font-size: 2.5em;
+        color: #333;
+        margin-bottom: 20px;
+    }
+    .hero h1 .highlight {
+        color: #a4133c;
+    }
+    .hero p {
+        font-size: 1.1em;
+        color: #666;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
     .content-grid {
       display: grid;
       gap: 30px;
       margin-top: 40px;
     }
-    /* Branch Cards */
+
     .branch-card {
       background: white;
       border-radius: 15px;
@@ -80,6 +80,7 @@ if ($result) {
       transform: translateY(-5px);
       box-shadow: 0 10px 30px rgba(0,0,0,0.15);
     }
+
     .branch-content {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -91,6 +92,7 @@ if ($result) {
     .branch-content.reverse > * {
       direction: ltr;
     }
+
     .branch-image {
       position: relative;
       overflow: hidden;
@@ -105,6 +107,7 @@ if ($result) {
     .branch-card:hover .branch-image img {
       transform: scale(1.05);
     }
+
     .branch-info {
       padding: 40px;
       display: flex;
@@ -125,6 +128,7 @@ if ($result) {
       line-height: 1.7;
       margin-bottom: 25px;
     }
+
     .view-location-btn {
       background: linear-gradient(135deg, #bd1e51, #d63969);
       color: white;
@@ -155,7 +159,7 @@ if ($result) {
     .view-location-btn.active::after {
       transform: rotate(180deg);
     }
-    /* Map Section */
+
     .map-section {
       background: white;
       border-radius: 0 0 15px 15px;
@@ -191,8 +195,7 @@ if ($result) {
       height: 350px;
       border: 0;
     }
-   
-    /* No Data Message */
+
     .no-data {
       background: white;
       border-radius: 15px;
@@ -211,8 +214,7 @@ if ($result) {
       color: #666;
       font-size: 16px;
     }
-   
-    /* Responsive Design */
+
     @media (max-width: 768px) {
       .branch-content {
         grid-template-columns: 1fr;
@@ -251,48 +253,47 @@ if ($result) {
       }
     }
   </style>
-
 </head>
 <body>
  <?php include 'header.php'; ?>
  
  <div class="container">
-        <!-- Hero Section -->
-        <section class="hero">
-            <h1><span class="highlight">ABOUT</span> US</h1>
-            <p>So we may hear your concerns and for us to address them. We encourage you to address your concern to us
-                so that we may improve our services!</p>
-        </section>
+    <section class="hero">
+        <h1><span class="highlight">ABOUT</span> US</h1>
+        <p>So we may hear your concerns and for us to address them. We encourage you to address your concern to us
+            so that we may improve our services!</p>
+    </section>
   
-      <!-- Content -->
   <div class="content-grid">
     <?php if (!empty($aboutEntries)): ?>
       <?php foreach ($aboutEntries as $index => $entry): ?>
         <div class="branch-card">
           <div class="branch-content <?php echo ($index % 2 == 1) ? 'reverse' : ''; ?>">
             <div class="branch-image">
+              <?php 
+                // Get the image path from database
+                $imagePath = '';
+                
+                if (!empty($entry['Picture'])) {
+                    // The Picture field should contain: uploads/branches/filename.jpg
+                    $imagePath = $entry['Picture'];
+                    
+                    // Clean up any potential issues with the path
+                    $imagePath = str_replace('\\', '/', $imagePath);
+                    $imagePath = ltrim($imagePath, '/');
+                }
+                
+                // Check if image exists, otherwise use default
+                $imageExists = !empty($imagePath) && file_exists($imagePath);
+              ?>
               
-            <?php if (!empty($entry['Picture'])): ?>
-                <?php 
-                  // Handle different path formats
-                  $imagePath = $entry['Picture'];
-                  
-                  // If it's a full Windows path, convert to relative web path
-                  if (strpos($imagePath, 'C:/xampp/htdocs/') !== false) {
-                      $imagePath = str_replace('C:/xampp/htdocs/autotec/', '', $imagePath);
-                  }
-                  
-                  // Convert backslashes to forward slashes
-                  $imagePath = str_replace('\\', '/', $imagePath);
-                  
-                  // Remove any leading slashes
-                  $imagePath = ltrim($imagePath, '/');
-                ?>
+              <?php if ($imageExists): ?>
                 <img src="<?php echo htmlspecialchars($imagePath); ?>" 
                      alt="<?php echo htmlspecialchars($entry['BranchName']); ?>"
-                     onerror="this.src='pictures/branches/default-branch.jpg'">
+                     onerror="this.src='pictures/branches/default-branch.jpg'; this.onerror=null;">
               <?php else: ?>
-                <img src="pictures/branches/default-branch.jpg" alt="Default Branch Image">
+                <img src="pictures/branches/default-branch.jpg" 
+                     alt="Default Branch Image">
               <?php endif; ?>
             </div>
             
@@ -341,12 +342,10 @@ function toggleMap(mapId, button) {
   const isVisible = mapSection.classList.contains('show');
   
   if (isVisible) {
-    // Hide the map
     mapSection.classList.remove('show');
     button.textContent = 'View Location';
     button.classList.remove('active');
   } else {
-    // Show the map
     mapSection.classList.add('show');
     button.textContent = 'Hide Location';
     button.classList.add('active');
@@ -355,6 +354,5 @@ function toggleMap(mapId, button) {
 </script>
 
 <?php include 'footer.php'; ?>
-
 </body>
 </html>
