@@ -10,14 +10,160 @@ require '../db.php';
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['send'])) {
 
     if (!isset($_POST['email']) || empty($_POST['email'])) {
-        echo "<script>alert('Email is required.'); window.history.back();</script>";
+        echo "<!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                * { margin: 0; padding: 0; box-sizing: border-box; }
+                body { 
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+                    background: rgba(0, 0, 0, 0.5);
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    height: 100vh;
+                }
+                .modal {
+                    background: white;
+                    border-radius: 12px;
+                    padding: 40px;
+                    max-width: 440px;
+                    width: 90%;
+                    text-align: center;
+                    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+                }
+                .icon {
+                    width: 64px;
+                    height: 64px;
+                    border: 4px solid #a4133c;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    margin: 0 auto 24px;
+                    color: #a4133c;
+                    font-size: 36px;
+                    font-weight: bold;
+                }
+                .title {
+                    color: #a4133c;
+                    font-size: 24px;
+                    font-weight: 600;
+                    margin-bottom: 16px;
+                }
+                .message {
+                    color: #5f6368;
+                    font-size: 16px;
+                    line-height: 1.5;
+                    margin-bottom: 32px;
+                }
+                .btn {
+                    padding: 12px 32px;
+                    border: none;
+                    border-radius: 6px;
+                    font-size: 15px;
+                    font-weight: 500;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                }
+                .btn-primary {
+                    background: #a4133c;
+                    color: white;
+                }
+                .btn-primary:hover {
+                    background: #8b0f31;
+                }
+            </style>
+        </head>
+        <body>
+            <div class='modal'>
+                <div class='icon'>!</div>
+                <div class='title'>Required Field</div>
+                <div class='message'>Email is required to reset your password.</div>
+                <button class='btn btn-primary' onclick='history.back()'>Go Back</button>
+            </div>
+        </body>
+        </html>";
         exit;
     }
 
     $email = filter_var($_POST['email'], FILTER_VALIDATE_EMAIL);
     
     if (!$email) {
-        echo "<script>alert('Invalid email format.'); window.history.back();</script>";
+        echo "<!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                * { margin: 0; padding: 0; box-sizing: border-box; }
+                body { 
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+                    background: rgba(0, 0, 0, 0.5);
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    height: 100vh;
+                }
+                .modal {
+                    background: white;
+                    border-radius: 12px;
+                    padding: 40px;
+                    max-width: 440px;
+                    width: 90%;
+                    text-align: center;
+                    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+                }
+                .icon {
+                    width: 64px;
+                    height: 64px;
+                    border: 4px solid #a4133c;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    margin: 0 auto 24px;
+                    color: #a4133c;
+                    font-size: 36px;
+                    font-weight: bold;
+                }
+                .title {
+                    color: #a4133c;
+                    font-size: 24px;
+                    font-weight: 600;
+                    margin-bottom: 16px;
+                }
+                .message {
+                    color: #5f6368;
+                    font-size: 16px;
+                    line-height: 1.5;
+                    margin-bottom: 32px;
+                }
+                .btn {
+                    padding: 12px 32px;
+                    border: none;
+                    border-radius: 6px;
+                    font-size: 15px;
+                    font-weight: 500;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                }
+                .btn-primary {
+                    background: #a4133c;
+                    color: white;
+                }
+                .btn-primary:hover {
+                    background: #8b0f31;
+                }
+            </style>
+        </head>
+        <body>
+            <div class='modal'>
+                <div class='icon'>!</div>
+                <div class='title'>Invalid Email</div>
+                <div class='message'>Please enter a valid email address.</div>
+                <button class='btn btn-primary' onclick='history.back()'>Go Back</button>
+            </div>
+        </body>
+        </html>";
         exit;
     }
 
@@ -29,7 +175,88 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['send'])) {
 
     if ($result->num_rows == 0) {
         // Security: Don't reveal if email exists or not
-        echo "<script>alert('If this email exists, a reset link has been sent.'); window.location.href = '../index.php';</script>";
+        echo "<!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                * { margin: 0; padding: 0; box-sizing: border-box; }
+                body { 
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+                    background: rgba(0, 0, 0, 0.5);
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    height: 100vh;
+                }
+                .modal {
+                    background: white;
+                    border-radius: 12px;
+                    padding: 40px;
+                    max-width: 440px;
+                    width: 90%;
+                    text-align: center;
+                    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+                }
+                .icon {
+                    width: 64px;
+                    height: 64px;
+                    border: 4px solid #4caf50;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    margin: 0 auto 24px;
+                    color: #4caf50;
+                    font-size: 36px;
+                    font-weight: bold;
+                }
+                .icon::before {
+                    content: '✓';
+                }
+                .title {
+                    color: #333;
+                    font-size: 24px;
+                    font-weight: 600;
+                    margin-bottom: 16px;
+                }
+                .message {
+                    color: #5f6368;
+                    font-size: 16px;
+                    line-height: 1.5;
+                    margin-bottom: 32px;
+                }
+                .btn {
+                    padding: 12px 32px;
+                    border: none;
+                    border-radius: 6px;
+                    font-size: 15px;
+                    font-weight: 500;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                }
+                .btn-primary {
+                    background: #a4133c;
+                    color: white;
+                }
+                .btn-primary:hover {
+                    background: #8b0f31;
+                }
+            </style>
+            <script>
+                setTimeout(function() {
+                    window.location.href = '../index.php';
+                }, 3000);
+            </script>
+        </head>
+        <body>
+            <div class='modal'>
+                <div class='icon'></div>
+                <div class='title'>Email Sent</div>
+                <div class='message'>If this email exists in our system, a reset link has been sent. Please check your inbox.</div>
+                <button class='btn btn-primary' onclick='window.location.href=\"../index.php\"'>Return to Home</button>
+            </div>
+        </body>
+        </html>";
         exit;
     }
 
@@ -141,20 +368,176 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['send'])) {
     // Check response
     if ($httpCode === 202) {
         // Success - SendGrid accepted the email
-        echo "<script>
-            alert('Password reset link sent successfully! Please check your email (including spam folder).');
-            window.location.href = '../index.php';
-        </script>";
+        echo "<!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                * { margin: 0; padding: 0; box-sizing: border-box; }
+                body { 
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+                    background: rgba(0, 0, 0, 0.5);
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    height: 100vh;
+                }
+                .modal {
+                    background: white;
+                    border-radius: 12px;
+                    padding: 40px;
+                    max-width: 440px;
+                    width: 90%;
+                    text-align: center;
+                    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+                }
+                .icon {
+                    width: 64px;
+                    height: 64px;
+                    border: 4px solid #4caf50;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    margin: 0 auto 24px;
+                    color: #4caf50;
+                    font-size: 36px;
+                    font-weight: bold;
+                }
+                .icon::before {
+                    content: '✓';
+                }
+                .title {
+                    color: #333;
+                    font-size: 24px;
+                    font-weight: 600;
+                    margin-bottom: 16px;
+                }
+                .message {
+                    color: #5f6368;
+                    font-size: 16px;
+                    line-height: 1.5;
+                    margin-bottom: 32px;
+                }
+                .btn {
+                    padding: 12px 32px;
+                    border: none;
+                    border-radius: 6px;
+                    font-size: 15px;
+                    font-weight: 500;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                }
+                .btn-primary {
+                    background: #a4133c;
+                    color: white;
+                }
+                .btn-primary:hover {
+                    background: #8b0f31;
+                }
+            </style>
+            <script>
+                setTimeout(function() {
+                    window.location.href = '../index.php';
+                }, 3000);
+            </script>
+        </head>
+        <body>
+            <div class='modal'>
+                <div class='icon'></div>
+                <div class='title'>Success!</div>
+                <div class='message'>Password reset link sent successfully! Please check your email (including spam folder).</div>
+                <button class='btn btn-primary' onclick='window.location.href=\"../index.php\"'>Return to Home</button>
+            </div>
+        </body>
+        </html>";
     } else {
         // Error - log details
         error_log("SendGrid API Error - HTTP Code: $httpCode");
         error_log("Response: $response");
         error_log("Curl Error: $curlError");
         
-        echo "<script>
-            alert('Unable to send email at this time. Please try again later or contact support.');
-            window.location.href = '../index.php';
-        </script>";
+        echo "<!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                * { margin: 0; padding: 0; box-sizing: border-box; }
+                body { 
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+                    background: rgba(0, 0, 0, 0.5);
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    height: 100vh;
+                }
+                .modal {
+                    background: white;
+                    border-radius: 12px;
+                    padding: 40px;
+                    max-width: 440px;
+                    width: 90%;
+                    text-align: center;
+                    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+                }
+                .icon {
+                    width: 64px;
+                    height: 64px;
+                    border: 4px solid #f44336;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    margin: 0 auto 24px;
+                    color: #f44336;
+                    font-size: 36px;
+                    font-weight: bold;
+                }
+                .icon::before {
+                    content: '✕';
+                }
+                .title {
+                    color: #f44336;
+                    font-size: 24px;
+                    font-weight: 600;
+                    margin-bottom: 16px;
+                }
+                .message {
+                    color: #5f6368;
+                    font-size: 16px;
+                    line-height: 1.5;
+                    margin-bottom: 32px;
+                }
+                .btn {
+                    padding: 12px 32px;
+                    border: none;
+                    border-radius: 6px;
+                    font-size: 15px;
+                    font-weight: 500;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                }
+                .btn-primary {
+                    background: #a4133c;
+                    color: white;
+                }
+                .btn-primary:hover {
+                    background: #8b0f31;
+                }
+            </style>
+            <script>
+                setTimeout(function() {
+                    window.location.href = '../index.php';
+                }, 4000);
+            </script>
+        </head>
+        <body>
+            <div class='modal'>
+                <div class='icon'></div>
+                <div class='title'>Error</div>
+                <div class='message'>Unable to send email at this time. Please try again later or contact support.</div>
+                <button class='btn btn-primary' onclick='window.location.href=\"../index.php\"'>Return to Home</button>
+            </div>
+        </body>
+        </html>";
     }
     exit;
 

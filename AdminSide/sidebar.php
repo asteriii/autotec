@@ -117,7 +117,7 @@
 <div class="sidebar">
     <div class="section">
         <div class="section-title <?php echo (basename($_SERVER['PHP_SELF']) == 'index.php') ? 'active' : ''; ?>">
-            <a href="index.php" style="color: white; text-decoration: none; display: flex; align-items: center; width: 100%;">
+            <a href="adminDash.php" style="color: white; text-decoration: none; display: flex; align-items: center; width: 100%;">
                 <span><i class="fas fa-tachometer-alt"></i> Dashboard</span>
             </a>
         </div>

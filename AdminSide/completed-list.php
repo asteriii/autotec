@@ -19,43 +19,6 @@
       background-color: #f4f4f4;
     }
 
-    .sidebar {
-      width: 250px;
-      background-color: #a93226;
-      color: white;
-      padding-top: 20px;
-    }
-
-    .sidebar .section {
-      padding: 0 20px;
-    }
-
-    .sidebar .section-title {
-      padding: 10px 0;
-      cursor: pointer;
-      font-weight: bold;
-    }
-
-    .sidebar .submenu {
-      list-style: none;
-      padding-left: 15px;
-      display: none;
-    }
-
-    .sidebar .submenu li {
-      padding: 8px 0;
-      font-size: 14px;
-      cursor: pointer;
-    }
-
-    .sidebar .submenu li:hover {
-      text-decoration: underline;
-    }
-
-    .sidebar .active {
-      background-color: #922b20;
-    }
-
     .main {
       flex: 1;
       background-color: #f9f9f9;
@@ -140,42 +103,7 @@
 <body>
 
   <!-- Sidebar -->
-  <div class="sidebar">
-    <div class="section">
-      <div class="section-title">
-        <a href="admindash.php" style="color: white; text-decoration: none;">Dashboard</a>
-      </div>
-    </div>
-    
-    <div class="section">
-      <div class="section-title" onclick="toggleMenu('admin-controls')">Admin Controls ▾</div>
-      <ul class="submenu" id="admin-controls" style="display: block;">
-        <li><a href="reservations.php" style="color: white; text-decoration: none;">Reservations</a></li>
-        <li><a href="ongoing-list.php" style="color: white; text-decoration: none;">Ongoing List</a></li>
-        <li class="active"><a href="completed-list.php" style="color: white; text-decoration: none;">Completed List</a></li>
-      </ul>
-    </div>
-    
-    <div class="section">
-      <div class="section-title" onclick="toggleMenu('page-settings')">Page Settings ▾</div>
-      <ul class="submenu" id="page-settings" style="display: block;">
-        <li><a href="homepage-edit.php" style="color: white; text-decoration: none;">Home Page</a></li>
-        <li><a href="reservation-edit.php" style="color: white; text-decoration: none;">Reservation Page</a></li>
-        <li><a href="contact-edit.php" style="color: white; text-decoration: none;">Contact Page</a></li>
-        <li><a href="about-edit.php" style="color: white; text-decoration: none;">About Page</a></li>
-      </ul>
-    </div>
-
-    <div class="section">
-      <div class="section-title" onclick="toggleMenu('activity-logs')">Activity Logs ▾</div>
-      <ul class="submenu" id="activity-logs">
-        <li>Page Edits</li>
-        <li>Confirmed Logs</li>
-        <li>Ongoing Logs</li>
-      </ul>
-    </div>
-  </div>
-
+    <?php include 'sidebar.php'; ?>
 
   <!-- Main Content -->
   <div class="main">
