@@ -18,6 +18,14 @@ $baseUploadDir = getenv('RAILWAY_VOLUME_MOUNT_PATH') ?: __DIR__;
 define('UPLOAD_DIR', $baseUploadDir . '/uploads/profile/');
 define('UPLOAD_DIR_RELATIVE', 'uploads/profile/');
 
+// TEMPORARY DEBUG - Check logs in Railway
+error_log("=== PROFILE.PHP DEBUG ===");
+error_log("BASE_UPLOAD_DIR: " . $baseUploadDir);
+error_log("UPLOAD_DIR: " . UPLOAD_DIR);
+error_log("UPLOAD_DIR_RELATIVE: " . UPLOAD_DIR_RELATIVE);
+error_log("RAILWAY_VOLUME_MOUNT_PATH: " . getenv('RAILWAY_VOLUME_MOUNT_PATH'));
+error_log("========================");
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Handle profile picture update
@@ -220,7 +228,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($new_password !== $confirm_password) {
             alertAndRedirect("Passwords do not match.");
         }
-        
+
         $sql = "UPDATE users SET password = ? WHERE UserID = ?";
         $stmt = mysqli_prepare($conn, $sql);
         if (!$stmt) {
@@ -254,15 +262,13 @@ if (!$user) {
     die("User not found.");
 }
 
-// Set profile picture path
+// FIXED: Set profile picture path - Simplified to avoid hanging
 $profilePicturePath = 'pictures/default-avatar.png';
 if (!empty($user['profile_picture'])) {
-    $checkPath = UPLOAD_DIR_RELATIVE . $user['profile_picture'];
-    if (file_exists($checkPath)) {
-        $profilePicturePath = $checkPath . '?v=' . time(); // Add cache buster
-    } else {
-        error_log("Profile picture not found: " . $checkPath);
-    }
+    // Don't use file_exists() which can cause hanging on Railway
+    // Just trust the database and use onerror in img tag as fallback
+    $profilePicturePath = UPLOAD_DIR_RELATIVE . $user['profile_picture'] . '?v=' . time();
+    error_log("Profile picture set to: " . $profilePicturePath);
 }
 ?>
 
