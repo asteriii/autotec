@@ -245,6 +245,14 @@ header('Content-Type: text/html; charset=utf-8');
                 echo "<div class='check-detail'>$detail</div>";
             }
             echo "</div>";
+            
+            
+            echo "<!-- DEBUG INFO:";
+                echo "\nReservation ID: " . $reservation['ReservationID'];
+                echo "\nPayment Method: " . ($reservation['PaymentMethod'] ?? 'NULL');
+                echo "\nPayment Receipt: " . ($reservation['PaymentReceipt'] ?? 'NULL');
+                echo "\nPayment Status: " . ($reservation['PaymentStatus'] ?? 'NULL');
+                echo "\n-->";
         }
         ?>
 

@@ -669,13 +669,27 @@ $categories = [
                         </div>
                         
                         <div class="buttons">
-                            <?php if (!empty($reservation['PaymentReceipt']) && $reservation['PaymentMethod'] === 'gcash'): ?>
+                            <?php 
+                            // Debug: Check what we have
+                            $hasReceipt = !empty($reservation['PaymentReceipt']);
+                            $isGcash = strtolower($reservation['PaymentMethod']) === 'gcash';
+                            
+                            if ($hasReceipt && $isGcash): 
+                            ?>
                                 <button class="btn view-receipt-btn" onclick="viewReceipt('<?php echo htmlspecialchars($reservation['PaymentReceipt']); ?>', '<?php echo htmlspecialchars($reservation['ReferenceNumber'] ?? 'N/A'); ?>', '<?php echo htmlspecialchars($reservation['PaymentMethod']); ?>', '<?php echo htmlspecialchars($reservation['PaymentStatus'] ?? 'pending'); ?>')">
                                     <i class="fas fa-receipt"></i> View Receipt
                                 </button>
+                            <?php elseif ($isGcash && !$hasReceipt): ?>
+                                <button class="btn view-receipt-btn" disabled title="Receipt not uploaded yet">
+                                    <i class="fas fa-receipt"></i> No Receipt
+                                </button>
+                            <?php elseif (strtolower($reservation['PaymentMethod']) === 'onsite'): ?>
+                                <button class="btn view-receipt-btn" disabled title="On-site payment - no receipt required">
+                                    <i class="fas fa-money-bill"></i> On-Site
+                                </button>
                             <?php else: ?>
                                 <button class="btn view-receipt-btn" disabled>
-                                    <i class="fas fa-receipt"></i> No Receipt
+                                    <i class="fas fa-receipt"></i> N/A
                                 </button>
                             <?php endif; ?>
                             <button class="btn confirm-btn" onclick="confirmReservation(<?php echo $reservation['ReservationID']; ?>)">

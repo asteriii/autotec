@@ -15,6 +15,14 @@ RUN chown -R www-data:www-data /var/www/html
 # Set ServerName to suppress warning
 RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf
 
+# CRITICAL FIX: Configure Apache to follow symlinks
+RUN echo '<Directory /var/www/html/>\n\
+    Options Indexes FollowSymLinks\n\
+    AllowOverride All\n\
+    Require all granted\n\
+</Directory>' > /etc/apache2/conf-available/symlinks.conf && \
+    a2enconf symlinks
+
 # Create startup script with volume handling
 RUN echo '#!/bin/bash\n\
 set -e\n\
@@ -39,36 +47,42 @@ if [ -n "$RAILWAY_VOLUME_MOUNT_PATH" ]; then\n\
     # Create uploads directory in web root if it does not exist\n\
     mkdir -p /var/www/html/uploads\n\
     \n\
+    # Remove existing symlinks/directories and create fresh symlinks\n\
+    rm -rf /var/www/html/uploads/profile\n\
+    rm -rf /var/www/html/uploads/branches\n\
+    rm -rf /var/www/html/uploads/payment_receipts\n\
+    \n\
     # Create symlinks from web uploads to volume\n\
-    if [ ! -L "/var/www/html/uploads/profile" ]; then\n\
-        ln -sf "$RAILWAY_VOLUME_MOUNT_PATH/profile" /var/www/html/uploads/profile\n\
-        echo "✓ Symlink created: /var/www/html/uploads/profile -> $RAILWAY_VOLUME_MOUNT_PATH/profile"\n\
-    else\n\
-        echo "✓ Profile symlink already exists"\n\
-    fi\n\
+    ln -sf "$RAILWAY_VOLUME_MOUNT_PATH/profile" /var/www/html/uploads/profile\n\
+    echo "✓ Symlink created: /var/www/html/uploads/profile -> $RAILWAY_VOLUME_MOUNT_PATH/profile"\n\
     \n\
-    if [ ! -L "/var/www/html/uploads/branches" ]; then\n\
-        ln -sf "$RAILWAY_VOLUME_MOUNT_PATH/branches" /var/www/html/uploads/branches\n\
-        echo "✓ Symlink created: /var/www/html/uploads/branches -> $RAILWAY_VOLUME_MOUNT_PATH/branches"\n\
-    else\n\
-        echo "✓ Branches symlink already exists"\n\
-    fi\n\
+    ln -sf "$RAILWAY_VOLUME_MOUNT_PATH/branches" /var/www/html/uploads/branches\n\
+    echo "✓ Symlink created: /var/www/html/uploads/branches -> $RAILWAY_VOLUME_MOUNT_PATH/branches"\n\
     \n\
-    if [ ! -L "/var/www/html/uploads/payment_receipts" ]; then\n\
-        ln -sf "$RAILWAY_VOLUME_MOUNT_PATH/payment_receipts" /var/www/html/uploads/payment_receipts\n\
-        echo "✓ Symlink created: /var/www/html/uploads/payment_receipts -> $RAILWAY_VOLUME_MOUNT_PATH/payment_receipts"\n\
-    else\n\
-        echo "✓ Payment receipts symlink already exists"\n\
-    fi\n\
+    ln -sf "$RAILWAY_VOLUME_MOUNT_PATH/payment_receipts" /var/www/html/uploads/payment_receipts\n\
+    echo "✓ Symlink created: /var/www/html/uploads/payment_receipts -> $RAILWAY_VOLUME_MOUNT_PATH/payment_receipts"\n\
+    \n\
+    # Set ownership for symlinks and uploads directory\n\
+    chown -h www-data:www-data /var/www/html/uploads/profile\n\
+    chown -h www-data:www-data /var/www/html/uploads/branches\n\
+    chown -h www-data:www-data /var/www/html/uploads/payment_receipts\n\
+    chown www-data:www-data /var/www/html/uploads\n\
     \n\
     # Verify setup\n\
+    echo "=== Verification ==="\n\
+    echo "Profile symlink: $(readlink /var/www/html/uploads/profile)"\n\
     echo "Profile directory exists: $([ -d /var/www/html/uploads/profile ] && echo YES || echo NO)"\n\
     echo "Profile directory writable: $([ -w /var/www/html/uploads/profile ] && echo YES || echo NO)"\n\
     echo "Branches directory exists: $([ -d /var/www/html/uploads/branches ] && echo YES || echo NO)"\n\
     echo "Branches directory writable: $([ -w /var/www/html/uploads/branches ] && echo YES || echo NO)"\n\
     echo "Payment receipts directory exists: $([ -d /var/www/html/uploads/payment_receipts ] && echo YES || echo NO)"\n\
     echo "Payment receipts directory writable: $([ -w /var/www/html/uploads/payment_receipts ] && echo YES || echo NO)"\n\
+    echo ""\n\
+    echo "Uploads directory contents:"\n\
     ls -la /var/www/html/uploads/ || true\n\
+    echo ""\n\
+    echo "Profile directory contents:"\n\
+    ls -la /var/www/html/uploads/profile/ 2>/dev/null | head -n 10 || echo "Empty or not accessible"\n\
     echo "=========================="\n\
 else\n\
     echo "⚠ No Railway volume detected - using local storage"\n\
@@ -91,4 +105,4 @@ sed -i "s/:80/:$APACHE_PORT/g" /etc/apache2/sites-available/000-default.conf\n\
 echo "Starting Apache on port $APACHE_PORT..."\n\
 apache2-foreground' > /start.sh && chmod +x /start.sh
 
-CMD ["/start.sh"]
+CMD ["/start.sh"]   

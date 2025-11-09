@@ -1,0 +1,29 @@
+# Enable symlinks for uploads directory
+Options +FollowSymLinks
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    
+    # Allow direct access to uploads directory (important for images)
+    RewriteRule ^uploads/ - [L]
+    
+    # Your other rewrite rules here (if any)
+</IfModule>
+
+# Security: Prevent directory listing
+Options -Indexes
+
+# Allow access to image files
+<FilesMatch "\.(jpg|jpeg|png|gif|webp)$">
+    <IfModule mod_headers.c>
+        Header set Cache-Control "public, max-age=2592000"
+    </IfModule>
+    Order Allow,Deny
+    Allow from all
+</FilesMatch>
+
+# Prevent access to sensitive files
+<FilesMatch "\.(sql|log|ini|sh)$">
+    Order Deny,Allow
+    Deny from all
+</FilesMatch>
