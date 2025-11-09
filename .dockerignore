@@ -1,0 +1,13 @@
+# Exclude uploads directory from Docker image
+# Railway volume will be mounted here instead
+uploads/
+
+# Optional: Exclude other common files/folders
+.git/
+.gitignore
+.env.local
+.env.development
+*.md
+node_modules/
+.DS_Store
+Thumbs.db
