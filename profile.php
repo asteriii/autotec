@@ -24,17 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Handle profile picture update
     if (isset($_POST['update_profile_picture'])) {
-        // Create directory if it doesn't exist
-        if (!file_exists(UPLOAD_DIR)) {
-            if (!mkdir(UPLOAD_DIR, 0755, true)) {
-                error_log("FAILED to create directory: " . UPLOAD_DIR);
-                error_log("Parent directory exists: " . (file_exists(dirname(UPLOAD_DIR)) ? 'YES' : 'NO'));
-                error_log("Parent directory writable: " . (is_writable(dirname(UPLOAD_DIR)) ? 'YES' : 'NO'));
-                alertAndRedirect("Failed to create upload directory. Please contact administrator.");
-            }
-            error_log("Successfully created directory: " . UPLOAD_DIR);
-        }
-
+    
         // Check if directory is writable
         if (!is_writable(UPLOAD_DIR)) {
             error_log("Directory NOT writable: " . UPLOAD_DIR);

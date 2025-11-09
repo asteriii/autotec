@@ -43,28 +43,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     error_log("=== REGISTRATION UPLOAD ===");
     error_log("Upload directory: " . $uploadDir);
-    error_log("Resolved path: " . realpath(dirname($uploadDir)));
+    error_log("Is symlink: " . (is_link($uploadDir) ? 'YES' : 'NO'));
+    if (is_link($uploadDir)) {
+        error_log("Symlink target: " . readlink($uploadDir));
+    }
     
     $profilePictureName = null;
     if (isset($_FILES['profilePicture']) && $_FILES['profilePicture']['error'] === UPLOAD_ERR_OK) {
         
-        // Create directory if it doesn't exist
-        if (!file_exists($uploadDir)) {
-            if (!mkdir($uploadDir, 0755, true)) {
-                error_log("FAILED to create directory: " . $uploadDir);
-                echo "<script>alert('Failed to create upload directory. Please contact administrator.'); window.location.href='../index.php';</script>";
-                exit();
-            }
-            error_log("Created directory: " . $uploadDir);
-        }
-
-        // Verify directory exists and is writable
+        // FIXED: Don't create directory - verify it exists as symlink
         if (!is_dir($uploadDir)) {
-            error_log("Path exists but is not a directory: " . $uploadDir);
-            echo "<script>alert('Upload path configuration error.'); window.location.href='../index.php';</script>";
+            error_log("CRITICAL: Upload directory doesn't exist: " . $uploadDir);
+            error_log("This should be a symlink created by Docker.");
+            echo "<script>alert('Upload directory configuration error. Please contact administrator.'); window.location.href='../index.php';</script>";
             exit();
         }
 
+        // Verify directory is writable
         if (!is_writable($uploadDir)) {
             error_log("Directory not writable: " . $uploadDir);
             error_log("Directory permissions: " . substr(sprintf('%o', fileperms($uploadDir)), -4));
