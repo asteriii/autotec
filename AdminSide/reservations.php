@@ -54,15 +54,44 @@ $categories = [
     3 => 'Premium'
 ];
 
-// Debug logging for admin
-error_log("=== ADMIN RESERVATIONS PAGE ===");
-error_log("Total reservations fetched: " . count($reservations));
-foreach ($reservations as $idx => $res) {
-    error_log("Reservation " . ($idx + 1) . " - ID: " . $res['ReservationID'] . 
-              ", PaymentMethod: " . ($res['PaymentMethod'] ?? 'NULL') . 
-              ", PaymentReceipt: " . ($res['PaymentReceipt'] ?? 'NULL'));
+// Process receipt paths for each reservation
+foreach ($reservations as &$reservation) {
+    $receiptPath = $reservation['PaymentReceipt'] ?? '';
+    
+    // Check if receipt exists in database (not 0, NULL, or empty)
+    $hasReceipt = !empty($receiptPath) && $receiptPath !== '0' && $receiptPath !== 'NULL';
+    
+    if ($hasReceipt) {
+        // Clean the path
+        $cleanPath = ltrim($receiptPath, '/');
+        $cleanPath = str_replace('//', '/', $cleanPath);
+        
+        // Build full server path to check if file exists
+        $fullPath = $_SERVER['DOCUMENT_ROOT'] . '/' . $cleanPath;
+        
+        // Alternative path if DOCUMENT_ROOT doesn't work
+        if (!file_exists($fullPath)) {
+            $fullPath = __DIR__ . '/../' . $cleanPath;
+        }
+        
+        $receiptExists = file_exists($fullPath);
+        
+        // Store processed data
+        $reservation['_hasReceipt'] = true;
+        $reservation['_receiptExists'] = $receiptExists;
+        $reservation['_receiptPath'] = $cleanPath;
+        $reservation['_fullPath'] = $fullPath;
+        
+        // Debug logging
+        error_log("Reservation ID {$reservation['ReservationID']}: Receipt Path = {$receiptPath}, Clean Path = {$cleanPath}, Full Path = {$fullPath}, Exists = " . ($receiptExists ? 'YES' : 'NO'));
+    } else {
+        $reservation['_hasReceipt'] = false;
+        $reservation['_receiptExists'] = false;
+        $reservation['_receiptPath'] = '';
+        $reservation['_fullPath'] = '';
+    }
 }
-error_log("==============================");
+unset($reservation); // Break reference
 ?>
 
 <!DOCTYPE html>
@@ -410,7 +439,7 @@ error_log("==============================");
             box-shadow: 0 2px 8px rgba(66, 153, 225, 0.3);
         }
 
-        .view-receipt-btn:hover {
+        .view-receipt-btn:hover:not(:disabled) {
             transform: translateY(-2px);
             box-shadow: 0 4px 15px rgba(66, 153, 225, 0.4);
         }
@@ -421,11 +450,6 @@ error_log("==============================");
             cursor: not-allowed;
             box-shadow: none;
             opacity: 0.6;
-        }
-
-        .view-receipt-btn:disabled:hover {
-            transform: none;
-            box-shadow: none;
         }
 
         .price-tag {
@@ -753,25 +777,15 @@ error_log("==============================");
             <?php else: ?>
                 <?php foreach ($reservations as $reservation): ?>
                     <?php
-                    // Check receipt status
-                    $receiptPath = $reservation['PaymentReceipt'] ?? '';
-                    $hasReceipt = !empty($receiptPath) && $receiptPath !== '0' && $receiptPath !== 'NULL';
+                    // Get processed receipt data
+                    $hasReceipt = $reservation['_hasReceipt'];
+                    $receiptExists = $reservation['_receiptExists'];
+                    $receiptPath = $reservation['_receiptPath'];
+                    
+                    // Payment method checks
                     $paymentMethod = strtolower($reservation['PaymentMethod'] ?? '');
                     $isGcash = $paymentMethod === 'gcash';
                     $isOnsite = $paymentMethod === 'onsite' || $paymentMethod === 'cash';
-                    
-                    // Check if file exists
-                    $receiptExists = false;
-                    if ($hasReceipt) {
-                        $cleanPath = str_replace('//', '/', ltrim($receiptPath, '/'));
-                        $fullPath = $_SERVER['DOCUMENT_ROOT'] . '/' . $cleanPath;
-                        $receiptExists = file_exists($fullPath);
-                        
-                        // Debug log for each reservation
-                        error_log("Checking receipt for Reservation ID " . $reservation['ReservationID'] . 
-                                  " - Path: " . $receiptPath . 
-                                  " - Exists: " . ($receiptExists ? 'YES' : 'NO'));
-                    }
                     ?>
                     <div class="reservation-card">
                         <div class="card-header">
@@ -825,7 +839,7 @@ error_log("==============================");
                         <div class="buttons">
                             <?php if ($isGcash && $hasReceipt && $receiptExists): ?>
                                 <button class="btn view-receipt-btn" 
-                                        onclick="viewReceipt('<?php echo htmlspecialchars($receiptPath); ?>', 
+                                        onclick="viewReceipt('/<?php echo htmlspecialchars($receiptPath); ?>', 
                                                              '<?php echo htmlspecialchars($reservation['ReferenceNumber'] ?? 'N/A'); ?>', 
                                                              '<?php echo htmlspecialchars($reservation['PaymentMethod']); ?>', 
                                                              '<?php echo htmlspecialchars($reservation['PaymentStatus'] ?? 'pending'); ?>',
@@ -838,7 +852,7 @@ error_log("==============================");
                                     <i class="fas fa-exclamation-triangle"></i> No Receipt
                                 </button>
                             <?php elseif ($isGcash && $hasReceipt && !$receiptExists): ?>
-                                <button class="btn view-receipt-btn" disabled title="Receipt file not found on server">
+                                <button class="btn view-receipt-btn" disabled title="Receipt file not found: <?php echo htmlspecialchars($receiptPath); ?>">
                                     <i class="fas fa-times-circle"></i> File Missing
                                 </button>
                             <?php elseif ($isOnsite): ?>
@@ -942,16 +956,12 @@ error_log("==============================");
             document.getElementById('modalAmount').textContent = amount || 'N/A';
             document.getElementById('modalPaymentStatus').textContent = paymentStatus.charAt(0).toUpperCase() + paymentStatus.slice(1);
             
-            // Clean and prepare the image path
-            let cleanPath = receiptPath.trim();
-            cleanPath = cleanPath.replace(/\\/g, '/'); // Replace backslashes
-            cleanPath = cleanPath.replace(/\/\//g, '/'); // Remove double slashes
-            cleanPath = cleanPath.replace(/^\/+/, ''); // Remove leading slashes
+            // Clean the path - ensure it starts with /
+            let imagePath = receiptPath;
+            if (!imagePath.startsWith('/')) {
+                imagePath = '/' + imagePath;
+            }
             
-            // Ensure path starts with / for absolute URL
-            const imagePath = '/' + cleanPath;
-            
-            console.log('Clean Path:', cleanPath);
             console.log('Image URL:', imagePath);
             
             // Set image source
@@ -974,7 +984,9 @@ error_log("==============================");
             };
             
             // Set download link
-            document.getElementById('downloadReceiptBtn').href = imagePath;
+            const downloadBtn = document.getElementById('downloadReceiptBtn');
+            downloadBtn.href = imagePath;
+            downloadBtn.download = `receipt_${referenceNumber}.jpg`;
             
             // Show modal
             document.getElementById('receiptModal').style.display = 'block';
@@ -1036,7 +1048,7 @@ error_log("==============================");
         // Add loading indicator for images
         document.addEventListener('DOMContentLoaded', function() {
             console.log('Reservations page loaded');
-            console.log('Document root:', '<?php echo $_SERVER["DOCUMENT_ROOT"]; ?>');
+            console.log('Total reservations on page:', <?php echo count($reservations); ?>);
         });
     </script>
 </body>
