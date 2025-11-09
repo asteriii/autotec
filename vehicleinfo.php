@@ -1253,104 +1253,155 @@ $vehicle_categories_result = $conn->query($vehicle_categories_query);
         }
 
         function submitRegistration() {
-            if (!validateCurrentStep()) return;
-            
-            const formData = new FormData();
-            
-            formData.append('branchId', selectedBranchId);
-            formData.append('branchName', selectedBranchName);
-            formData.append('plateNumber', document.getElementById('plateNumber').value);
-            formData.append('vehicleType', document.getElementById('vehicleType').value);
-            formData.append('brand', document.getElementById('brand').value);
-            formData.append('vehicleCategory', document.getElementById('vehicleCategory').value);
-            
-            const vehicleTypeSelect = document.getElementById('vehicleType');
-            const selectedOption = vehicleTypeSelect.options[vehicleTypeSelect.selectedIndex];
-            if (selectedOption && selectedOption.dataset.price) {
-                formData.append('price', selectedOption.dataset.price);
-            }
-            
-            formData.append('firstName', document.querySelector('#step3 #firstName').value);
-            formData.append('lastName', document.querySelector('#step3 #lastName').value);
-            formData.append('middleName', document.querySelector('#step3 #middleName').value);
-            formData.append('contactNumber', document.querySelector('#step3 #contactNumber').value);
-            formData.append('email', document.querySelector('#step3 #email').value);
-            formData.append('address', document.querySelector('#step3 #address').value);
-            
-            const year = selectedDate.getFullYear();
-            const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
-            const day = String(selectedDate.getDate()).padStart(2, '0');
-            const scheduleDate = `${year}-${month}-${day}`;
+    if (!validateCurrentStep()) return;
+    
+    const formData = new FormData();
+    
+    // Add all form fields
+    formData.append('branchId', selectedBranchId);
+    formData.append('branchName', selectedBranchName);
+    formData.append('plateNumber', document.getElementById('plateNumber').value);
+    formData.append('vehicleType', document.getElementById('vehicleType').value);
+    formData.append('brand', document.getElementById('brand').value);
+    formData.append('vehicleCategory', document.getElementById('vehicleCategory').value);
+    
+    const vehicleTypeSelect = document.getElementById('vehicleType');
+    const selectedOption = vehicleTypeSelect.options[vehicleTypeSelect.selectedIndex];
+    if (selectedOption && selectedOption.dataset.price) {
+        formData.append('price', selectedOption.dataset.price);
+    }
+    
+    formData.append('firstName', document.querySelector('#step3 #firstName').value);
+    formData.append('lastName', document.querySelector('#step3 #lastName').value);
+    formData.append('middleName', document.querySelector('#step3 #middleName').value);
+    formData.append('contactNumber', document.querySelector('#step3 #contactNumber').value);
+    formData.append('email', document.querySelector('#step3 #email').value);
+    formData.append('address', document.querySelector('#step3 #address').value);
+    
+    const year = selectedDate.getFullYear();
+    const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+    const day = String(selectedDate.getDate()).padStart(2, '0');
+    const scheduleDate = `${year}-${month}-${day}`;
 
-            formData.append('scheduleDate', scheduleDate);
-            formData.append('scheduleTime', selectedTime);
-            formData.append('paymentMethod', selectedPaymentMethod);
+    formData.append('scheduleDate', scheduleDate);
+    formData.append('scheduleTime', selectedTime);
+    formData.append('paymentMethod', selectedPaymentMethod);
+    
+    // IMPROVED FILE UPLOAD HANDLING
+    if (selectedPaymentMethod === 'gcash') {
+        const fileInput = document.getElementById('paymentReceipt');
+        
+        // Double check file exists
+        if (!fileInput.files || !fileInput.files[0]) {
+            alert('Please upload your GCash payment receipt before submitting.');
+            return;
+        }
+        
+        const file = fileInput.files[0];
+        
+        // Final validation before upload
+        const maxSize = 5 * 1024 * 1024; // 5MB
+        if (file.size > maxSize) {
+            alert('Payment receipt file is too large. Maximum size is 5MB.');
+            return;
+        }
+        
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        if (!allowedTypes.includes(file.type.toLowerCase())) {
+            alert('Invalid file format. Please upload an image (JPG, PNG, GIF, or WebP).');
+            return;
+        }
+        
+        // Append file with explicit filename
+        formData.append('paymentReceipt', file, file.name);
+        
+        console.log('Payment receipt attached:', {
+            name: file.name,
+            size: file.size,
+            type: file.type
+        });
+    }
+    
+    // Debug: Log FormData contents
+    console.log('=== FormData Contents ===');
+    for (let [key, value] of formData.entries()) {
+        if (value instanceof File) {
+            console.log(key + ':', 'FILE -', value.name, value.size, 'bytes');
+        } else {
+            console.log(key + ':', value);
+        }
+    }
+    console.log('========================');
+    
+    const nextBtn = document.getElementById('nextBtn');
+    nextBtn.disabled = true;
+    nextBtn.textContent = 'Submitting...';
+    
+    // Submit with fetch
+    fetch('submit_reservation.php', {
+        method: 'POST',
+        body: formData
+        // CRITICAL: Do NOT set Content-Type header - let browser handle it with multipart boundary
+    })
+    .then(response => {
+        console.log('Response status:', response.status);
+        console.log('Response headers:', response.headers);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.text();
+    })
+    .then(text => {
+        console.log('Raw response:', text);
+        try {
+            return JSON.parse(text);
+        } catch (e) {
+            console.error('JSON parse error:', e);
+            console.error('Response text:', text);
+            throw new Error('Invalid JSON response from server. Please check server logs.');
+        }
+    })
+    .then(data => {
+        console.log('Parsed response:', data);
+        
+        if (data.success) {
+            document.getElementById('referenceNumber').textContent = data.referenceNumber;
             
-            if (selectedPaymentMethod === 'gcash' && paymentReceiptFile) {
-                formData.append('paymentReceipt', paymentReceiptFile);
+            const paymentMessage = document.getElementById('paymentSuccessMessage');
+            if (selectedPaymentMethod === 'gcash') {
+                paymentMessage.innerHTML = `
+                    <div style="margin-top: 15px; padding: 15px; background: #e8f5e9; border-radius: 5px; border-left: 4px solid #4caf50;">
+                        <strong>✅ Payment Receipt Uploaded Successfully</strong><br>
+                        <span style="color: #666;">Your payment receipt has been uploaded. Status: <strong>${data.paymentStatus}</strong></span><br>
+                        <span style="color: #666; font-size: 12px;">Receipt: ${data.paymentReceipt || 'Saved'}</span>
+                    </div>
+                `;
+            } else {
+                paymentMessage.innerHTML = `
+                    <div style="margin-top: 15px; padding: 15px; background: #fff3e0; border-radius: 5px; border-left: 4px solid #ff9800;">
+                        <strong>📋 On-Site Payment</strong><br>
+                        <span style="color: #666;">Please pay at the testing center. Your appointment receipt is available in your profile.</span>
+                    </div>
+                `;
             }
             
-            const nextBtn = document.getElementById('nextBtn');
-            nextBtn.disabled = true;
-            nextBtn.textContent = 'Submitting...';
-            
-            fetch('submit_reservation.php', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.text();
-            })
-            .then(text => {
-                try {
-                    return JSON.parse(text);
-                } catch (e) {
-                    console.error('JSON parse error:', e);
-                    console.error('Response text:', text);
-                    throw new Error('Invalid JSON response from server');
-                }
-            })
-            .then(data => {
-                if (data.success) {
-                    document.getElementById('referenceNumber').textContent = data.referenceNumber;
-                    
-                    const paymentMessage = document.getElementById('paymentSuccessMessage');
-                    if (selectedPaymentMethod === 'gcash') {
-                        paymentMessage.innerHTML = `
-                            <div style="margin-top: 15px; padding: 15px; background: #fff3e0; border-radius: 5px; border-left: 4px solid #ff9800;">
-                                <strong>⏳ Payment Pending Verification</strong><br>
-                                <span style="color: #666;">Your payment receipt has been uploaded successfully. Please wait while we verify your payment. You will be notified once verified.</span>
-                            </div>
-                        `;
-                    } else {
-                        paymentMessage.innerHTML = `
-                            <div style="margin-top: 15px; padding: 15px; background: #fff3e0; border-radius: 5px; border-left: 4px solid #ff9800;">
-                                <strong>📋 On-Site Payment</strong><br>
-                                <span style="color: #666;">Please pay at the testing center. Your appointment receipt is available in your profile for download.</span>
-                            </div>
-                        `;
-                    }
-                    
-                    document.getElementById('successModal').style.display = 'block';
-                    setTimeout(() => resetForm(), 2000);
-                } else {
-                    document.getElementById('errorMessage').textContent = data.message || 'Registration failed. Please try again.';
-                    document.getElementById('errorModal').style.display = 'block';
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                document.getElementById('errorMessage').textContent = 'Network error. Please check your connection and try again.';
-                document.getElementById('errorModal').style.display = 'block';
-            })
-            .finally(() => {
-                nextBtn.disabled = false;
-                nextBtn.textContent = 'Submit Registration';
-            });
+            document.getElementById('successModal').style.display = 'block';
+            setTimeout(() => resetForm(), 2000);
+        } else {
+            throw new Error(data.message || 'Registration failed');
         }
+    })
+    .catch(error => {
+        console.error('Submission error:', error);
+        document.getElementById('errorMessage').textContent = error.message || 'Network error. Please check your connection and try again.';
+        document.getElementById('errorModal').style.display = 'block';
+    })
+    .finally(() => {
+        nextBtn.disabled = false;
+        nextBtn.textContent = 'Submit Registration';
+    });
+}
 
         function resetForm() {
             document.querySelectorAll('input, select, textarea').forEach(element => {

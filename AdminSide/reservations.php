@@ -53,6 +53,16 @@ $categories = [
     2 => 'Standard', 
     3 => 'Premium'
 ];
+
+// Debug logging for admin
+error_log("=== ADMIN RESERVATIONS PAGE ===");
+error_log("Total reservations fetched: " . count($reservations));
+foreach ($reservations as $idx => $res) {
+    error_log("Reservation " . ($idx + 1) . " - ID: " . $res['ReservationID'] . 
+              ", PaymentMethod: " . ($res['PaymentMethod'] ?? 'NULL') . 
+              ", PaymentReceipt: " . ($res['PaymentReceipt'] ?? 'NULL'));
+}
+error_log("==============================");
 ?>
 
 <!DOCTYPE html>
@@ -406,14 +416,16 @@ $categories = [
         }
 
         .view-receipt-btn:disabled {
-            background: #e2e8f0;
-            color: #a0aec0;
+            background: #cbd5e0;
+            color: #718096;
             cursor: not-allowed;
             box-shadow: none;
+            opacity: 0.6;
         }
 
         .view-receipt-btn:disabled:hover {
             transform: none;
+            box-shadow: none;
         }
 
         .price-tag {
@@ -427,20 +439,49 @@ $categories = [
         }
 
         .status-badge {
-            padding: 4px 12px;
+            padding: 6px 14px;
             border-radius: 12px;
             font-size: 12px;
-            font-weight: 500;
+            font-weight: 600;
+            text-transform: uppercase;
         }
 
         .status-pending {
-            background: #fff3e0;
-            color: #ff9800;
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
         }
 
         .status-confirmed {
-            background: #e8f5e9;
-            color: #4caf50;
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .receipt-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 500;
+            margin-top: 5px;
+        }
+
+        .receipt-uploaded {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .receipt-missing {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .receipt-not-required {
+            background: #d1ecf1;
+            color: #0c5460;
         }
 
         .no-reservations {
@@ -459,13 +500,14 @@ $categories = [
         .modal {
             display: none;
             position: fixed;
-            z-index: 1000;
+            z-index: 10000;
             left: 0;
             top: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0,0,0,0.8);
+            background-color: rgba(0,0,0,0.85);
             animation: fadeIn 0.3s ease;
+            backdrop-filter: blur(5px);
         }
 
         @keyframes fadeIn {
@@ -476,28 +518,44 @@ $categories = [
         .modal-content {
             position: relative;
             margin: 2% auto;
-            padding: 20px;
+            padding: 30px;
             width: 90%;
-            max-width: 800px;
+            max-width: 900px;
             background: white;
-            border-radius: 16px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
             max-height: 90vh;
             overflow-y: auto;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
         }
 
         .modal-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
+            margin-bottom: 25px;
+            padding-bottom: 20px;
             border-bottom: 2px solid #e2e8f0;
         }
 
         .modal-header h3 {
             color: #2d3748;
-            font-size: 24px;
+            font-size: 26px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
 
         .close-modal {
@@ -505,40 +563,64 @@ $categories = [
             font-weight: bold;
             color: #718096;
             cursor: pointer;
-            transition: color 0.3s;
+            transition: all 0.3s;
             background: none;
             border: none;
-            padding: 0;
+            padding: 5px 10px;
             line-height: 1;
+            border-radius: 8px;
         }
 
         .close-modal:hover {
             color: #c0392b;
+            background: #f7fafc;
         }
 
         .receipt-image-container {
             text-align: center;
-            margin: 20px 0;
+            margin: 25px 0;
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 12px;
         }
 
         .receipt-image {
             max-width: 100%;
             height: auto;
             border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+
+        .receipt-image:hover {
+            transform: scale(1.02);
+        }
+
+        .receipt-error {
+            padding: 40px;
+            text-align: center;
+            color: #e53e3e;
+        }
+
+        .receipt-error i {
+            font-size: 64px;
+            margin-bottom: 20px;
+            opacity: 0.5;
         }
 
         .payment-info {
-            background: #f7fafc;
-            padding: 20px;
+            background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+            padding: 25px;
             border-radius: 12px;
-            margin-top: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #e2e8f0;
         }
 
         .payment-info-row {
             display: flex;
             justify-content: space-between;
-            padding: 10px 0;
+            padding: 12px 0;
             border-bottom: 1px solid #e2e8f0;
         }
 
@@ -549,10 +631,43 @@ $categories = [
         .payment-info-label {
             font-weight: 600;
             color: #4a5568;
+            font-size: 14px;
         }
 
         .payment-info-value {
             color: #2d3748;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .modal-actions a {
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .download-btn {
+            background: linear-gradient(135deg, #48bb78, #38a169);
+            color: white;
+        }
+
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(72, 187, 120, 0.3);
         }
 
         @media (max-width: 768px) {
@@ -583,6 +698,11 @@ $categories = [
             .modal-content {
                 width: 95%;
                 margin: 5% auto;
+                padding: 20px;
+            }
+
+            .buttons {
+                flex-wrap: wrap;
             }
         }
     </style>
@@ -632,6 +752,27 @@ $categories = [
                 </div>
             <?php else: ?>
                 <?php foreach ($reservations as $reservation): ?>
+                    <?php
+                    // Check receipt status
+                    $receiptPath = $reservation['PaymentReceipt'] ?? '';
+                    $hasReceipt = !empty($receiptPath) && $receiptPath !== '0' && $receiptPath !== 'NULL';
+                    $paymentMethod = strtolower($reservation['PaymentMethod'] ?? '');
+                    $isGcash = $paymentMethod === 'gcash';
+                    $isOnsite = $paymentMethod === 'onsite' || $paymentMethod === 'cash';
+                    
+                    // Check if file exists
+                    $receiptExists = false;
+                    if ($hasReceipt) {
+                        $cleanPath = str_replace('//', '/', ltrim($receiptPath, '/'));
+                        $fullPath = $_SERVER['DOCUMENT_ROOT'] . '/' . $cleanPath;
+                        $receiptExists = file_exists($fullPath);
+                        
+                        // Debug log for each reservation
+                        error_log("Checking receipt for Reservation ID " . $reservation['ReservationID'] . 
+                                  " - Path: " . $receiptPath . 
+                                  " - Exists: " . ($receiptExists ? 'YES' : 'NO'));
+                    }
+                    ?>
                     <div class="reservation-card">
                         <div class="card-header">
                             <div class="reservation-id">ID: <?php echo $reservation['ReservationID']; ?></div>
@@ -661,7 +802,20 @@ $categories = [
                                 <h4><i class="fas fa-calendar-alt"></i> Appointment Details</h4>
                                 <p><strong>Date:</strong> <?php echo date('M d, Y', strtotime($reservation['Date'])); ?></p>
                                 <p><strong>Time:</strong> <?php echo date('g:i A', strtotime($reservation['Time'])); ?></p>
-                                <p><strong>Payment Method:</strong> <?php echo strtoupper($reservation['PaymentMethod'] ?? 'N/A'); ?></p>
+                                <p><strong>Branch:</strong> <?php echo htmlspecialchars($reservation['BranchName'] ?? 'N/A'); ?></p>
+                                <p><strong>Payment:</strong> <?php echo strtoupper($reservation['PaymentMethod'] ?? 'N/A'); ?>
+                                    <?php if ($isGcash): ?>
+                                        <span class="receipt-status <?php echo $hasReceipt && $receiptExists ? 'receipt-uploaded' : 'receipt-missing'; ?>">
+                                            <i class="fas fa-<?php echo $hasReceipt && $receiptExists ? 'check-circle' : 'exclamation-circle'; ?>"></i>
+                                            <?php echo $hasReceipt && $receiptExists ? 'Receipt Uploaded' : 'No Receipt'; ?>
+                                        </span>
+                                    <?php elseif ($isOnsite): ?>
+                                        <span class="receipt-status receipt-not-required">
+                                            <i class="fas fa-info-circle"></i>
+                                            Pay on Site
+                                        </span>
+                                    <?php endif; ?>
+                                </p>
                                 <div class="price-tag">
                                     ₱<?php echo number_format($reservation['VehiclePrice'] ?? 0, 2); ?>
                                 </div>
@@ -669,29 +823,34 @@ $categories = [
                         </div>
                         
                         <div class="buttons">
-                            <?php 
-                            // Debug: Check what we have
-                            $hasReceipt = !empty($reservation['PaymentReceipt']);
-                            $isGcash = strtolower($reservation['PaymentMethod']) === 'gcash';
-                            
-                            if ($hasReceipt && $isGcash): 
-                            ?>
-                                <button class="btn view-receipt-btn" onclick="viewReceipt('<?php echo htmlspecialchars($reservation['PaymentReceipt']); ?>', '<?php echo htmlspecialchars($reservation['ReferenceNumber'] ?? 'N/A'); ?>', '<?php echo htmlspecialchars($reservation['PaymentMethod']); ?>', '<?php echo htmlspecialchars($reservation['PaymentStatus'] ?? 'pending'); ?>')">
+                            <?php if ($isGcash && $hasReceipt && $receiptExists): ?>
+                                <button class="btn view-receipt-btn" 
+                                        onclick="viewReceipt('<?php echo htmlspecialchars($receiptPath); ?>', 
+                                                             '<?php echo htmlspecialchars($reservation['ReferenceNumber'] ?? 'N/A'); ?>', 
+                                                             '<?php echo htmlspecialchars($reservation['PaymentMethod']); ?>', 
+                                                             '<?php echo htmlspecialchars($reservation['PaymentStatus'] ?? 'pending'); ?>',
+                                                             '<?php echo htmlspecialchars($reservation['Fname'] . ' ' . $reservation['Lname']); ?>',
+                                                             '₱<?php echo number_format($reservation['VehiclePrice'] ?? 0, 2); ?>')">
                                     <i class="fas fa-receipt"></i> View Receipt
                                 </button>
                             <?php elseif ($isGcash && !$hasReceipt): ?>
-                                <button class="btn view-receipt-btn" disabled title="Receipt not uploaded yet">
-                                    <i class="fas fa-receipt"></i> No Receipt
+                                <button class="btn view-receipt-btn" disabled title="Customer has not uploaded receipt yet">
+                                    <i class="fas fa-exclamation-triangle"></i> No Receipt
                                 </button>
-                            <?php elseif (strtolower($reservation['PaymentMethod']) === 'onsite'): ?>
+                            <?php elseif ($isGcash && $hasReceipt && !$receiptExists): ?>
+                                <button class="btn view-receipt-btn" disabled title="Receipt file not found on server">
+                                    <i class="fas fa-times-circle"></i> File Missing
+                                </button>
+                            <?php elseif ($isOnsite): ?>
                                 <button class="btn view-receipt-btn" disabled title="On-site payment - no receipt required">
-                                    <i class="fas fa-money-bill"></i> On-Site
+                                    <i class="fas fa-money-bill"></i> Pay On-Site
                                 </button>
                             <?php else: ?>
                                 <button class="btn view-receipt-btn" disabled>
                                     <i class="fas fa-receipt"></i> N/A
                                 </button>
                             <?php endif; ?>
+                            
                             <button class="btn confirm-btn" onclick="confirmReservation(<?php echo $reservation['ReservationID']; ?>)">
                                 <i class="fas fa-check"></i> Confirm
                             </button>
@@ -715,6 +874,10 @@ $categories = [
             
             <div class="payment-info">
                 <div class="payment-info-row">
+                    <span class="payment-info-label">Customer Name:</span>
+                    <span class="payment-info-value" id="modalCustomerName">-</span>
+                </div>
+                <div class="payment-info-row">
                     <span class="payment-info-label">Reference Number:</span>
                     <span class="payment-info-value" id="modalReferenceNumber">-</span>
                 </div>
@@ -723,13 +886,29 @@ $categories = [
                     <span class="payment-info-value" id="modalPaymentMethod">-</span>
                 </div>
                 <div class="payment-info-row">
+                    <span class="payment-info-label">Amount:</span>
+                    <span class="payment-info-value" id="modalAmount">-</span>
+                </div>
+                <div class="payment-info-row">
                     <span class="payment-info-label">Payment Status:</span>
                     <span class="payment-info-value" id="modalPaymentStatus">-</span>
                 </div>
             </div>
             
-            <div class="receipt-image-container">
-                <img id="receiptImage" class="receipt-image" src="" alt="Payment Receipt">
+            <div class="receipt-image-container" id="receiptImageContainer">
+                <img id="receiptImage" class="receipt-image" src="" alt="Payment Receipt" 
+                     onerror="showReceiptError()" style="display: none;">
+                <div id="receiptError" class="receipt-error" style="display: none;">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <p><strong>Failed to Load Receipt</strong></p>
+                    <p style="font-size: 14px; margin-top: 10px;">The receipt image could not be loaded. The file may have been moved or deleted.</p>
+                </div>
+            </div>
+            
+            <div class="modal-actions">
+                <a id="downloadReceiptBtn" href="#" download class="download-btn">
+                    <i class="fas fa-download"></i> Download Receipt
+                </a>
             </div>
         </div>
     </div>
@@ -750,22 +929,74 @@ $categories = [
             }
         }
 
-        function viewReceipt(receiptPath, referenceNumber, paymentMethod, paymentStatus) {
+        function viewReceipt(receiptPath, referenceNumber, paymentMethod, paymentStatus, customerName, amount) {
+            console.log('=== Opening Receipt Modal ===');
+            console.log('Receipt Path:', receiptPath);
+            console.log('Reference:', referenceNumber);
+            console.log('Customer:', customerName);
+            
             // Set modal content
-            document.getElementById('modalReferenceNumber').textContent = referenceNumber;
+            document.getElementById('modalCustomerName').textContent = customerName || 'N/A';
+            document.getElementById('modalReferenceNumber').textContent = referenceNumber || 'N/A';
             document.getElementById('modalPaymentMethod').textContent = paymentMethod.toUpperCase();
+            document.getElementById('modalAmount').textContent = amount || 'N/A';
             document.getElementById('modalPaymentStatus').textContent = paymentStatus.charAt(0).toUpperCase() + paymentStatus.slice(1);
             
-            // Set image source - ensure path starts with /
-            const imagePath = receiptPath.startsWith('/') ? receiptPath : '/' + receiptPath;
-            document.getElementById('receiptImage').src = imagePath;
+            // Clean and prepare the image path
+            let cleanPath = receiptPath.trim();
+            cleanPath = cleanPath.replace(/\\/g, '/'); // Replace backslashes
+            cleanPath = cleanPath.replace(/\/\//g, '/'); // Remove double slashes
+            cleanPath = cleanPath.replace(/^\/+/, ''); // Remove leading slashes
+            
+            // Ensure path starts with / for absolute URL
+            const imagePath = '/' + cleanPath;
+            
+            console.log('Clean Path:', cleanPath);
+            console.log('Image URL:', imagePath);
+            
+            // Set image source
+            const imgElement = document.getElementById('receiptImage');
+            const errorElement = document.getElementById('receiptError');
+            
+            // Reset display states
+            imgElement.style.display = 'none';
+            errorElement.style.display = 'none';
+            
+            // Set image source
+            imgElement.src = imagePath;
+            imgElement.onload = function() {
+                console.log('✓ Image loaded successfully');
+                imgElement.style.display = 'block';
+            };
+            imgElement.onerror = function() {
+                console.error('✗ Failed to load image:', imagePath);
+                showReceiptError();
+            };
+            
+            // Set download link
+            document.getElementById('downloadReceiptBtn').href = imagePath;
             
             // Show modal
             document.getElementById('receiptModal').style.display = 'block';
+            console.log('Modal displayed');
+        }
+
+        function showReceiptError() {
+            document.getElementById('receiptImage').style.display = 'none';
+            document.getElementById('receiptError').style.display = 'block';
         }
 
         function closeReceiptModal() {
-            document.getElementById('receiptModal').style.display = 'none';
+            const modal = document.getElementById('receiptModal');
+            modal.style.display = 'none';
+            
+            // Reset image
+            const imgElement = document.getElementById('receiptImage');
+            imgElement.src = '';
+            imgElement.style.display = 'none';
+            
+            // Hide error
+            document.getElementById('receiptError').style.display = 'none';
         }
 
         // Close modal when clicking outside of it
@@ -776,14 +1007,23 @@ $categories = [
             }
         }
 
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeReceiptModal();
+            }
+        });
+
         function confirmReservation(id) {
             if (confirm('Are you sure you want to confirm this reservation?')) {
+                // You can create a confirm_reservation.php file or handle via AJAX
                 window.location.href = 'confirm_reservation.php?id=' + id;
             }
         }
 
         function cancelReservation(id) {
-            if (confirm('Are you sure you want to cancel this reservation?')) {
+            if (confirm('Are you sure you want to cancel this reservation? This action cannot be undone.')) {
+                // You can create a cancel_reservation.php file or handle via AJAX
                 window.location.href = 'cancel_reservation.php?id=' + id;
             }
         }
@@ -792,6 +1032,12 @@ $categories = [
         function toggleMobileSidebar() {
             document.querySelector('.sidebar').classList.toggle('mobile-open');
         }
+
+        // Add loading indicator for images
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Reservations page loaded');
+            console.log('Document root:', '<?php echo $_SERVER["DOCUMENT_ROOT"]; ?>');
+        });
     </script>
 </body>
 </html>
