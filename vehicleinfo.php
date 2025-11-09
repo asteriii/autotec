@@ -685,584 +685,643 @@ $vehicle_categories_result = $conn->query($vehicle_categories_query);
     <?php include 'footer.php'; ?>
 
     <script>
-        let currentStep = 1;
-        const totalSteps = 5;
-        let selectedDate = null;
-        let selectedTime = null;
-        let selectedBranchId = null;
-        let selectedBranchName = null;
-        let selectedBranchQR = null;
-        let selectedPaymentMethod = null;
-        let paymentReceiptFile = null;
-        let currentMonth = new Date().getMonth();
-        let currentYear = new Date().getFullYear();
-        let slotAvailability = {};
+        // ============================================
+// COMPLETE JAVASCRIPT SECTION FOR vehicleinfo.php
+// Replace everything between <script> and tags with this code
+// ============================================
 
-        // Initialize calendar when page loads
-        document.addEventListener('DOMContentLoaded', function () {
-            initializeCalendar();
+let currentStep = 1;
+const totalSteps = 5;
+let selectedDate = null;
+let selectedTime = null;
+let selectedBranchId = null;
+let selectedBranchName = null;
+let selectedBranchQR = null;
+let selectedPaymentMethod = null;
+let paymentReceiptFile = null;
+let currentMonth = new Date().getMonth();
+let currentYear = new Date().getFullYear();
+let slotAvailability = {};
+
+// Initialize calendar when page loads
+document.addEventListener('DOMContentLoaded', function () {
+    initializeCalendar();
+});
+
+// Branch selection function
+function selectBranch(element, branchId, branchName, gcashQR) {
+    console.log('Branch selected:', {branchId, branchName, gcashQR});
+    
+    const previousSelected = document.querySelector('.branch-card.selected');
+    if (previousSelected) {
+        previousSelected.classList.remove('selected');
+        const previousRadio = previousSelected.querySelector('.branch-radio');
+        if (previousRadio) previousRadio.checked = false;
+    }
+    
+    element.classList.add('selected');
+    const radio = element.querySelector('.branch-radio');
+    if (radio) radio.checked = true;
+    
+    selectedBranchId = branchId;
+    selectedBranchName = branchName;
+    selectedBranchQR = gcashQR;
+    
+    updateQRCodePreview();
+}
+
+function updateQRCodePreview() {
+    const qrContainer = document.getElementById('qrCodeContainer');
+    if (!qrContainer) return;
+    
+    if (selectedBranchQR && selectedBranchQR.trim() !== '') {
+        qrContainer.innerHTML = `
+            <img src="${selectedBranchQR}" alt="GCash QR Code" class="qr-code-image">
+            <p style="margin-top: 10px; color: #666;">Scan this QR code with your GCash app</p>
+        `;
+    } else {
+        qrContainer.innerHTML = `
+            <div class="qr-code-placeholder">
+                <p>⚠️ GCash QR code not available for this branch</p>
+                <p style="font-size: 12px; margin-top: 10px;">Please choose "Pay On-Site" option or contact the branch</p>
+            </div>
+        `;
+    }
+}
+
+function toggleMap(event, button, mapLink) {
+    event.stopPropagation();
+    const mapContainer = button.nextElementSibling;
+    const iframe = mapContainer.querySelector('iframe');
+    
+    if (mapContainer.style.display === 'none') {
+        mapContainer.style.display = 'block';
+        iframe.src = mapLink;
+        button.textContent = 'Hide Location';
+    } else {
+        mapContainer.style.display = 'none';
+        iframe.src = '';
+        button.textContent = 'View Location';
+    }
+}
+
+function selectPaymentMethod(method) {
+    selectedPaymentMethod = method;
+    
+    document.querySelectorAll('.payment-card').forEach(card => {
+        card.classList.remove('selected');
+    });
+    event.currentTarget.classList.add('selected');
+    
+    const gcashSection = document.getElementById('gcashSection');
+    const onsiteMessage = document.getElementById('onsiteMessage');
+    const receiptInput = document.getElementById('paymentReceipt');
+    
+    if (method === 'gcash') {
+        gcashSection.classList.add('active');
+        onsiteMessage.classList.remove('active');
+        updateQRCodePreview();
+        if (receiptInput) receiptInput.setAttribute('required', 'required');
+    } else {
+        gcashSection.classList.remove('active');
+        onsiteMessage.classList.add('active');
+        if (receiptInput) receiptInput.removeAttribute('required');
+    }
+}
+
+function previewReceipt(input) {
+    const preview = document.getElementById('receiptPreview');
+    
+    console.log('previewReceipt called');
+    
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        
+        console.log('File selected:', {
+            name: file.name,
+            size: file.size,
+            type: file.type
         });
-
-        // Branch selection function
-        function selectBranch(element, branchId, branchName, gcashQR) {
-            console.log('Branch selected:', {branchId, branchName, gcashQR});
-            
-            const previousSelected = document.querySelector('.branch-card.selected');
-            if (previousSelected) {
-                previousSelected.classList.remove('selected');
-                const previousRadio = previousSelected.querySelector('.branch-radio');
-                if (previousRadio) previousRadio.checked = false;
-            }
-            
-            element.classList.add('selected');
-            const radio = element.querySelector('.branch-radio');
-            if (radio) radio.checked = true;
-            
-            selectedBranchId = branchId;
-            selectedBranchName = branchName;
-            selectedBranchQR = gcashQR;
-            
-            updateQRCodePreview();
+        
+        const maxSize = 5 * 1024 * 1024; // 5MB
+        
+        if (file.size > maxSize) {
+            alert('File size exceeds 5MB. Please choose a smaller file.');
+            input.value = '';
+            preview.innerHTML = '';
+            paymentReceiptFile = null;
+            return;
         }
-
-        function updateQRCodePreview() {
-            const qrContainer = document.getElementById('qrCodeContainer');
-            if (!qrContainer) return;
-            
-            if (selectedBranchQR && selectedBranchQR.trim() !== '') {
-                qrContainer.innerHTML = `
-                    <img src="${selectedBranchQR}" alt="GCash QR Code" class="qr-code-image">
-                    <p style="margin-top: 10px; color: #666;">Scan this QR code with your GCash app</p>
-                `;
-            } else {
-                qrContainer.innerHTML = `
-                    <div class="qr-code-placeholder">
-                        <p>⚠️ GCash QR code not available for this branch</p>
-                        <p style="font-size: 12px; margin-top: 10px;">Please choose "Pay On-Site" option or contact the branch</p>
-                    </div>
-                `;
-            }
+        
+        if (file.size === 0) {
+            alert('The selected file appears to be empty. Please choose a valid image.');
+            input.value = '';
+            preview.innerHTML = '';
+            paymentReceiptFile = null;
+            return;
         }
-
-        function toggleMap(event, button, mapLink) {
-            event.stopPropagation();
-            const mapContainer = button.nextElementSibling;
-            const iframe = mapContainer.querySelector('iframe');
-            
-            if (mapContainer.style.display === 'none') {
-                mapContainer.style.display = 'block';
-                iframe.src = mapLink;
-                button.textContent = 'Hide Location';
-            } else {
-                mapContainer.style.display = 'none';
-                iframe.src = '';
-                button.textContent = 'View Location';
-            }
+        
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        const fileType = file.type.toLowerCase();
+        
+        if (!allowedTypes.includes(fileType)) {
+            alert('Invalid file type. Please upload an image file (JPG, PNG, GIF, or WebP).');
+            input.value = '';
+            preview.innerHTML = '';
+            paymentReceiptFile = null;
+            return;
         }
+        
+        paymentReceiptFile = file;
+        
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            const fileSizeKB = (file.size / 1024).toFixed(2);
+            preview.innerHTML = `
+                <img src="${e.target.result}" alt="Payment Receipt Preview" style="max-width: 100%; max-height: 300px; border-radius: 10px; border: 2px solid #e0e0e0;">
+                <div class="file-name" style="margin-top: 10px; color: #4caf50; font-weight: bold;">
+                    ✓ ${file.name} (${fileSizeKB} KB)
+                </div>
+                <div style="margin-top: 5px; font-size: 12px; color: #666;">
+                    Ready to upload
+                </div>
+            `;
+            console.log('✓ Preview generated successfully');
+        };
+        
+        reader.onerror = function() {
+            console.error('FileReader error');
+            alert('Error reading file. Please try again.');
+            input.value = '';
+            preview.innerHTML = '';
+            paymentReceiptFile = null;
+        };
+        
+        reader.readAsDataURL(file);
+        
+    } else {
+        console.log('No file selected');
+        preview.innerHTML = '';
+        paymentReceiptFile = null;
+    }
+}
 
-        function selectPaymentMethod(method) {
-            selectedPaymentMethod = method;
-            
-            document.querySelectorAll('.payment-card').forEach(card => {
-                card.classList.remove('selected');
-            });
-            event.currentTarget.classList.add('selected');
-            
-            const gcashSection = document.getElementById('gcashSection');
-            const onsiteMessage = document.getElementById('onsiteMessage');
-            const receiptInput = document.getElementById('paymentReceipt');
-            
-            if (method === 'gcash') {
-                gcashSection.classList.add('active');
-                onsiteMessage.classList.remove('active');
-                updateQRCodePreview();
-                if (receiptInput) receiptInput.setAttribute('required', 'required');
-            } else {
-                gcashSection.classList.remove('active');
-                onsiteMessage.classList.add('active');
-                if (receiptInput) receiptInput.removeAttribute('required');
-            }
+function updateVehicleTypePrice() {
+    const vehicleTypeSelect = document.getElementById('vehicleType');
+    const priceDisplay = document.getElementById('priceDisplay');
+    const selectedOption = vehicleTypeSelect.options[vehicleTypeSelect.selectedIndex];
+    
+    if (selectedOption && selectedOption.dataset.price) {
+        const price = parseInt(selectedOption.dataset.price);
+        priceDisplay.textContent = `Testing Fee: ₱${price.toLocaleString()}.00`;
+        priceDisplay.style.display = 'block';
+    } else {
+        priceDisplay.style.display = 'none';
+    }
+}
+
+function initializeCalendar() {
+    updateCalendar();
+}
+
+function updateCalendar() {
+    const calendar = document.getElementById('calendar');
+    const today = new Date();
+    
+    const calendarDays = calendar.querySelectorAll('.calendar-day');
+    calendarDays.forEach(day => day.remove());
+    
+    const monthNames = ["January", "February", "March", "April", "May", "June",
+        "July", "August", "September", "October", "November", "December"];
+    document.getElementById('currentMonth').textContent = `${monthNames[currentMonth]} ${currentYear}`;
+    
+    const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+    
+    for (let i = 0; i < firstDay; i++) {
+        const emptyDay = document.createElement('div');
+        emptyDay.className = 'calendar-day unavailable';
+        calendar.appendChild(emptyDay);
+    }
+    
+    for (let day = 1; day <= daysInMonth; day++) {
+        const dayElement = document.createElement('div');
+        dayElement.className = 'calendar-day';
+        dayElement.textContent = day;
+        
+        const dayDate = new Date(currentYear, currentMonth, day);
+        
+        if (dayDate < today.setHours(0, 0, 0, 0) || dayDate.getDay() === 0 || dayDate.getDay() === 6) {
+            dayElement.classList.add('unavailable');
+        } else {
+            dayElement.classList.add('available');
+            dayElement.onclick = function() {
+                selectDate(dayDate, dayElement);
+            };
         }
+        
+        calendar.appendChild(dayElement);
+    }
+}
 
-        function previewReceipt(input) {
-            const preview = document.getElementById('receiptPreview');
-            
-            if (input.files && input.files[0]) {
-                const file = input.files[0];
-                const maxSize = 5 * 1024 * 1024;
-                
-                if (file.size > maxSize) {
-                    alert('File size exceeds 5MB. Please choose a smaller file.');
-                    input.value = '';
-                    preview.innerHTML = '';
-                    paymentReceiptFile = null;
-                    return;
-                }
-                
-                const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-                if (!allowedTypes.includes(file.type.toLowerCase())) {
-                    alert('Invalid file type. Please upload an image file (JPG, PNG, GIF, or WebP).');
-                    input.value = '';
-                    preview.innerHTML = '';
-                    paymentReceiptFile = null;
-                    return;
-                }
-                
-                paymentReceiptFile = file;
-                const reader = new FileReader();
-                
-                reader.onload = function(e) {
-                    const fileSizeKB = (file.size / 1024).toFixed(2);
-                    preview.innerHTML = `
-                        <img src="${e.target.result}" alt="Payment Receipt" style="max-width: 100%; max-height: 300px; border-radius: 10px; border: 2px solid #e0e0e0;">
-                        <div class="file-name" style="margin-top: 10px; color: #4caf50;">
-                            ✓ ${file.name} (${fileSizeKB} KB)
-                        </div>
-                    `;
-                };
-                
-                reader.onerror = function() {
-                    alert('Error reading file. Please try again.');
-                    input.value = '';
-                    preview.innerHTML = '';
-                    paymentReceiptFile = null;
-                };
-                
-                reader.readAsDataURL(file);
-            } else {
-                preview.innerHTML = '';
-                paymentReceiptFile = null;
-            }
+function changeMonth(direction) {
+    currentMonth += direction;
+    if (currentMonth > 11) {
+        currentMonth = 0;
+        currentYear++;
+    } else if (currentMonth < 0) {
+        currentMonth = 11;
+        currentYear--;
+    }
+    updateCalendar();
+}
+
+function selectDate(date, element) {
+    const previousSelected = document.querySelector('.calendar-day.selected');
+    if (previousSelected) {
+        previousSelected.classList.remove('selected');
+    }
+    
+    element.classList.add('selected');
+    selectedDate = date;
+    selectedTime = null;
+    
+    const previousTimeSelected = document.querySelector('.time-slot.selected');
+    if (previousTimeSelected) {
+        previousTimeSelected.classList.remove('selected');
+    }
+    
+    fetchSlotAvailability(date);
+}
+
+function selectTimeSlot(element, time) {
+    if (element.classList.contains('full') || element.classList.contains('unavailable')) {
+        return;
+    }
+    
+    const previousSelected = document.querySelector('.time-slot.selected');
+    if (previousSelected) {
+        previousSelected.classList.remove('selected');
+    }
+    
+    element.classList.add('selected');
+    selectedTime = time;
+}
+
+function fetchSlotAvailability(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const formattedDate = `${year}-${month}-${day}`;
+    
+    const timeSlots = document.querySelectorAll('.time-slot');
+    timeSlots.forEach(slot => {
+        slot.classList.add('checking');
+        if (!slot.dataset.originalTime) {
+            slot.dataset.originalTime = slot.textContent.trim();
         }
-
-        function updateVehicleTypePrice() {
-            const vehicleTypeSelect = document.getElementById('vehicleType');
-            const priceDisplay = document.getElementById('priceDisplay');
-            const selectedOption = vehicleTypeSelect.options[vehicleTypeSelect.selectedIndex];
-            
-            if (selectedOption && selectedOption.dataset.price) {
-                const price = parseInt(selectedOption.dataset.price);
-                priceDisplay.textContent = `Testing Fee: ₱${price.toLocaleString()}.00`;
-                priceDisplay.style.display = 'block';
-            } else {
-                priceDisplay.style.display = 'none';
+        slot.innerHTML = slot.dataset.originalTime + '<br><small>Checking...</small>';
+    });
+    
+    if (!selectedBranchName) {
+        alert('Please select a branch first before choosing a date.');
+        timeSlots.forEach(slot => {
+            slot.classList.remove('checking');
+            slot.innerHTML = slot.dataset.originalTime;
+        });
+        return;
+    }
+    
+    const url = `check_availability.php?date=${formattedDate}&branchName=${encodeURIComponent(selectedBranchName)}`;
+    
+    fetch(url)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
-        }
-
-        function initializeCalendar() {
-            updateCalendar();
-        }
-
-        function updateCalendar() {
-            const calendar = document.getElementById('calendar');
-            const today = new Date();
-            
-            const calendarDays = calendar.querySelectorAll('.calendar-day');
-            calendarDays.forEach(day => day.remove());
-            
-            const monthNames = ["January", "February", "March", "April", "May", "June",
-                "July", "August", "September", "October", "November", "December"];
-            document.getElementById('currentMonth').textContent = `${monthNames[currentMonth]} ${currentYear}`;
-            
-            const firstDay = new Date(currentYear, currentMonth, 1).getDay();
-            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-            
-            for (let i = 0; i < firstDay; i++) {
-                const emptyDay = document.createElement('div');
-                emptyDay.className = 'calendar-day unavailable';
-                calendar.appendChild(emptyDay);
-            }
-            
-            for (let day = 1; day <= daysInMonth; day++) {
-                const dayElement = document.createElement('div');
-                dayElement.className = 'calendar-day';
-                dayElement.textContent = day;
-                
-                const dayDate = new Date(currentYear, currentMonth, day);
-                
-                if (dayDate < today.setHours(0, 0, 0, 0) || dayDate.getDay() === 0 || dayDate.getDay() === 6) {
-                    dayElement.classList.add('unavailable');
-                } else {
-                    dayElement.classList.add('available');
-                    dayElement.onclick = function() {
-                        selectDate(dayDate, dayElement);
-                    };
-                }
-                
-                calendar.appendChild(dayElement);
-            }
-        }
-
-        function changeMonth(direction) {
-            currentMonth += direction;
-            if (currentMonth > 11) {
-                currentMonth = 0;
-                currentYear++;
-            } else if (currentMonth < 0) {
-                currentMonth = 11;
-                currentYear--;
-            }
-            updateCalendar();
-        }
-
-        function selectDate(date, element) {
-            const previousSelected = document.querySelector('.calendar-day.selected');
-            if (previousSelected) {
-                previousSelected.classList.remove('selected');
-            }
-            
-            element.classList.add('selected');
-            selectedDate = date;
-            selectedTime = null;
-            
-            const previousTimeSelected = document.querySelector('.time-slot.selected');
-            if (previousTimeSelected) {
-                previousTimeSelected.classList.remove('selected');
-            }
-            
-            fetchSlotAvailability(date);
-        }
-
-        function selectTimeSlot(element, time) {
-            if (element.classList.contains('full') || element.classList.contains('unavailable')) {
+            return response.json();
+        })
+        .then(data => {
+            if (data.error) {
+                console.error('Error from server:', data.error);
+                alert('Error: ' + data.error);
                 return;
             }
             
-            const previousSelected = document.querySelector('.time-slot.selected');
-            if (previousSelected) {
-                previousSelected.classList.remove('selected');
-            }
+            slotAvailability = data.slot_counts || {};
+            const maxSlots = data.max_slots || 3;
             
-            element.classList.add('selected');
-            selectedTime = time;
-        }
-
-        function fetchSlotAvailability(date) {
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            const formattedDate = `${year}-${month}-${day}`;
-            
-            const timeSlots = document.querySelectorAll('.time-slot');
             timeSlots.forEach(slot => {
-                slot.classList.add('checking');
-                if (!slot.dataset.originalTime) {
-                    slot.dataset.originalTime = slot.textContent.trim();
-                }
-                slot.innerHTML = slot.dataset.originalTime + '<br><small>Checking...</small>';
-            });
-            
-            if (!selectedBranchName) {
-                alert('Please select a branch first before choosing a date.');
-                timeSlots.forEach(slot => {
-                    slot.classList.remove('checking');
-                    slot.innerHTML = slot.dataset.originalTime;
-                });
-                return;
-            }
-            
-            const url = `check_availability.php?date=${formattedDate}&branchName=${encodeURIComponent(selectedBranchName)}`;
-            
-            fetch(url)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    if (data.error) {
-                        console.error('Error from server:', data.error);
-                        alert('Error: ' + data.error);
-                        return;
-                    }
-                    
-                    slotAvailability = data.slot_counts || {};
-                    const maxSlots = data.max_slots || 3;
-                    
-                    timeSlots.forEach(slot => {
-                        slot.classList.remove('checking');
-                        const onclickAttr = slot.getAttribute('onclick');
-                        if (!onclickAttr) return;
-                        
-                        const timeMatch = onclickAttr.match(/'(\d{2}:\d{2}:\d{2})'/);
-                        if (!timeMatch) return;
-                        
-                        const timeValue = timeMatch[1];
-                        const bookedCount = slotAvailability[timeValue] || 0;
-                        const availableSlots = maxSlots - bookedCount;
-                        const timeText = slot.dataset.originalTime;
-                        
-                        if (availableSlots > 0) {
-                            slot.classList.remove('unavailable', 'full');
-                            slot.classList.add('available');
-                            
-                            const availabilityColor = availableSlots === 3 ? '#4caf50' : 
-                                                     availableSlots === 2 ? '#ff9800' : '#f44336';
-                            
-                            slot.innerHTML = `${timeText}<br><small style="color: ${availabilityColor}; font-weight: bold;">${availableSlots} slot${availableSlots > 1 ? 's' : ''} left</small>`;
-                        } else {
-                            slot.classList.remove('available');
-                            slot.classList.add('unavailable', 'full');
-                            slot.onclick = null;
-                            slot.style.cursor = 'not-allowed';
-                            slot.innerHTML = `${timeText}<br><small style="color: #999;">FULL</small>`;
-                        }
-                    });
-                })
-                .catch(error => {
-                    console.error('Fetch error:', error);
-                    alert('Failed to load time slot availability: ' + error.message);
-                    
-                    timeSlots.forEach(slot => {
-                        slot.classList.remove('checking', 'unavailable');
-                        slot.innerHTML = slot.dataset.originalTime;
-                    });
-                });
-        }
-
-        function nextStep() {
-            if (validateCurrentStep()) {
-                if (currentStep < totalSteps) {
-                    currentStep++;
-                    updateStepDisplay();
-                    updateFormDisplay();
-                    updateNavigationButtons();
-                    
-                    if (currentStep === 5) {
-                        updateSummary();
-                        updateQRCodePreview();
-                    }
-                }
-            }
-        }
-
-        function previousStep() {
-            if (currentStep > 1) {
-                currentStep--;
-                updateStepDisplay();
-                updateFormDisplay();
-                updateNavigationButtons();
-            }
-        }
-
-        function validateCurrentStep() {
-            switch (currentStep) {
-                case 1: return validateBranchSelection();
-                case 2: return validateVehicleInfo();
-                case 3: return validateOwnerDetails();
-                case 4: return validateSchedule();
-                case 5: return validatePaymentMethod();
-                default: return true;
-            }
-        }
-
-        function validateBranchSelection() {
-            if (!selectedBranchId) {
-                alert('Please select a branch for your appointment.');
-                return false;
-            }
-            return true;
-        }
-
-        function validateVehicleInfo() {
-            const plateNumber = document.getElementById('plateNumber').value.trim();
-            const vehicleType = document.getElementById('vehicleType').value;
-            const brand = document.getElementById('brand').value.trim();
-            const vehicleCategory = document.getElementById('vehicleCategory').value;
-            
-            if (!plateNumber || !vehicleType || !brand || !vehicleCategory) {
-                alert('Please fill in all required vehicle information fields.');
-                return false;
-            }
-            
-            const platePattern = /^[A-Z]{1,3}[-\s]?\d{3,4}$/i;
-            if (!platePattern.test(plateNumber)) {
-                alert('Please enter a valid plate number format (e.g., ABC-1234).');
-                return false;
-            }
-            
-            return true;
-        }
-
-        function validateOwnerDetails() {
-            const firstName = document.querySelector('#step3 #firstName').value.trim();
-            const lastName = document.querySelector('#step3 #lastName').value.trim();
-            const contactNumber = document.querySelector('#step3 #contactNumber').value.trim();
-            const email = document.querySelector('#step3 #email').value.trim();
-            const address = document.querySelector('#step3 #address').value.trim();
-            
-            if (!firstName || !lastName || !contactNumber || !email || !address) {
-                alert('Please fill in all required owner details fields.');
-                return false;
-            }
-            
-            const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailPattern.test(email)) {
-                alert('Please enter a valid email address.');
-                return false;
-            }
-            
-            const phonePattern = /^(09|\+639)\d{9}$/;
-            if (!phonePattern.test(contactNumber.replace(/[-\s]/g, ''))) {
-                alert('Please enter a valid Philippine phone number.');
-                return false;
-            }
-            
-            return true;
-        }
-
-        function validateSchedule() {
-            if (!selectedDate || !selectedTime) {
-                alert('Please select both a date and time for your appointment.');
-                return false;
-            }
-            
-            const today = new Date();
-            if (selectedDate < today.setHours(0, 0, 0, 0)) {
-                alert('Please select a future date.');
-                return false;
-            }
-            
-            return true;
-        }
-
-        function validatePaymentMethod() {
-            if (!selectedPaymentMethod) {
-                alert('Please select a payment method.');
-                return false;
-            }
-            
-            if (selectedPaymentMethod === 'gcash') {
-                const fileInput = document.getElementById('paymentReceipt');
+                slot.classList.remove('checking');
+                const onclickAttr = slot.getAttribute('onclick');
+                if (!onclickAttr) return;
                 
-                if (!paymentReceiptFile || !fileInput.files[0]) {
-                    alert('Please upload your GCash payment receipt.');
-                    return false;
-                }
+                const timeMatch = onclickAttr.match(/'(\d{2}:\d{2}:\d{2})'/);
+                if (!timeMatch) return;
                 
-                const maxSize = 5 * 1024 * 1024;
-                if (fileInput.files[0].size > maxSize) {
-                    alert('Payment receipt file is too large. Maximum size is 5MB.');
-                    return false;
-                }
+                const timeValue = timeMatch[1];
+                const bookedCount = slotAvailability[timeValue] || 0;
+                const availableSlots = maxSlots - bookedCount;
+                const timeText = slot.dataset.originalTime;
                 
-                const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-                if (!allowedTypes.includes(fileInput.files[0].type.toLowerCase())) {
-                    alert('Invalid payment receipt format. Please upload an image file.');
-                    return false;
-                }
-            }
-            
-            return true;
-        }
-
-        function updateStepDisplay() {
-            for (let i = 1; i <= totalSteps; i++) {
-                const stepNumber = document.getElementById(`step${i}-number`);
-                const stepTitle = document.getElementById(`step${i}-title`);
-                const stepLine = document.getElementById(`line${i}`);
-                
-                if (i < currentStep) {
-                    stepNumber.className = 'step-number completed';
-                    stepTitle.className = 'step-title';
-                    if (stepLine) stepLine.className = 'step-line completed';
-                } else if (i === currentStep) {
-                    stepNumber.className = 'step-number active';
-                    stepTitle.className = 'step-title active';
-                    if (stepLine) stepLine.className = 'step-line';
+                if (availableSlots > 0) {
+                    slot.classList.remove('unavailable', 'full');
+                    slot.classList.add('available');
+                    
+                    const availabilityColor = availableSlots === 3 ? '#4caf50' : 
+                                             availableSlots === 2 ? '#ff9800' : '#f44336';
+                    
+                    slot.innerHTML = `${timeText}<br><small style="color: ${availabilityColor}; font-weight: bold;">${availableSlots} slot${availableSlots > 1 ? 's' : ''} left</small>`;
                 } else {
-                    stepNumber.className = 'step-number';
-                    stepTitle.className = 'step-title';
-                    if (stepLine) stepLine.className = 'step-line';
+                    slot.classList.remove('available');
+                    slot.classList.add('unavailable', 'full');
+                    slot.onclick = null;
+                    slot.style.cursor = 'not-allowed';
+                    slot.innerHTML = `${timeText}<br><small style="color: #999;">FULL</small>`;
                 }
+            });
+        })
+        .catch(error => {
+            console.error('Fetch error:', error);
+            alert('Failed to load time slot availability: ' + error.message);
+            
+            timeSlots.forEach(slot => {
+                slot.classList.remove('checking', 'unavailable');
+                slot.innerHTML = slot.dataset.originalTime;
+            });
+        });
+}
+
+function nextStep() {
+    if (validateCurrentStep()) {
+        if (currentStep < totalSteps) {
+            currentStep++;
+            updateStepDisplay();
+            updateFormDisplay();
+            updateNavigationButtons();
+            
+            if (currentStep === 5) {
+                updateSummary();
+                updateQRCodePreview();
             }
         }
+    }
+}
 
-        function updateFormDisplay() {
-            for (let i = 1; i <= totalSteps; i++) {
-                const step = document.getElementById(`step${i}`);
-                if (step) step.classList.remove('active');
-            }
-            
-            const currentStepElement = document.getElementById(`step${currentStep}`);
-            if (currentStepElement) currentStepElement.classList.add('active');
+function previousStep() {
+    if (currentStep > 1) {
+        currentStep--;
+        updateStepDisplay();
+        updateFormDisplay();
+        updateNavigationButtons();
+    }
+}
+
+function validateCurrentStep() {
+    switch (currentStep) {
+        case 1: return validateBranchSelection();
+        case 2: return validateVehicleInfo();
+        case 3: return validateOwnerDetails();
+        case 4: return validateSchedule();
+        case 5: return validatePaymentMethod();
+        default: return true;
+    }
+}
+
+function validateBranchSelection() {
+    if (!selectedBranchId) {
+        alert('Please select a branch for your appointment.');
+        return false;
+    }
+    return true;
+}
+
+function validateVehicleInfo() {
+    const plateNumber = document.getElementById('plateNumber').value.trim();
+    const vehicleType = document.getElementById('vehicleType').value;
+    const brand = document.getElementById('brand').value.trim();
+    const vehicleCategory = document.getElementById('vehicleCategory').value;
+    
+    if (!plateNumber || !vehicleType || !brand || !vehicleCategory) {
+        alert('Please fill in all required vehicle information fields.');
+        return false;
+    }
+    
+    const platePattern = /^[A-Z]{1,3}[-\s]?\d{3,4}$/i;
+    if (!platePattern.test(plateNumber)) {
+        alert('Please enter a valid plate number format (e.g., ABC-1234).');
+        return false;
+    }
+    
+    return true;
+}
+
+function validateOwnerDetails() {
+    const firstName = document.querySelector('#step3 #firstName').value.trim();
+    const lastName = document.querySelector('#step3 #lastName').value.trim();
+    const contactNumber = document.querySelector('#step3 #contactNumber').value.trim();
+    const email = document.querySelector('#step3 #email').value.trim();
+    const address = document.querySelector('#step3 #address').value.trim();
+    
+    if (!firstName || !lastName || !contactNumber || !email || !address) {
+        alert('Please fill in all required owner details fields.');
+        return false;
+    }
+    
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailPattern.test(email)) {
+        alert('Please enter a valid email address.');
+        return false;
+    }
+    
+    const phonePattern = /^(09|\+639)\d{9}$/;
+    if (!phonePattern.test(contactNumber.replace(/[-\s]/g, ''))) {
+        alert('Please enter a valid Philippine phone number.');
+        return false;
+    }
+    
+    return true;
+}
+
+function validateSchedule() {
+    if (!selectedDate || !selectedTime) {
+        alert('Please select both a date and time for your appointment.');
+        return false;
+    }
+    
+    const today = new Date();
+    if (selectedDate < today.setHours(0, 0, 0, 0)) {
+        alert('Please select a future date.');
+        return false;
+    }
+    
+    return true;
+}
+
+function validatePaymentMethod() {
+    console.log('Validating payment method...');
+    
+    if (!selectedPaymentMethod) {
+        alert('Please select a payment method.');
+        return false;
+    }
+    
+    console.log('Selected payment method:', selectedPaymentMethod);
+    
+    if (selectedPaymentMethod === 'gcash') {
+        const fileInput = document.getElementById('paymentReceipt');
+        
+        console.log('Checking GCash receipt upload...');
+        console.log('File input exists:', !!fileInput);
+        console.log('Files array:', fileInput ? fileInput.files : null);
+        console.log('paymentReceiptFile variable:', paymentReceiptFile);
+        
+        if (!fileInput || !fileInput.files || !fileInput.files[0]) {
+            alert('Please upload your GCash payment receipt.');
+            return false;
         }
-
-        function updateNavigationButtons() {
-            const prevBtn = document.getElementById('prevBtn');
-            const nextBtn = document.getElementById('nextBtn');
-            
-            prevBtn.style.visibility = currentStep === 1 ? 'hidden' : 'visible';
-            
-            if (currentStep === totalSteps) {
-                nextBtn.textContent = 'Submit Registration';
-                nextBtn.onclick = submitRegistration;
-            } else {
-                const stepTexts = {
-                    1: 'Continue to Vehicle Info →',
-                    2: 'Continue to Owner Details →',
-                    3: 'Continue to Schedule →',
-                    4: 'Review & Confirm →'
-                };
-                nextBtn.textContent = stepTexts[currentStep] || 'Continue →';
-                nextBtn.onclick = nextStep;
-            }
+        
+        const file = fileInput.files[0];
+        
+        const maxSize = 5 * 1024 * 1024;
+        if (file.size > maxSize) {
+            alert('Payment receipt file is too large. Maximum size is 5MB.');
+            return false;
         }
-
-        function updateSummary() {
-            document.getElementById('summary-branch').textContent = selectedBranchName || '-';
-            
-            const brand = document.getElementById('brand').value;
-            const vehicleType = document.getElementById('vehicleType').value;
-            const vehicleCategory = document.getElementById('vehicleCategory').value;
-            document.getElementById('summary-vehicle').textContent = `${brand} (${vehicleType} - ${vehicleCategory})`;
-            
-            document.getElementById('summary-plate').textContent = document.getElementById('plateNumber').value;
-            
-            const firstName = document.querySelector('#step3 #firstName').value;
-            const lastName = document.querySelector('#step3 #lastName').value;
-            const middleName = document.querySelector('#step3 #middleName').value;
-            const fullName = middleName ? `${firstName} ${middleName} ${lastName}` : `${firstName} ${lastName}`;
-            document.getElementById('summary-owner').textContent = fullName;
-            
-            const email = document.querySelector('#step3 #email').value;
-            const contactNumber = document.querySelector('#step3 #contactNumber').value;
-            document.getElementById('summary-contact').textContent = `${contactNumber} | ${email}`;
-            
-            if (selectedDate && selectedTime) {
-                const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-                const formattedDate = selectedDate.toLocaleDateString('en-US', options);
-                const timeString = formatTime(selectedTime);
-                document.getElementById('summary-schedule').textContent = `${formattedDate} at ${timeString}`;
-            }
-            
-            const vehicleTypeSelect = document.getElementById('vehicleType');
-            const selectedOption = vehicleTypeSelect.options[vehicleTypeSelect.selectedIndex];
-            if (selectedOption && selectedOption.dataset.price) {
-                const price = parseInt(selectedOption.dataset.price);
-                document.getElementById('summary-amount').textContent = `₱${price.toLocaleString()}.00`;
-            }
+        
+        if (file.size === 0) {
+            alert('The uploaded file appears to be empty. Please select a valid image.');
+            return false;
         }
-
-        function formatTime(time24) {
-            const [hours, minutes] = time24.split(':');
-            const hour12 = hours % 12 || 12;
-            const ampm = hours < 12 ? 'AM' : 'PM';
-            return `${hour12}:${minutes} ${ampm}`;
+        
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        if (!allowedTypes.includes(file.type.toLowerCase())) {
+            alert('Invalid payment receipt format. Please upload an image file (JPG, PNG, GIF, or WebP).');
+            return false;
         }
+        
+        console.log('✓ GCash receipt validation passed');
+    } else {
+        console.log('✓ On-site payment - no receipt required');
+    }
+    
+    return true;
+}
 
-        function submitRegistration() {
-    if (!validateCurrentStep()) return;
+function updateStepDisplay() {
+    for (let i = 1; i <= totalSteps; i++) {
+        const stepNumber = document.getElementById(`step${i}-number`);
+        const stepTitle = document.getElementById(`step${i}-title`);
+        const stepLine = document.getElementById(`line${i}`);
+        
+        if (i < currentStep) {
+            stepNumber.className = 'step-number completed';
+            stepTitle.className = 'step-title';
+            if (stepLine) stepLine.className = 'step-line completed';
+        } else if (i === currentStep) {
+            stepNumber.className = 'step-number active';
+            stepTitle.className = 'step-title active';
+            if (stepLine) stepLine.className = 'step-line';
+        } else {
+            stepNumber.className = 'step-number';
+            stepTitle.className = 'step-title';
+            if (stepLine) stepLine.className = 'step-line';
+        }
+    }
+}
+
+function updateFormDisplay() {
+    for (let i = 1; i <= totalSteps; i++) {
+        const step = document.getElementById(`step${i}`);
+        if (step) step.classList.remove('active');
+    }
+    
+    const currentStepElement = document.getElementById(`step${currentStep}`);
+    if (currentStepElement) currentStepElement.classList.add('active');
+}
+
+function updateNavigationButtons() {
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    
+    prevBtn.style.visibility = currentStep === 1 ? 'hidden' : 'visible';
+    
+    if (currentStep === totalSteps) {
+        nextBtn.textContent = 'Submit Registration';
+        nextBtn.onclick = submitRegistration;
+    } else {
+        const stepTexts = {
+            1: 'Continue to Vehicle Info →',
+            2: 'Continue to Owner Details →',
+            3: 'Continue to Schedule →',
+            4: 'Review & Confirm →'
+        };
+        nextBtn.textContent = stepTexts[currentStep] || 'Continue →';
+        nextBtn.onclick = nextStep;
+    }
+}
+
+function updateSummary() {
+    document.getElementById('summary-branch').textContent = selectedBranchName || '-';
+    
+    const brand = document.getElementById('brand').value;
+    const vehicleType = document.getElementById('vehicleType').value;
+    const vehicleCategory = document.getElementById('vehicleCategory').value;
+    document.getElementById('summary-vehicle').textContent = `${brand} (${vehicleType} - ${vehicleCategory})`;
+    
+    document.getElementById('summary-plate').textContent = document.getElementById('plateNumber').value;
+    
+    const firstName = document.querySelector('#step3 #firstName').value;
+    const lastName = document.querySelector('#step3 #lastName').value;
+    const middleName = document.querySelector('#step3 #middleName').value;
+    const fullName = middleName ? `${firstName} ${middleName} ${lastName}` : `${firstName} ${lastName}`;
+    document.getElementById('summary-owner').textContent = fullName;
+    
+    const email = document.querySelector('#step3 #email').value;
+    const contactNumber = document.querySelector('#step3 #contactNumber').value;
+    document.getElementById('summary-contact').textContent = `${contactNumber} | ${email}`;
+    
+    if (selectedDate && selectedTime) {
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        const formattedDate = selectedDate.toLocaleDateString('en-US', options);
+        const timeString = formatTime(selectedTime);
+        document.getElementById('summary-schedule').textContent = `${formattedDate} at ${timeString}`;
+    }
+    
+    const vehicleTypeSelect = document.getElementById('vehicleType');
+    const selectedOption = vehicleTypeSelect.options[vehicleTypeSelect.selectedIndex];
+    if (selectedOption && selectedOption.dataset.price) {
+        const price = parseInt(selectedOption.dataset.price);
+        document.getElementById('summary-amount').textContent = `₱${price.toLocaleString()}.00`;
+    }
+}
+
+function formatTime(time24) {
+    const [hours, minutes] = time24.split(':');
+    const hour12 = hours % 12 || 12;
+    const ampm = hours < 12 ? 'AM' : 'PM';
+    return `${hour12}:${minutes} ${ampm}`;
+}
+
+function submitRegistration() {
+    console.log('=== Starting submission ===');
+    
+    if (!validateCurrentStep()) {
+        console.log('Validation failed');
+        return;
+    }
     
     const formData = new FormData();
     
-    // Add all form fields
+    // Branch information
     formData.append('branchId', selectedBranchId);
     formData.append('branchName', selectedBranchName);
-    formData.append('plateNumber', document.getElementById('plateNumber').value);
+    
+    // Vehicle information
+    formData.append('plateNumber', document.getElementById('plateNumber').value.trim());
     formData.append('vehicleType', document.getElementById('vehicleType').value);
-    formData.append('brand', document.getElementById('brand').value);
+    formData.append('brand', document.getElementById('brand').value.trim());
     formData.append('vehicleCategory', document.getElementById('vehicleCategory').value);
     
     const vehicleTypeSelect = document.getElementById('vehicleType');
@@ -1271,13 +1330,15 @@ $vehicle_categories_result = $conn->query($vehicle_categories_query);
         formData.append('price', selectedOption.dataset.price);
     }
     
-    formData.append('firstName', document.querySelector('#step3 #firstName').value);
-    formData.append('lastName', document.querySelector('#step3 #lastName').value);
-    formData.append('middleName', document.querySelector('#step3 #middleName').value);
-    formData.append('contactNumber', document.querySelector('#step3 #contactNumber').value);
-    formData.append('email', document.querySelector('#step3 #email').value);
-    formData.append('address', document.querySelector('#step3 #address').value);
+    // Owner information
+    formData.append('firstName', document.querySelector('#step3 #firstName').value.trim());
+    formData.append('lastName', document.querySelector('#step3 #lastName').value.trim());
+    formData.append('middleName', document.querySelector('#step3 #middleName').value.trim());
+    formData.append('contactNumber', document.querySelector('#step3 #contactNumber').value.trim());
+    formData.append('email', document.querySelector('#step3 #email').value.trim());
+    formData.append('address', document.querySelector('#step3 #address').value.trim());
     
+    // Schedule information
     const year = selectedDate.getFullYear();
     const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
     const day = String(selectedDate.getDate()).padStart(2, '0');
@@ -1287,216 +1348,266 @@ $vehicle_categories_result = $conn->query($vehicle_categories_query);
     formData.append('scheduleTime', selectedTime);
     formData.append('paymentMethod', selectedPaymentMethod);
     
-    // IMPROVED FILE UPLOAD HANDLING
+    console.log('Payment method:', selectedPaymentMethod);
+    
+    // File upload handling
     if (selectedPaymentMethod === 'gcash') {
+        console.log('Processing GCash payment receipt...');
+        
         const fileInput = document.getElementById('paymentReceipt');
         
-        // Double check file exists
-        if (!fileInput.files || !fileInput.files[0]) {
+        if (!fileInput || !fileInput.files || !fileInput.files[0]) {
+            console.error('No file found in input');
             alert('Please upload your GCash payment receipt before submitting.');
             return;
         }
         
         const file = fileInput.files[0];
         
-        // Final validation before upload
-        const maxSize = 5 * 1024 * 1024; // 5MB
+        console.log('File details:', {
+            name: file.name,
+            size: file.size,
+            type: file.type
+        });
+        
+        const maxSize = 5 * 1024 * 1024;
         if (file.size > maxSize) {
             alert('Payment receipt file is too large. Maximum size is 5MB.');
             return;
         }
         
-        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-        if (!allowedTypes.includes(file.type.toLowerCase())) {
-            alert('Invalid file format. Please upload an image (JPG, PNG, GIF, or WebP).');
+        if (file.size === 0) {
+            alert('The selected file appears to be empty. Please choose a valid image file.');
             return;
         }
         
-        // Append file with explicit filename
-        formData.append('paymentReceipt', file, file.name);
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        const fileType = file.type.toLowerCase();
         
-        console.log('Payment receipt attached:', {
-            name: file.name,
-            size: file.size,
-            type: file.type
-        });
+        if (!allowedTypes.includes(fileType)) {
+            alert('Invalid file format. Please upload an image file (JPG, PNG, GIF, or WebP).');
+            console.error('Invalid file type:', fileType);
+            return;
+        }
+        
+        formData.append('paymentReceipt', file, file.name);
+        console.log('✓ Payment receipt attached successfully');
+    } else {
+        console.log('On-site payment selected - no receipt required');
     }
     
     // Debug: Log FormData contents
     console.log('=== FormData Contents ===');
+    let hasFile = false;
     for (let [key, value] of formData.entries()) {
         if (value instanceof File) {
-            console.log(key + ':', 'FILE -', value.name, value.size, 'bytes');
+            console.log(`${key}: [FILE] ${value.name} (${value.size} bytes, ${value.type})`);
+            hasFile = true;
         } else {
-            console.log(key + ':', value);
+            console.log(`${key}: ${value}`);
         }
     }
+    
+    if (selectedPaymentMethod === 'gcash' && !hasFile) {
+        console.error('ERROR: GCash payment selected but no file in FormData!');
+        alert('Error: Payment receipt was not attached properly. Please try again.');
+        return;
+    }
+    
     console.log('========================');
     
     const nextBtn = document.getElementById('nextBtn');
     nextBtn.disabled = true;
     nextBtn.textContent = 'Submitting...';
+    nextBtn.style.opacity = '0.6';
+    nextBtn.style.cursor = 'not-allowed';
     
-    // Submit with fetch
+    console.log('Sending request to submit_reservation.php...');
+    
     fetch('submit_reservation.php', {
         method: 'POST',
         body: formData
-        // CRITICAL: Do NOT set Content-Type header - let browser handle it with multipart boundary
     })
     .then(response => {
-        console.log('Response status:', response.status);
-        console.log('Response headers:', response.headers);
+        console.log('Response received:', {
+            status: response.status,
+            statusText: response.statusText,
+            ok: response.ok
+        });
         
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            throw new Error(`Server returned ${response.status}: ${response.statusText}`);
         }
+        
         return response.text();
     })
     .then(text => {
-        console.log('Raw response:', text);
+        console.log('Raw response text:', text);
+        
         try {
-            return JSON.parse(text);
+            const data = JSON.parse(text);
+            console.log('Parsed JSON response:', data);
+            return data;
         } catch (e) {
             console.error('JSON parse error:', e);
-            console.error('Response text:', text);
-            throw new Error('Invalid JSON response from server. Please check server logs.');
+            console.error('Response was not valid JSON:', text);
+            throw new Error('Server returned invalid response. Please check the server logs or contact support.');
         }
     })
     .then(data => {
-        console.log('Parsed response:', data);
-        
         if (data.success) {
+            console.log('✓ Reservation successful!');
+            console.log('Reference:', data.referenceNumber);
+            console.log('Payment receipt path:', data.paymentReceipt);
+            
             document.getElementById('referenceNumber').textContent = data.referenceNumber;
             
             const paymentMessage = document.getElementById('paymentSuccessMessage');
+            
             if (selectedPaymentMethod === 'gcash') {
                 paymentMessage.innerHTML = `
                     <div style="margin-top: 15px; padding: 15px; background: #e8f5e9; border-radius: 5px; border-left: 4px solid #4caf50;">
                         <strong>✅ Payment Receipt Uploaded Successfully</strong><br>
-                        <span style="color: #666;">Your payment receipt has been uploaded. Status: <strong>${data.paymentStatus}</strong></span><br>
-                        <span style="color: #666; font-size: 12px;">Receipt: ${data.paymentReceipt || 'Saved'}</span>
+                        <span style="color: #666;">
+                            Your payment receipt has been uploaded and saved.<br>
+                            Status: <strong style="color: #ff9800;">${data.paymentStatus}</strong>
+                        </span><br>
+                        ${data.paymentReceipt ? `<span style="color: #666; font-size: 12px;">Receipt saved as: ${data.paymentReceipt}</span>` : ''}
                     </div>
                 `;
             } else {
                 paymentMessage.innerHTML = `
                     <div style="margin-top: 15px; padding: 15px; background: #fff3e0; border-radius: 5px; border-left: 4px solid #ff9800;">
-                        <strong>📋 On-Site Payment</strong><br>
-                        <span style="color: #666;">Please pay at the testing center. Your appointment receipt is available in your profile.</span>
+                        <strong>📋 On-Site Payment Selected</strong><br>
+                        <span style="color: #666;">
+                            Please pay at the testing center before your appointment.<br>
+                            Your appointment receipt is available in your profile for download.
+                        </span>
                     </div>
                 `;
             }
             
             document.getElementById('successModal').style.display = 'block';
             setTimeout(() => resetForm(), 2000);
+            
         } else {
-            throw new Error(data.message || 'Registration failed');
+            console.error('✗ Reservation failed:', data.message);
+            throw new Error(data.message || 'Registration failed. Please try again.');
         }
     })
     .catch(error => {
-        console.error('Submission error:', error);
-        document.getElementById('errorMessage').textContent = error.message || 'Network error. Please check your connection and try again.';
+        console.error('=== Submission Error ===');
+        console.error('Error:', error);
+        console.error('Message:', error.message);
+        console.error('======================');
+        
+        const errorMsg = error.message || 'Network error. Please check your connection and try again.';
+        document.getElementById('errorMessage').textContent = errorMsg;
         document.getElementById('errorModal').style.display = 'block';
     })
     .finally(() => {
         nextBtn.disabled = false;
         nextBtn.textContent = 'Submit Registration';
+        nextBtn.style.opacity = '1';
+        nextBtn.style.cursor = 'pointer';
+        console.log('=== Submission Complete ===');
     });
 }
 
-        function resetForm() {
-            document.querySelectorAll('input, select, textarea').forEach(element => {
-                if (element.type === 'radio' || element.type === 'checkbox') {
-                    element.checked = false;
-                } else {
-                    element.value = '';
-                }
-            });
-            
-            selectedBranchId = null;
-            selectedBranchName = null;
-            selectedBranchQR = null;
-            selectedDate = null;
-            selectedTime = null;
-            selectedPaymentMethod = null;
-            paymentReceiptFile = null;
-            
-            document.querySelectorAll('.selected').forEach(element => {
-                element.classList.remove('selected');
-            });
-            
-            document.getElementById('gcashSection').classList.remove('active');
-            document.getElementById('onsiteMessage').classList.remove('active');
-            document.getElementById('receiptPreview').innerHTML = '';
-            
-            currentStep = 1;
-            updateStepDisplay();
-            updateFormDisplay();
-            updateNavigationButtons();
-            
-            currentMonth = new Date().getMonth();
-            currentYear = new Date().getFullYear();
-            updateCalendar();
+function resetForm() {
+    document.querySelectorAll('input, select, textarea').forEach(element => {
+        if (element.type === 'radio' || element.type === 'checkbox') {
+            element.checked = false;
+        } else {
+            element.value = '';
         }
+    });
+    
+    selectedBranchId = null;
+    selectedBranchName = null;
+    selectedBranchQR = null;
+    selectedDate = null;
+    selectedTime = null;
+    selectedPaymentMethod = null;
+    paymentReceiptFile = null;
+    
+    document.querySelectorAll('.selected').forEach(element => {
+        element.classList.remove('selected');
+    });
+    
+    document.getElementById('gcashSection').classList.remove('active');
+    document.getElementById('onsiteMessage').classList.remove('active');
+    document.getElementById('receiptPreview').innerHTML = '';
+    
+    currentStep = 1;
+    updateStepDisplay();
+    updateFormDisplay();
+    updateNavigationButtons();
+    
+    currentMonth = new Date().getMonth();
+    currentYear = new Date().getFullYear();
+    updateCalendar();
+}
 
-        function closeModal() {
-            document.getElementById('successModal').style.display = 'none';
-            window.location.href = 'index.php';
-        }
+function closeModal() {
+    document.getElementById('successModal').style.display = 'none';
+    window.location.href = 'index.php';
+}
 
-        function closeErrorModal() {
-            document.getElementById('errorModal').style.display = 'none';
-        }
+function closeErrorModal() {
+    document.getElementById('errorModal').style.display = 'none';
+}
 
-        window.addEventListener('click', function(event) {
-            const successModal = document.getElementById('successModal');
-            const errorModal = document.getElementById('errorModal');
+window.addEventListener('click', function(event) {
+    const successModal = document.getElementById('successModal');
+    const errorModal = document.getElementById('errorModal');
+    
+    if (event.target === successModal) {
+        closeModal();
+    }
+    if (event.target === errorModal) {
+        closeErrorModal();
+    }
+});
+
+// Phone number formatting
+document.addEventListener('DOMContentLoaded', function() {
+    const contactInput = document.querySelector('#step3 #contactNumber');
+    if (contactInput) {
+        contactInput.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '');
             
-            if (event.target === successModal) {
-                closeModal();
+            if (value.startsWith('63')) {
+                value = '+' + value;
+            } else if (value.startsWith('9') && value.length === 10) {
+                value = '0' + value;
             }
-            if (event.target === errorModal) {
-                closeErrorModal();
+            
+            if (value.startsWith('09') && value.length > 4) {
+                value = value.substring(0, 4) + '-' + 
+                       value.substring(4, 7) + '-' + 
+                       value.substring(7, 11);
             }
+            
+            e.target.value = value;
         });
+    }
+});
 
-        // Phone number formatting
-        document.addEventListener('DOMContentLoaded', function() {
-            const contactInput = document.querySelector('#step3 #contactNumber');
-            if (contactInput) {
-                contactInput.addEventListener('input', function(e) {
-                    let value = e.target.value.replace(/\D/g, '');
-                    
-                    if (value.startsWith('63')) {
-                        value = '+' + value;
-                    } else if (value.startsWith('9') && value.length === 10) {
-                        value = '0' + value;
-                    }
-                    
-                    if (value.startsWith('09') && value.length > 4) {
-                        value = value.substring(0, 4) + '-' + 
-                               value.substring(4, 7) + '-' + 
-                               value.substring(7, 11);
-                    }
-                    
-                    e.target.value = value;
-                });
-            }
-        });
-
-        // Plate number formatting
-        const plateInput = document.getElementById('plateNumber');
-        if (plateInput) {
-            plateInput.addEventListener('input', function(e) {
-                let value = e.target.value.toUpperCase();
-                value = value.replace(/-/g, '');
-                
-                if (value.length > 3) {
-                    value = value.substring(0, 3) + '-' + value.substring(3);
-                }
-                
-                e.target.value = value;
-            });
+// Plate number formatting
+const plateInput = document.getElementById('plateNumber');
+if (plateInput) {
+    plateInput.addEventListener('input', function(e) {
+        let value = e.target.value.toUpperCase();
+        value = value.replace(/-/g, '');
+        
+        if (value.length > 3) {
+            value = value.substring(0, 3) + '-' + value.substring(3);
         }
+        
+        e.target.value = value;
+    });
+}
     </script>
 </body>
 </html>

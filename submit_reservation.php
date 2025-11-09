@@ -7,9 +7,22 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
+// Log to a file for Railway debugging
+$logFile = __DIR__ . '/upload_debug.log';
+function writeLog($message) {
+    global $logFile;
+    $timestamp = date('Y-m-d H:i:s');
+    file_put_contents($logFile, "[$timestamp] $message\n", FILE_APPEND);
+    error_log($message);
+}
+
 require_once 'db.php';
 
 try {
+    writeLog("=== NEW RESERVATION SUBMISSION ===");
+    writeLog("POST data: " . print_r($_POST, true));
+    writeLog("FILES data: " . print_r($_FILES, true));
+
     // Map the field names from JavaScript to PHP expected names
     $field_mapping = [
         'plateNumber' => 'plateNumber',
@@ -26,7 +39,6 @@ try {
         'scheduleTime' => 'time'
     ];
 
-    // Remap the POST data
     $mapped_post = [];
     foreach ($field_mapping as $js_field => $php_field) {
         if (isset($_POST[$js_field])) {
@@ -34,10 +46,9 @@ try {
         }
     }
 
-    // Replace $_POST with mapped data for validation
     $_POST = array_merge($_POST, $mapped_post);
 
-    // Validate that required fields are present
+    // Validate required fields
     $required_fields = ['plateNumber', 'brand', 'vehicleType', 'vehicleCategory', 'firstName', 'lastName', 'contactNumber', 'email', 'date', 'time', 'address', 'paymentMethod'];
     $missing_fields = [];
 
@@ -51,7 +62,7 @@ try {
         throw new Exception("Missing required fields: " . implode(', ', $missing_fields));
     }
 
-    // Get data from the form and sanitize
+    // Get and sanitize form data
     $plateNo = trim($_POST['plateNumber']);
     $brand = trim($_POST['brand']);
     $vehicleType = trim($_POST['vehicleType']);
@@ -67,7 +78,7 @@ try {
     $paymentMethod = trim($_POST['paymentMethod']);
     $price = isset($_POST['price']) ? floatval($_POST['price']) : null;
 
-    // Get UserID from session - CHECK BOTH POSSIBLE SESSION NAMES
+    // Get UserID from session
     $userID = null;
     if (isset($_SESSION['user_id'])) {
         $userID = $_SESSION['user_id'];
@@ -77,30 +88,23 @@ try {
         $userID = $_SESSION['userid'];
     }
     
-    // Debug: Log session info
-    error_log("=== RESERVATION SUBMISSION DEBUG ===");
-    error_log("Session data: " . print_r($_SESSION, true));
-    error_log("UserID value: " . ($userID ?? 'NULL'));
-    error_log("Payment Method: " . $paymentMethod);
-    error_log("POST data: " . print_r($_POST, true));
-    error_log("FILES data: " . print_r($_FILES, true));
+    writeLog("UserID: " . ($userID ?? 'NULL'));
+    writeLog("Payment Method: " . $paymentMethod);
 
-    // Validate email format
+    // Validate email
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         throw new Exception("Invalid email format");
     }
 
-    // Validate date format (YYYY-MM-DD)
+    // Validate date format
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
         throw new Exception("Invalid date format");
     }
 
-    // Validate time format (HH:MM or HH:MM:SS)
+    // Validate time format and add seconds if needed
     if (!preg_match('/^\d{2}:\d{2}(:\d{2})?$/', $time)) {
         throw new Exception("Invalid time format");
     }
-
-    // Add seconds if not provided
     if (!preg_match('/^\d{2}:\d{2}:\d{2}$/', $time)) {
         $time .= ':00';
     }
@@ -125,7 +129,7 @@ try {
     $typeID = $type_row['VehicleTypeID'];
     $type_stmt->close();
 
-    // Get CategoryID from vehicle_categories table
+    // Get CategoryID
     $category_stmt = $conn->prepare("SELECT CategoryID FROM vehicle_categories WHERE Name = ?");
     $category_stmt->bind_param("s", $vehicleCategory);
     $category_stmt->execute();
@@ -140,7 +144,7 @@ try {
     $categoryID = $category_row['CategoryID'];
     $category_stmt->close();
 
-    // Set BranchName if branchId is provided
+    // Get BranchName
     $branchName = null;
     if (isset($_POST['branchId']) && !empty($_POST['branchId'])) {
         $branch_stmt = $conn->prepare("SELECT BranchName FROM about_us WHERE AboutID = ?");
@@ -167,9 +171,8 @@ try {
     }
     $check_stmt->close();
 
-    // Check slot availability - allow up to 3 bookings per time slot per branch
+    // Check slot availability (max 3 per slot)
     $max_slots = 3;
-    
     $slot_check_stmt = $conn->prepare("SELECT COUNT(*) as booking_count FROM reservations WHERE Date = ? AND Time = ? AND BranchName = ?");
     $slot_check_stmt->bind_param("sss", $date, $time, $branchName);
     $slot_check_stmt->execute();
@@ -178,184 +181,207 @@ try {
     $current_bookings = intval($slot_row['booking_count']);
     $slot_check_stmt->close();
 
-    // Check if slot is full
     if ($current_bookings >= $max_slots) {
         throw new Exception("This time slot is fully booked (" . $current_bookings . "/" . $max_slots . " slots taken). Please choose a different time.");
     }
 
-    // ===== IMPROVED GCASH PAYMENT RECEIPT UPLOAD =====
+    // ===== RAILWAY-COMPATIBLE FILE UPLOAD =====
     $paymentReceiptPath = null;
     
     if ($paymentMethod === 'gcash') {
-        error_log("Processing GCash payment - checking for receipt file");
+        writeLog("Processing GCash payment receipt upload");
         
-        // Check if file was uploaded
         if (!isset($_FILES['paymentReceipt']) || $_FILES['paymentReceipt']['error'] === UPLOAD_ERR_NO_FILE) {
-            error_log("GCash payment but no receipt file uploaded");
-            error_log("FILES array: " . print_r($_FILES, true));
+            writeLog("ERROR: No file uploaded for GCash payment");
             throw new Exception('Payment receipt is required for GCash payment.');
         }
         
         $file = $_FILES['paymentReceipt'];
         
-        error_log("Receipt file details:");
-        error_log("- Name: " . $file['name']);
-        error_log("- Type: " . $file['type']);
-        error_log("- Size: " . $file['size']);
-        error_log("- Tmp: " . $file['tmp_name']);
-        error_log("- Error: " . $file['error']);
+        writeLog("File details: name={$file['name']}, type={$file['type']}, size={$file['size']}, error={$file['error']}");
         
-        // Check for upload errors
+        // Check upload errors
         if ($file['error'] !== UPLOAD_ERR_OK) {
             $uploadErrors = [
-                UPLOAD_ERR_INI_SIZE => 'File exceeds upload_max_filesize directive in php.ini',
-                UPLOAD_ERR_FORM_SIZE => 'File exceeds MAX_FILE_SIZE directive in HTML form',
+                UPLOAD_ERR_INI_SIZE => 'File exceeds upload_max_filesize',
+                UPLOAD_ERR_FORM_SIZE => 'File exceeds MAX_FILE_SIZE',
                 UPLOAD_ERR_PARTIAL => 'File was only partially uploaded',
                 UPLOAD_ERR_NO_TMP_DIR => 'Missing temporary folder',
                 UPLOAD_ERR_CANT_WRITE => 'Failed to write file to disk',
-                UPLOAD_ERR_EXTENSION => 'A PHP extension stopped the file upload'
+                UPLOAD_ERR_EXTENSION => 'PHP extension stopped upload'
             ];
-            $errorMessage = isset($uploadErrors[$file['error']]) ? $uploadErrors[$file['error']] : 'Unknown upload error';
-            error_log("Upload error: " . $errorMessage);
+            $errorMessage = $uploadErrors[$file['error']] ?? 'Unknown upload error';
+            writeLog("Upload error: " . $errorMessage);
             throw new Exception('Upload error: ' . $errorMessage);
         }
         
-        // Validate file type using both MIME type and extension
-        $allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-        $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-        
-        $fileMimeType = strtolower($file['type']);
-        $fileExtension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-        
-        error_log("File MIME type: " . $fileMimeType);
-        error_log("File extension: " . $fileExtension);
-        
-        // Verify file type using finfo (more reliable than $_FILES['type'])
+        // Validate file type using finfo (most reliable)
         $finfo = finfo_open(FILEINFO_MIME_TYPE);
         $detectedMimeType = finfo_file($finfo, $file['tmp_name']);
         finfo_close($finfo);
         
-        error_log("Detected MIME type: " . $detectedMimeType);
+        $allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+        $fileExtension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        
+        writeLog("Detected MIME: {$detectedMimeType}, Extension: {$fileExtension}");
         
         if (!in_array($detectedMimeType, $allowedMimeTypes) || !in_array($fileExtension, $allowedExtensions)) {
-            throw new Exception('Invalid file type. Please upload an image (JPEG, PNG, GIF, or WebP).');
+            throw new Exception('Invalid file type. Please upload JPG, PNG, GIF, or WebP image.');
         }
         
         // Check file size (max 5MB)
-        $maxFileSize = 5 * 1024 * 1024; // 5MB in bytes
+        $maxFileSize = 5 * 1024 * 1024;
         if ($file['size'] > $maxFileSize) {
-            throw new Exception('File size too large. Maximum size is 5MB.');
+            throw new Exception('File size too large. Maximum 5MB allowed.');
         }
         
-        // Check if file is actually an image
+        // Verify it's actually an image
         $imageInfo = getimagesize($file['tmp_name']);
         if ($imageInfo === false) {
             throw new Exception('Uploaded file is not a valid image.');
         }
         
-        error_log("Image validation passed - Width: " . $imageInfo[0] . ", Height: " . $imageInfo[1]);
+        writeLog("Image validated: {$imageInfo[0]}x{$imageInfo[1]}px");
         
-        // Define upload directory (this will work with your Railway symlinks)
+        // ===== RAILWAY SYMLINK-COMPATIBLE UPLOAD DIRECTORY =====
+        // Use the symlink path that Railway Dockerfile sets up
         $uploadDir = 'uploads/payment_receipts/';
-        $fullUploadDir = $_SERVER['DOCUMENT_ROOT'] . '/' . $uploadDir;
+        $fullUploadDir = __DIR__ . '/' . $uploadDir;
         
-        error_log("Upload directory paths:");
-        error_log("- Relative: " . $uploadDir);
-        error_log("- Full: " . $fullUploadDir);
-        error_log("- Document root: " . $_SERVER['DOCUMENT_ROOT']);
+        writeLog("Upload directory path: {$fullUploadDir}");
+        writeLog("Current directory: " . __DIR__);
+        writeLog("Document root: " . $_SERVER['DOCUMENT_ROOT']);
         
-        // Create upload directory if it doesn't exist
+        // Check if directory exists (including symlink)
         if (!file_exists($fullUploadDir)) {
-            error_log("Creating upload directory...");
-            if (!mkdir($fullUploadDir, 0755, true)) {
-                error_log("FAILED to create upload directory: " . $fullUploadDir);
-                throw new Exception('Failed to create upload directory. Please contact support.');
+            writeLog("Directory doesn't exist, attempting to create...");
+            if (!mkdir($fullUploadDir, 0777, true)) {
+                writeLog("FAILED to create directory");
+                throw new Exception('Upload directory does not exist and could not be created.');
             }
-            error_log("Successfully created upload directory");
+            writeLog("Directory created successfully");
+        }
+        
+        // Check if it's a symlink (Railway setup)
+        if (is_link($fullUploadDir)) {
+            $symlinkTarget = readlink($fullUploadDir);
+            writeLog("Directory is a SYMLINK pointing to: {$symlinkTarget}");
+            
+            // Verify the symlink target exists and is writable
+            if (!file_exists($symlinkTarget)) {
+                writeLog("ERROR: Symlink target does not exist: {$symlinkTarget}");
+                throw new Exception('Upload storage volume not properly mounted.');
+            }
+            
+            if (!is_writable($symlinkTarget)) {
+                writeLog("ERROR: Symlink target not writable: {$symlinkTarget}");
+                throw new Exception('Upload storage volume not writable.');
+            }
+            
+            writeLog("Symlink target is valid and writable");
         } else {
-            error_log("Upload directory already exists");
+            writeLog("Directory is a regular directory (not symlink)");
         }
         
         // Verify directory is writable
         if (!is_writable($fullUploadDir)) {
-            error_log("ERROR: Upload directory is not writable: " . $fullUploadDir);
+            writeLog("ERROR: Directory not writable: {$fullUploadDir}");
             // Try to fix permissions
-            @chmod($fullUploadDir, 0755);
+            @chmod($fullUploadDir, 0777);
             if (!is_writable($fullUploadDir)) {
-                throw new Exception('Upload directory is not writable. Please contact support.');
+                throw new Exception('Upload directory is not writable.');
             }
-            error_log("Fixed permissions on upload directory");
+            writeLog("Fixed directory permissions");
         }
         
-        // Generate unique filename with sanitized plate number
+        // Generate unique filename
         $sanitizedPlateNo = preg_replace('/[^a-zA-Z0-9]/', '_', $plateNo);
         $timestamp = time();
         $uniqueId = uniqid();
         $fileName = "gcash_{$sanitizedPlateNo}_{$timestamp}_{$uniqueId}.{$fileExtension}";
-        $uploadPath = $fullUploadDir . $fileName;
         
-        error_log("Target upload path: " . $uploadPath);
+        $uploadPath = $fullUploadDir . $fileName;
+        $paymentReceiptPath = $uploadDir . $fileName; // Path for database (relative)
+        
+        writeLog("Target upload path: {$uploadPath}");
+        writeLog("Database path: {$paymentReceiptPath}");
         
         // Move uploaded file
         if (!move_uploaded_file($file['tmp_name'], $uploadPath)) {
-            error_log("FAILED to move uploaded file from {$file['tmp_name']} to {$uploadPath}");
-            error_log("Possible reasons:");
-            error_log("- Tmp file exists: " . (file_exists($file['tmp_name']) ? 'YES' : 'NO'));
-            error_log("- Target dir writable: " . (is_writable($fullUploadDir) ? 'YES' : 'NO'));
-            error_log("- Target dir exists: " . (file_exists($fullUploadDir) ? 'YES' : 'NO'));
-            throw new Exception('Failed to upload payment receipt. Please try again.');
+            writeLog("CRITICAL: Failed to move uploaded file");
+            writeLog("Source: {$file['tmp_name']} (exists: " . (file_exists($file['tmp_name']) ? 'YES' : 'NO') . ")");
+            writeLog("Destination: {$uploadPath}");
+            writeLog("Destination dir exists: " . (file_exists($fullUploadDir) ? 'YES' : 'NO'));
+            writeLog("Destination dir writable: " . (is_writable($fullUploadDir) ? 'YES' : 'NO'));
+            throw new Exception('Failed to save payment receipt. Please try again.');
         }
         
-        // Store relative path for database (relative to document root)
-        $paymentReceiptPath = $uploadDir . $fileName;
+        // Set file permissions
+        @chmod($uploadPath, 0644);
         
-        // Set correct permissions
-        chmod($uploadPath, 0644);
-        
-        // Verify file was actually saved
+        // Verify file was saved
         if (file_exists($uploadPath)) {
             $savedFileSize = filesize($uploadPath);
-            error_log("=== PAYMENT RECEIPT UPLOAD SUCCESS ===");
-            error_log("File saved to: " . $uploadPath);
-            error_log("Database path: " . $paymentReceiptPath);
-            error_log("File size: " . $savedFileSize . " bytes");
-            error_log("File readable: " . (is_readable($uploadPath) ? 'YES' : 'NO'));
-            error_log("=====================================");
+            writeLog("✓ SUCCESS: File saved successfully");
+            writeLog("  Full path: {$uploadPath}");
+            writeLog("  DB path: {$paymentReceiptPath}");
+            writeLog("  Size: {$savedFileSize} bytes");
+            writeLog("  Readable: " . (is_readable($uploadPath) ? 'YES' : 'NO'));
         } else {
-            error_log("ERROR: File was not saved at: " . $uploadPath);
+            writeLog("✗ CRITICAL: File does not exist after move_uploaded_file!");
             throw new Exception('Failed to save payment receipt.');
         }
     } else {
-        error_log("Payment method is onsite - no receipt required");
+        writeLog("Payment method is onsite - no receipt required");
     }
 
-    // Set payment status - both gcash and onsite start as 'pending'
+    // Set payment status
     $paymentStatus = 'pending';
 
     // Generate reference number
     $referenceNumber = 'AT-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -6));
 
-    error_log("=== INSERTING INTO DATABASE ===");
-    error_log("PaymentReceipt value: " . ($paymentReceiptPath ?? 'NULL'));
-    error_log("Reference Number: " . $referenceNumber);
+    writeLog("Preparing database insert:");
+    writeLog("  Reference: {$referenceNumber}");
+    writeLog("  PaymentReceipt: " . ($paymentReceiptPath ?? 'NULL'));
+    writeLog("  PaymentMethod: {$paymentMethod}");
+    writeLog("  PaymentStatus: {$paymentStatus}");
 
-    // Prepare and bind
+    // Insert into database
     $stmt = $conn->prepare("INSERT INTO reservations (UserID, PlateNo, Brand, TypeID, CategoryID, Fname, Lname, Mname, PhoneNum, Email, Date, Time, Address, BranchName, PaymentMethod, PaymentStatus, PaymentReceipt, Price, ReferenceNumber) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    $stmt->bind_param("issiisssssssssssdss", $userID, $plateNo, $brand, $typeID, $categoryID, $firstName, $lastName, $middleName, $contactNumber, $email, $date, $time, $address, $branchName, $paymentMethod, $paymentStatus, $paymentReceiptPath, $price, $referenceNumber);
+    
+    $stmt->bind_param("issiisssssssssssdss", 
+        $userID, 
+        $plateNo, 
+        $brand, 
+        $typeID, 
+        $categoryID, 
+        $firstName, 
+        $lastName, 
+        $middleName, 
+        $contactNumber, 
+        $email, 
+        $date, 
+        $time, 
+        $address, 
+        $branchName, 
+        $paymentMethod, 
+        $paymentStatus, 
+        $paymentReceiptPath, 
+        $price, 
+        $referenceNumber
+    );
 
-    // Execute the statement
     if ($stmt->execute()) {
         $reservation_id = $stmt->insert_id;
-        
-        // Calculate remaining slots
         $remaining_slots = $max_slots - ($current_bookings + 1);
         
-        error_log("=== RESERVATION CREATED SUCCESSFULLY ===");
-        error_log("Reservation ID: " . $reservation_id);
-        error_log("Payment Receipt Path in DB: " . ($paymentReceiptPath ?? 'NULL'));
-        error_log("========================================");
+        writeLog("✓ Reservation created successfully");
+        writeLog("  ReservationID: {$reservation_id}");
+        writeLog("  Reference: {$referenceNumber}");
+        writeLog("  Slots remaining: {$remaining_slots}");
         
-        // Success response
         echo json_encode([
             'success' => true,
             'message' => 'Reservation created successfully',
@@ -368,35 +394,31 @@ try {
         ]);
         
     } else {
-        error_log("Database insert failed: " . $stmt->error);
-        // If database insert fails and file was uploaded, delete the uploaded file
-        if ($paymentReceiptPath && file_exists($_SERVER['DOCUMENT_ROOT'] . '/' . $paymentReceiptPath)) {
-            unlink($_SERVER['DOCUMENT_ROOT'] . '/' . $paymentReceiptPath);
-            error_log("Deleted uploaded file due to database error");
+        writeLog("✗ Database insert failed: " . $stmt->error);
+        
+        // Delete uploaded file if database insert fails
+        if ($paymentReceiptPath && file_exists($uploadPath)) {
+            @unlink($uploadPath);
+            writeLog("Deleted uploaded file due to database error");
         }
-        throw new Exception("Error creating reservation: " . $stmt->error);
+        
+        throw new Exception("Database error: " . $stmt->error);
     }
 
     $stmt->close();
 
 } catch (Exception $e) {
-    // Log the error
-    error_log("=== RESERVATION ERROR ===");
-    error_log("Error message: " . $e->getMessage());
-    error_log("Error file: " . $e->getFile());
-    error_log("Error line: " . $e->getLine());
-    error_log("Stack trace: " . $e->getTraceAsString());
-    error_log("========================");
+    writeLog("=== ERROR ===");
+    writeLog("Message: " . $e->getMessage());
+    writeLog("File: " . $e->getFile());
+    writeLog("Line: " . $e->getLine());
+    writeLog("Trace: " . $e->getTraceAsString());
     
-    // Error response
     echo json_encode([
         'success' => false,
-        'message' => $e->getMessage(),
-        'error_details' => [
-            'file' => $e->getFile(),
-            'line' => $e->getLine()
-        ]
+        'message' => $e->getMessage()
     ]);
+    
 } finally {
     if (isset($conn) && $conn) {
         $conn->close();
