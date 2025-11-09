@@ -27,11 +27,13 @@ if [ -n "$RAILWAY_VOLUME_MOUNT_PATH" ]; then\n\
     # Create directories in volume\n\
     mkdir -p "$RAILWAY_VOLUME_MOUNT_PATH/profile"\n\
     mkdir -p "$RAILWAY_VOLUME_MOUNT_PATH/branches"\n\
+    mkdir -p "$RAILWAY_VOLUME_MOUNT_PATH/payment_receipts"\n\
     \n\
     # Set permissions\n\
     chmod 755 "$RAILWAY_VOLUME_MOUNT_PATH"\n\
     chmod 755 "$RAILWAY_VOLUME_MOUNT_PATH/profile"\n\
     chmod 755 "$RAILWAY_VOLUME_MOUNT_PATH/branches"\n\
+    chmod 755 "$RAILWAY_VOLUME_MOUNT_PATH/payment_receipts"\n\
     chown -R www-data:www-data "$RAILWAY_VOLUME_MOUNT_PATH"\n\
     \n\
     # Create uploads directory in web root if it does not exist\n\
@@ -50,6 +52,13 @@ if [ -n "$RAILWAY_VOLUME_MOUNT_PATH" ]; then\n\
         echo "✓ Symlink created: /var/www/html/uploads/branches -> $RAILWAY_VOLUME_MOUNT_PATH/branches"\n\
     else\n\
         echo "✓ Branches symlink already exists"\n\
+    fi\n\
+    \n\
+    if [ ! -L "/var/www/html/uploads/payment_receipts" ]; then\n\
+        ln -sf "$RAILWAY_VOLUME_MOUNT_PATH/payment_receipts" /var/www/html/uploads/payment_receipts\n\
+        echo "✓ Symlink created: /var/www/html/uploads/payment_receipts -> $RAILWAY_VOLUME_MOUNT_PATH/payment_receipts"\n\
+    else\n\
+        echo "✓ Payment receipts symlink already exists"\n\
     fi\n\
     \n\
     # Verify setup\n\
