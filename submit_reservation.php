@@ -195,7 +195,6 @@ try {
 
     // ===== RAILWAY-COMPATIBLE FILE UPLOAD =====
     $paymentReceiptPath = null;
-    $uploadPath = null; // Initialize for cleanup in catch block
     
     if ($paymentMethod === 'gcash') {
         writeLog("Processing GCash payment receipt upload");
@@ -357,34 +356,32 @@ try {
     writeLog("  PaymentMethod: {$paymentMethod}");
     writeLog("  PaymentStatus: {$paymentStatus}");
 
-    // Insert into database with CORRECTED binding
+    // Insert into database
     $stmt = $conn->prepare("INSERT INTO reservations (UserID, PlateNo, Brand, TypeID, CategoryID, Fname, Lname, Mname, PhoneNum, Email, Date, Time, Address, BranchName, PaymentMethod, PaymentStatus, PaymentReceipt, Price, ReferenceNumber) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
     
     writeLog("=== BINDING PARAMETERS ===");
     writeLog("Parameter 17 (PaymentReceipt): '" . ($paymentReceiptPath ?? 'NULL') . "' (Type: " . gettype($paymentReceiptPath) . ")");
     
-    // *** CRITICAL FIX: Changed from "issiisssssssssssdss" to "issiissssssssssssdss" ***
-    // Position 17 (PaymentReceipt) must be 's' (string), not 'd' (decimal)
-    $stmt->bind_param("issiissssssssssssdss", 
-        $userID,              // 1:  i - integer
-        $plateNo,             // 2:  s - string
-        $brand,               // 3:  s - string
-        $typeID,              // 4:  i - integer
-        $categoryID,          // 5:  i - integer
-        $firstName,           // 6:  s - string
-        $lastName,            // 7:  s - string
-        $middleName,          // 8:  s - string
-        $contactNumber,       // 9:  s - string
-        $email,               // 10: s - string
-        $date,                // 11: s - string
-        $time,                // 12: s - string
-        $address,             // 13: s - string
-        $branchName,          // 14: s - string
-        $paymentMethod,       // 15: s - string
-        $paymentStatus,       // 16: s - string
-        $paymentReceiptPath,  // 17: s - string *** FIXED ***
-        $price,               // 18: d - decimal
-        $referenceNumber      // 19: s - string
+    $stmt->bind_param("issiisssssssssssdss", 
+        $userID, 
+        $plateNo, 
+        $brand, 
+        $typeID, 
+        $categoryID, 
+        $firstName, 
+        $lastName, 
+        $middleName, 
+        $contactNumber, 
+        $email, 
+        $date, 
+        $time, 
+        $address, 
+        $branchName, 
+        $paymentMethod, 
+        $paymentStatus, 
+        $paymentReceiptPath, 
+        $price, 
+        $referenceNumber
     );
 
     if ($stmt->execute()) {
@@ -407,18 +404,6 @@ try {
         writeLog("  PaymentReceipt from DB: '" . ($saved_data['PaymentReceipt'] ?? 'NULL') . "'");
         writeLog("  PaymentMethod from DB: '" . ($saved_data['PaymentMethod'] ?? 'NULL') . "'");
         writeLog("  PaymentStatus from DB: '" . ($saved_data['PaymentStatus'] ?? 'NULL') . "'");
-        
-        // Verify file actually exists if path was saved
-        if ($saved_data['PaymentReceipt']) {
-            $fullPath = __DIR__ . '/' . $saved_data['PaymentReceipt'];
-            $fileExists = file_exists($fullPath);
-            $fileReadable = $fileExists ? is_readable($fullPath) : false;
-            writeLog("  File exists on disk: " . ($fileExists ? 'YES' : 'NO'));
-            writeLog("  File readable: " . ($fileReadable ? 'YES' : 'NO'));
-            if ($fileExists) {
-                writeLog("  File size: " . filesize($fullPath) . " bytes");
-            }
-        }
         writeLog("================================");
         
         writeLog("✓ Reservation created successfully");
@@ -438,12 +423,11 @@ try {
         
     } else {
         writeLog("✗ Database insert failed: " . $stmt->error);
-        writeLog("  Error code: " . $stmt->errno);
         
         // Delete uploaded file if database insert fails
-        if ($paymentReceiptPath && $uploadPath && file_exists($uploadPath)) {
+        if ($paymentReceiptPath && file_exists($uploadPath)) {
             @unlink($uploadPath);
-            writeLog("Deleted uploaded file due to database error: {$uploadPath}");
+            writeLog("Deleted uploaded file due to database error");
         }
         
         throw new Exception("Database error: " . $stmt->error);

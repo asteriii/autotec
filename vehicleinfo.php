@@ -1318,7 +1318,7 @@ function submitRegistration() {
     formData.append('branchId', selectedBranchId);
     formData.append('branchName', selectedBranchName);
     
-    // Vehicle information - FIXED FIELD NAMES
+    // Vehicle information
     formData.append('plateNumber', document.getElementById('plateNumber').value.trim());
     formData.append('vehicleType', document.getElementById('vehicleType').value);
     formData.append('brand', document.getElementById('brand').value.trim());
@@ -1330,7 +1330,7 @@ function submitRegistration() {
         formData.append('price', selectedOption.dataset.price);
     }
     
-    // Owner information - FIXED FIELD NAMES
+    // Owner information
     formData.append('firstName', document.querySelector('#step3 #firstName').value.trim());
     formData.append('lastName', document.querySelector('#step3 #lastName').value.trim());
     formData.append('middleName', document.querySelector('#step3 #middleName').value.trim());
@@ -1338,14 +1338,14 @@ function submitRegistration() {
     formData.append('email', document.querySelector('#step3 #email').value.trim());
     formData.append('address', document.querySelector('#step3 #address').value.trim());
     
-    // Schedule information - CRITICAL FIX: Use 'date' and 'time' instead of 'scheduleDate' and 'scheduleTime'
+    // Schedule information
     const year = selectedDate.getFullYear();
     const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
     const day = String(selectedDate.getDate()).padStart(2, '0');
     const scheduleDate = `${year}-${month}-${day}`;
 
-    formData.append('date', scheduleDate);        // *** FIXED: was 'scheduleDate' ***
-    formData.append('time', selectedTime);         // *** FIXED: was 'scheduleTime' ***
+    formData.append('scheduleDate', scheduleDate);
+    formData.append('scheduleTime', selectedTime);
     formData.append('paymentMethod', selectedPaymentMethod);
     
     console.log('Payment method:', selectedPaymentMethod);
