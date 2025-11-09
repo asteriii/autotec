@@ -362,26 +362,26 @@ try {
     writeLog("=== BINDING PARAMETERS ===");
     writeLog("Parameter 17 (PaymentReceipt): '" . ($paymentReceiptPath ?? 'NULL') . "' (Type: " . gettype($paymentReceiptPath) . ")");
     
-    $stmt->bind_param("issiisssssssssssdss", 
-        $userID, 
-        $plateNo, 
-        $brand, 
-        $typeID, 
-        $categoryID, 
-        $firstName, 
-        $lastName, 
-        $middleName, 
-        $contactNumber, 
-        $email, 
-        $date, 
-        $time, 
-        $address, 
-        $branchName, 
-        $paymentMethod, 
-        $paymentStatus, 
-        $paymentReceiptPath, 
-        $price, 
-        $referenceNumber
+    $stmt->bind_param("issiissssssssssssdss", 
+        $userID,              // i - integer
+        $plateNo,             // s - string
+        $brand,               // s - string
+        $typeID,              // i - integer
+        $categoryID,          // i - integer
+        $firstName,           // s - string
+        $lastName,            // s - string
+        $middleName,          // s - string
+        $contactNumber,       // s - string
+        $email,               // s - string
+        $date,                // s - string
+        $time,                // s - string
+        $address,             // s - string
+        $branchName,          // s - string
+        $paymentMethod,       // s - string
+        $paymentStatus,       // s - string
+        $paymentReceiptPath,  // s - string (FIXED: was 'd' before)
+        $price,               // d - double
+        $referenceNumber      // s - string
     );
 
     if ($stmt->execute()) {
@@ -425,8 +425,8 @@ try {
         writeLog("✗ Database insert failed: " . $stmt->error);
         
         // Delete uploaded file if database insert fails
-        if ($paymentReceiptPath && file_exists($uploadPath)) {
-            @unlink($uploadPath);
+        if ($paymentReceiptPath && file_exists(__DIR__ . '/' . $paymentReceiptPath)) {
+            @unlink(__DIR__ . '/' . $paymentReceiptPath);
             writeLog("Deleted uploaded file due to database error");
         }
         
