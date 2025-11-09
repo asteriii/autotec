@@ -77,6 +77,82 @@ $categories = [
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
         }
 
+        .sidebar::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.03)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.03)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+            opacity: 0.3;
+        }
+
+        .sidebar .section {
+            padding: 0 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .section-title {
+            padding: 15px 0;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 16px;
+            border-radius: 8px;
+            margin: 5px 0;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .section-title:hover {
+            background-color: rgba(255,255,255,0.1);
+            padding-left: 10px;
+        }
+
+        .submenu {
+            list-style: none;
+            padding-left: 15px;
+            display: none;
+            animation: slideDown 0.3s ease;
+        }
+
+        .submenu.show {
+            display: block;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .submenu li {
+            padding: 12px 0;
+            font-size: 14px;
+            cursor: pointer;
+            border-radius: 6px;
+            margin: 2px 0;
+            transition: all 0.3s ease;
+        }
+
+        .submenu li:hover {
+            background-color: rgba(255,255,255,0.1);
+            padding-left: 10px;
+        }
+
+        .submenu li a {
+            color: white;
+            text-decoration: none;
+            display: block;
+        }
+
+        .active {
+            background-color: rgba(255,255,255,0.15);
+            font-weight: 500;
+        }
+
         .main {
             flex: 1;
             background-color: #f8fafc;
@@ -275,48 +351,6 @@ $categories = [
             font-weight: 500;
         }
 
-        .payment-info {
-            grid-column: span 3;
-            background: #f8fafc;
-            padding: 15px;
-            border-radius: 10px;
-            border-left: 4px solid #3182ce;
-        }
-
-        .payment-info h4 {
-            color: #3182ce;
-            margin-bottom: 10px;
-        }
-
-        .payment-badge {
-            display: inline-block;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            margin-right: 10px;
-        }
-
-        .payment-badge.gcash {
-            background: #e0f2fe;
-            color: #0369a1;
-        }
-
-        .payment-badge.onsite {
-            background: #fef3c7;
-            color: #92400e;
-        }
-
-        .payment-badge.pending {
-            background: #fef3c7;
-            color: #92400e;
-        }
-
-        .payment-badge.verified {
-            background: #d1fae5;
-            color: #065f46;
-        }
-
         .buttons {
             display: flex;
             gap: 12px;
@@ -336,17 +370,6 @@ $categories = [
             display: flex;
             align-items: center;
             gap: 8px;
-        }
-
-        .view-receipt-btn {
-            background: linear-gradient(135deg, #3182ce, #2c5282);
-            color: white;
-            box-shadow: 0 2px 8px rgba(49, 130, 206, 0.3);
-        }
-
-        .view-receipt-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(49, 130, 206, 0.4);
         }
 
         .confirm-btn {
@@ -371,6 +394,28 @@ $categories = [
             box-shadow: 0 4px 15px rgba(245, 101, 101, 0.4);
         }
 
+        .view-receipt-btn {
+            background: linear-gradient(135deg, #4299e1, #3182ce);
+            color: white;
+            box-shadow: 0 2px 8px rgba(66, 153, 225, 0.3);
+        }
+
+        .view-receipt-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(66, 153, 225, 0.4);
+        }
+
+        .view-receipt-btn:disabled {
+            background: #e2e8f0;
+            color: #a0aec0;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .view-receipt-btn:disabled:hover {
+            transform: none;
+        }
+
         .price-tag {
             background: linear-gradient(135deg, #ffd700, #ffed4e);
             color: #744210;
@@ -386,8 +431,16 @@ $categories = [
             border-radius: 12px;
             font-size: 12px;
             font-weight: 500;
-            background: #e2e8f0;
-            color: #4a5568;
+        }
+
+        .status-pending {
+            background: #fff3e0;
+            color: #ff9800;
+        }
+
+        .status-confirmed {
+            background: #e8f5e9;
+            color: #4caf50;
         }
 
         .no-reservations {
@@ -402,8 +455,8 @@ $categories = [
             opacity: 0.5;
         }
 
-        /* Receipt Modal */
-        .receipt-modal {
+        /* Receipt Modal Styles */
+        .modal {
             display: none;
             position: fixed;
             z-index: 1000;
@@ -411,103 +464,111 @@ $categories = [
             top: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(5px);
+            background-color: rgba(0,0,0,0.8);
+            animation: fadeIn 0.3s ease;
         }
 
-        .receipt-modal-content {
-            background: white;
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal-content {
+            position: relative;
             margin: 2% auto;
-            padding: 0;
-            border-radius: 16px;
+            padding: 20px;
+            width: 90%;
             max-width: 800px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
             max-height: 90vh;
-            overflow: hidden;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            animation: slideIn 0.3s ease-out;
+            overflow-y: auto;
         }
 
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateY(-50px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .receipt-modal-header {
-            background: linear-gradient(135deg, #c0392b, #a93226);
-            color: white;
-            padding: 20px 30px;
+        .modal-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e2e8f0;
         }
 
-        .receipt-modal-header h3 {
-            margin: 0;
-            font-size: 20px;
+        .modal-header h3 {
+            color: #2d3748;
+            font-size: 24px;
         }
 
         .close-modal {
-            color: white;
-            font-size: 28px;
+            font-size: 32px;
             font-weight: bold;
+            color: #718096;
             cursor: pointer;
+            transition: color 0.3s;
             background: none;
             border: none;
             padding: 0;
-            width: 30px;
-            height: 30px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-            transition: background 0.3s;
+            line-height: 1;
         }
 
         .close-modal:hover {
-            background: rgba(255, 255, 255, 0.2);
-        }
-
-        .receipt-modal-body {
-            padding: 30px;
-            max-height: calc(90vh - 80px);
-            overflow-y: auto;
+            color: #c0392b;
         }
 
         .receipt-image-container {
             text-align: center;
-            margin-bottom: 20px;
+            margin: 20px 0;
         }
 
         .receipt-image {
             max-width: 100%;
-            max-height: 60vh;
-            border-radius: 10px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            height: auto;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
 
-        .receipt-details {
-            background: #f8fafc;
+        .payment-info {
+            background: #f7fafc;
             padding: 20px;
-            border-radius: 10px;
+            border-radius: 12px;
             margin-top: 20px;
         }
 
-        .receipt-details p {
-            margin: 10px 0;
+        .payment-info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .payment-info-row:last-child {
+            border-bottom: none;
+        }
+
+        .payment-info-label {
+            font-weight: 600;
             color: #4a5568;
         }
 
-        .receipt-details strong {
+        .payment-info-value {
             color: #2d3748;
         }
 
         @media (max-width: 768px) {
-            .card-content {
-                grid-template-columns: 1fr;
+            .sidebar {
+                transform: translateX(-100%);
+                position: fixed;
+                z-index: 1000;
+                height: 100vh;
             }
 
-            .payment-info {
-                grid-column: span 1;
+            .sidebar.mobile-open {
+                transform: translateX(0);
+            }
+
+            .card-content {
+                grid-template-columns: 1fr;
             }
 
             .search-pagination {
@@ -519,16 +580,18 @@ $categories = [
                 width: 100%;
             }
 
-            .receipt-modal-content {
+            .modal-content {
+                width: 95%;
                 margin: 5% auto;
-                max-width: 95%;
             }
         }
     </style>
 </head>
 <body>
+    <!-- Sidebar -->
     <?php include 'sidebar.php'; ?>
 
+    <!-- Main Content -->
     <div class="main">
         <div class="topbar">
             <div class="logo">
@@ -572,7 +635,9 @@ $categories = [
                     <div class="reservation-card">
                         <div class="card-header">
                             <div class="reservation-id">ID: <?php echo $reservation['ReservationID']; ?></div>
-                            <div class="status-badge">Pending</div>
+                            <div class="status-badge <?php echo $reservation['PaymentStatus'] === 'confirmed' ? 'status-confirmed' : 'status-pending'; ?>">
+                                <?php echo ucfirst($reservation['PaymentStatus'] ?? 'Pending'); ?>
+                            </div>
                         </div>
                         
                         <div class="card-content">
@@ -596,32 +661,21 @@ $categories = [
                                 <h4><i class="fas fa-calendar-alt"></i> Appointment Details</h4>
                                 <p><strong>Date:</strong> <?php echo date('M d, Y', strtotime($reservation['Date'])); ?></p>
                                 <p><strong>Time:</strong> <?php echo date('g:i A', strtotime($reservation['Time'])); ?></p>
-                                <p><strong>Branch:</strong> <?php echo htmlspecialchars($reservation['BranchName'] ?? 'N/A'); ?></p>
+                                <p><strong>Payment Method:</strong> <?php echo strtoupper($reservation['PaymentMethod'] ?? 'N/A'); ?></p>
                                 <div class="price-tag">
                                     ₱<?php echo number_format($reservation['VehiclePrice'] ?? 0, 2); ?>
                                 </div>
                             </div>
-
-                            <div class="payment-info info-section">
-                                <h4><i class="fas fa-credit-card"></i> Payment Information</h4>
-                                <p>
-                                    <span class="payment-badge <?php echo htmlspecialchars($reservation['PaymentMethod'] ?? 'onsite'); ?>">
-                                        <?php echo strtoupper($reservation['PaymentMethod'] ?? 'On-Site'); ?>
-                                    </span>
-                                    <span class="payment-badge <?php echo htmlspecialchars($reservation['PaymentStatus'] ?? 'pending'); ?>">
-                                        <?php echo strtoupper($reservation['PaymentStatus'] ?? 'Pending'); ?>
-                                    </span>
-                                </p>
-                                <?php if (!empty($reservation['ReferenceNumber'])): ?>
-                                    <p><strong>Reference:</strong> <?php echo htmlspecialchars($reservation['ReferenceNumber']); ?></p>
-                                <?php endif; ?>
-                            </div>
                         </div>
                         
                         <div class="buttons">
-                            <?php if ($reservation['PaymentMethod'] === 'gcash' && !empty($reservation['PaymentReceipt'])): ?>
-                                <button class="btn view-receipt-btn" onclick="viewReceipt('<?php echo htmlspecialchars($reservation['PaymentReceipt']); ?>', '<?php echo htmlspecialchars($reservation['ReservationID']); ?>', '<?php echo htmlspecialchars($reservation['Fname'] . ' ' . $reservation['Lname']); ?>')">
+                            <?php if (!empty($reservation['PaymentReceipt']) && $reservation['PaymentMethod'] === 'gcash'): ?>
+                                <button class="btn view-receipt-btn" onclick="viewReceipt('<?php echo htmlspecialchars($reservation['PaymentReceipt']); ?>', '<?php echo htmlspecialchars($reservation['ReferenceNumber'] ?? 'N/A'); ?>', '<?php echo htmlspecialchars($reservation['PaymentMethod']); ?>', '<?php echo htmlspecialchars($reservation['PaymentStatus'] ?? 'pending'); ?>')">
                                     <i class="fas fa-receipt"></i> View Receipt
+                                </button>
+                            <?php else: ?>
+                                <button class="btn view-receipt-btn" disabled>
+                                    <i class="fas fa-receipt"></i> No Receipt
                                 </button>
                             <?php endif; ?>
                             <button class="btn confirm-btn" onclick="confirmReservation(<?php echo $reservation['ReservationID']; ?>)">
@@ -638,44 +692,74 @@ $categories = [
     </div>
 
     <!-- Receipt Modal -->
-    <div id="receiptModal" class="receipt-modal">
-        <div class="receipt-modal-content">
-            <div class="receipt-modal-header">
+    <div id="receiptModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
                 <h3><i class="fas fa-receipt"></i> Payment Receipt</h3>
                 <button class="close-modal" onclick="closeReceiptModal()">&times;</button>
             </div>
-            <div class="receipt-modal-body">
-                <div class="receipt-image-container">
-                    <img id="receiptImage" src="" alt="Payment Receipt" class="receipt-image" onerror="this.src='../pictures/default-receipt.png'">
+            
+            <div class="payment-info">
+                <div class="payment-info-row">
+                    <span class="payment-info-label">Reference Number:</span>
+                    <span class="payment-info-value" id="modalReferenceNumber">-</span>
                 </div>
-                <div class="receipt-details">
-                    <p><strong>Reservation ID:</strong> <span id="receiptReservationId"></span></p>
-                    <p><strong>Customer Name:</strong> <span id="receiptCustomerName"></span></p>
-                    <p><strong>Payment Method:</strong> GCash</p>
-                    <p><strong>Status:</strong> Pending Verification</p>
+                <div class="payment-info-row">
+                    <span class="payment-info-label">Payment Method:</span>
+                    <span class="payment-info-value" id="modalPaymentMethod">-</span>
                 </div>
+                <div class="payment-info-row">
+                    <span class="payment-info-label">Payment Status:</span>
+                    <span class="payment-info-value" id="modalPaymentStatus">-</span>
+                </div>
+            </div>
+            
+            <div class="receipt-image-container">
+                <img id="receiptImage" class="receipt-image" src="" alt="Payment Receipt">
             </div>
         </div>
     </div>
 
     <script>
-        function viewReceipt(receiptPath, reservationId, customerName) {
-            const modal = document.getElementById('receiptModal');
-            const img = document.getElementById('receiptImage');
-            const resId = document.getElementById('receiptReservationId');
-            const custName = document.getElementById('receiptCustomerName');
+        function toggleMenu(id) {
+            const menu = document.getElementById(id);
+            const isVisible = menu.classList.contains('show');
             
-            // Set the image source - add ../ if path doesn't start with it
-            const imagePath = receiptPath.startsWith('../') ? receiptPath : '../' + receiptPath;
-            img.src = imagePath;
-            resId.textContent = reservationId;
-            custName.textContent = customerName;
+            // Hide all submenus first
+            document.querySelectorAll('.submenu').forEach(submenu => {
+                submenu.classList.remove('show');
+            });
             
-            modal.style.display = 'block';
+            // Show the clicked menu if it wasn't visible
+            if (!isVisible) {
+                menu.classList.add('show');
+            }
+        }
+
+        function viewReceipt(receiptPath, referenceNumber, paymentMethod, paymentStatus) {
+            // Set modal content
+            document.getElementById('modalReferenceNumber').textContent = referenceNumber;
+            document.getElementById('modalPaymentMethod').textContent = paymentMethod.toUpperCase();
+            document.getElementById('modalPaymentStatus').textContent = paymentStatus.charAt(0).toUpperCase() + paymentStatus.slice(1);
+            
+            // Set image source - ensure path starts with /
+            const imagePath = receiptPath.startsWith('/') ? receiptPath : '/' + receiptPath;
+            document.getElementById('receiptImage').src = imagePath;
+            
+            // Show modal
+            document.getElementById('receiptModal').style.display = 'block';
         }
 
         function closeReceiptModal() {
             document.getElementById('receiptModal').style.display = 'none';
+        }
+
+        // Close modal when clicking outside of it
+        window.onclick = function(event) {
+            const modal = document.getElementById('receiptModal');
+            if (event.target === modal) {
+                closeReceiptModal();
+            }
         }
 
         function confirmReservation(id) {
@@ -690,12 +774,9 @@ $categories = [
             }
         }
 
-        // Close modal when clicking outside
-        window.onclick = function(event) {
-            const modal = document.getElementById('receiptModal');
-            if (event.target === modal) {
-                closeReceiptModal();
-            }
+        // Mobile sidebar toggle
+        function toggleMobileSidebar() {
+            document.querySelector('.sidebar').classList.toggle('mobile-open');
         }
     </script>
 </body>

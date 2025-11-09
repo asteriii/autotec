@@ -66,6 +66,8 @@ if [ -n "$RAILWAY_VOLUME_MOUNT_PATH" ]; then\n\
     echo "Profile directory writable: $([ -w /var/www/html/uploads/profile ] && echo YES || echo NO)"\n\
     echo "Branches directory exists: $([ -d /var/www/html/uploads/branches ] && echo YES || echo NO)"\n\
     echo "Branches directory writable: $([ -w /var/www/html/uploads/branches ] && echo YES || echo NO)"\n\
+    echo "Payment receipts directory exists: $([ -d /var/www/html/uploads/payment_receipts ] && echo YES || echo NO)"\n\
+    echo "Payment receipts directory writable: $([ -w /var/www/html/uploads/payment_receipts ] && echo YES || echo NO)"\n\
     ls -la /var/www/html/uploads/ || true\n\
     echo "=========================="\n\
 else\n\
@@ -73,8 +75,10 @@ else\n\
     # Create local uploads directories\n\
     mkdir -p /var/www/html/uploads/profile\n\
     mkdir -p /var/www/html/uploads/branches\n\
+    mkdir -p /var/www/html/uploads/payment_receipts\n\
     chmod 755 /var/www/html/uploads/profile\n\
     chmod 755 /var/www/html/uploads/branches\n\
+    chmod 755 /var/www/html/uploads/payment_receipts\n\
     chown -R www-data:www-data /var/www/html/uploads\n\
 fi\n\
 \n\

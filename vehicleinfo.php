@@ -11,14 +11,14 @@ error_reporting(E_ALL);
 $branches_query = "SELECT AboutID, BranchName, Description, MapLink, GCashQR FROM about_us ORDER BY BranchName";
 $branches_result = $conn->query($branches_query);
 
-// Store branch data in array for later use
+// Store branch data in array for later use (including QR codes)
 $branches_data = [];
 if ($branches_result->num_rows > 0) {
-    $branches_result->data_seek(0); // Reset pointer
+    $branches_result->data_seek(0);
     while($row = $branches_result->fetch_assoc()) {
         $branches_data[] = $row;
     }
-    $branches_result->data_seek(0); // Reset pointer again for the HTML loop
+    $branches_result->data_seek(0);
 }
 
 // Fetch vehicle types with their prices
@@ -30,12 +30,6 @@ $vehicle_categories_query = "SELECT CategoryID, Name FROM vehicle_categories ORD
 $vehicle_categories_result = $conn->query($vehicle_categories_query);
 ?>
 
-<?php 
-// Check if session is not already started before calling session_start()
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -206,6 +200,17 @@ if (session_status() === PHP_SESSION_NONE) {
             background: white;
         }
 
+        .qr-code-placeholder {
+            max-width: 300px;
+            margin: 0 auto;
+            padding: 40px;
+            background: #f5f5f5;
+            border: 2px dashed #ccc;
+            border-radius: 10px;
+            color: #999;
+            text-align: center;
+        }
+
         .upload-section {
             margin-top: 20px;
         }
@@ -279,6 +284,29 @@ if (session_status() === PHP_SESSION_NONE) {
         .onsite-message li {
             margin-bottom: 8px;
         }
+
+        .time-slot.full {
+            background-color: #f5f5f5;
+            color: #999;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        
+        .time-slot.checking {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+        
+        .time-slot small {
+            display: block;
+            margin-top: 5px;
+            font-size: 11px;
+        }
+        
+        .time-slot:not(.full):not(.unavailable):hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(164, 19, 60, 0.2);
+        }
         
         @media (min-width: 768px) {
             .branch-selection {
@@ -335,11 +363,14 @@ if (session_status() === PHP_SESSION_NONE) {
                     <?php
                     if ($branches_result->num_rows > 0) {
                         while($branch = $branches_result->fetch_assoc()) {
-                            $gcashQR = $branch['GCashQR'] ?? '';
-                            echo '<div class="branch-card" onclick="selectBranch(this, ' . $branch['AboutID'] . ', \'' . htmlspecialchars($branch['BranchName']) . '\', \'' . htmlspecialchars($gcashQR) . '\')">';
+                            $gcashQR = !empty($branch['GCashQR']) ? htmlspecialchars($branch['GCashQR']) : '';
+                            $branchId = $branch['AboutID'];
+                            $branchName = htmlspecialchars($branch['BranchName']);
+                            
+                            echo '<div class="branch-card" onclick="selectBranch(this, ' . $branchId . ', \'' . $branchName . '\', \'' . $gcashQR . '\')">';
                             echo '<div class="branch-card-header">';
-                            echo '<div class="branch-name">' . htmlspecialchars($branch['BranchName']) . '</div>';
-                            echo '<input type="radio" name="selectedBranch" value="' . $branch['AboutID'] . '" class="branch-radio">';
+                            echo '<div class="branch-name">' . $branchName . '</div>';
+                            echo '<input type="radio" name="selectedBranch" value="' . $branchId . '" class="branch-radio">';
                             echo '</div>';
                             echo '<div class="branch-description">' . htmlspecialchars($branch['Description']) . '</div>';
                             
@@ -572,17 +603,18 @@ if (session_status() === PHP_SESSION_NONE) {
 
                     <!-- GCash Payment Section -->
                     <div class="gcash-section" id="gcashSection">
-                        <h4 style="color: #a4133c; margin-bottom: 15px;">Scan QR Code to Pay</h4>
-                        <div class="qr-code-container">
-                            <img src="" alt="GCash QR Code" class="qr-code-image" id="qrCodeImage">
-                            <p style="margin-top: 10px; color: #666;">Scan this QR code with your GCash app</p>
+                        <h4 style="color: #a4133c; margin-bottom: 15px;">💳 Scan QR Code to Pay</h4>
+                        <div class="qr-code-container" id="qrCodeContainer">
+                            <!-- QR code will be loaded here dynamically -->
+                            <div class="qr-code-placeholder">
+                                <p>📱 QR Code will appear here after selecting a branch</p>
+                            </div>
                         </div>
                         
                         <div class="upload-section">
-                            <h4 style="color: #a4133c; margin-bottom: 10px;">Upload Payment Receipt</h4>
+                            <h4 style="color: #a4133c; margin-bottom: 10px;">📸 Upload Payment Receipt</h4>
                             <p style="color: #666; margin-bottom: 15px;">Please upload a screenshot of your payment confirmation</p>
                             
-                            <!-- Add file size and format info -->
                             <div style="background: #fff3e0; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
                                 <small style="color: #666;">
                                     ✓ Accepted formats: JPG, PNG, GIF, WebP<br>
@@ -597,8 +629,7 @@ if (session_status() === PHP_SESSION_NONE) {
                                     name="paymentReceipt"
                                     class="file-upload-input" 
                                     accept="image/jpeg,image/jpg,image/png,image/gif,image/webp" 
-                                    onchange="previewReceipt(this)"
-                                    required>
+                                    onchange="previewReceipt(this)">
                                 <label for="paymentReceipt" class="file-upload-label">
                                     📤 Choose File to Upload
                                 </label>
@@ -632,15 +663,15 @@ if (session_status() === PHP_SESSION_NONE) {
     </div>
 
     <!-- Success Modal -->
-<div id="successModal" class="modal">
-    <div class="modal-content">
-        <h2>Registration Successful!</h2>
-        <p>Thank you for registering! Your appointment has been confirmed.</p>
-        <p><strong>Reference Number:</strong> <span id="referenceNumber"></span></p>
-        <div id="paymentSuccessMessage"></div>
-        <button class="btn" onclick="closeModal()">Close</button>
+    <div id="successModal" class="modal">
+        <div class="modal-content">
+            <h2>Registration Successful!</h2>
+            <p>Thank you for registering! Your appointment has been confirmed.</p>
+            <p><strong>Reference Number:</strong> <span id="referenceNumber"></span></p>
+            <div id="paymentSuccessMessage"></div>
+            <button class="btn" onclick="closeModal()">Close</button>
+        </div>
     </div>
-</div>
 
     <!-- Error Modal -->
     <div id="errorModal" class="error-modal">
@@ -665,6 +696,7 @@ if (session_status() === PHP_SESSION_NONE) {
         let paymentReceiptFile = null;
         let currentMonth = new Date().getMonth();
         let currentYear = new Date().getFullYear();
+        let slotAvailability = {};
 
         // Initialize calendar when page loads
         document.addEventListener('DOMContentLoaded', function () {
@@ -673,7 +705,8 @@ if (session_status() === PHP_SESSION_NONE) {
 
         // Branch selection function
         function selectBranch(element, branchId, branchName, gcashQR) {
-            // Remove previous selection
+            console.log('Branch selected:', {branchId, branchName, gcashQR});
+            
             const previousSelected = document.querySelector('.branch-card.selected');
             if (previousSelected) {
                 previousSelected.classList.remove('selected');
@@ -681,7 +714,6 @@ if (session_status() === PHP_SESSION_NONE) {
                 if (previousRadio) previousRadio.checked = false;
             }
             
-            // Add selection to clicked branch
             element.classList.add('selected');
             const radio = element.querySelector('.branch-radio');
             if (radio) radio.checked = true;
@@ -689,12 +721,31 @@ if (session_status() === PHP_SESSION_NONE) {
             selectedBranchId = branchId;
             selectedBranchName = branchName;
             selectedBranchQR = gcashQR;
+            
+            updateQRCodePreview();
         }
 
-        // Toggle map display
+        function updateQRCodePreview() {
+            const qrContainer = document.getElementById('qrCodeContainer');
+            if (!qrContainer) return;
+            
+            if (selectedBranchQR && selectedBranchQR.trim() !== '') {
+                qrContainer.innerHTML = `
+                    <img src="${selectedBranchQR}" alt="GCash QR Code" class="qr-code-image">
+                    <p style="margin-top: 10px; color: #666;">Scan this QR code with your GCash app</p>
+                `;
+            } else {
+                qrContainer.innerHTML = `
+                    <div class="qr-code-placeholder">
+                        <p>⚠️ GCash QR code not available for this branch</p>
+                        <p style="font-size: 12px; margin-top: 10px;">Please choose "Pay On-Site" option or contact the branch</p>
+                    </div>
+                `;
+            }
+        }
+
         function toggleMap(event, button, mapLink) {
             event.stopPropagation();
-            
             const mapContainer = button.nextElementSibling;
             const iframe = mapContainer.querySelector('iframe');
             
@@ -709,59 +760,49 @@ if (session_status() === PHP_SESSION_NONE) {
             }
         }
 
-        // Payment method selection
         function selectPaymentMethod(method) {
             selectedPaymentMethod = method;
             
-            // Remove previous selection
             document.querySelectorAll('.payment-card').forEach(card => {
                 card.classList.remove('selected');
             });
-            
-            // Add selection to clicked card
             event.currentTarget.classList.add('selected');
             
-            // Show/hide relevant sections
             const gcashSection = document.getElementById('gcashSection');
             const onsiteMessage = document.getElementById('onsiteMessage');
+            const receiptInput = document.getElementById('paymentReceipt');
             
             if (method === 'gcash') {
                 gcashSection.classList.add('active');
                 onsiteMessage.classList.remove('active');
-                
-                // Load QR code
-                if (selectedBranchQR) {
-                    document.getElementById('qrCodeImage').src = selectedBranchQR;
-                }
+                updateQRCodePreview();
+                if (receiptInput) receiptInput.setAttribute('required', 'required');
             } else {
                 gcashSection.classList.remove('active');
                 onsiteMessage.classList.add('active');
+                if (receiptInput) receiptInput.removeAttribute('required');
             }
         }
 
-        // Preview payment receipt
-        // Replace your existing previewReceipt function
         function previewReceipt(input) {
             const preview = document.getElementById('receiptPreview');
             
             if (input.files && input.files[0]) {
                 const file = input.files[0];
-                
-                // Validate file size (5MB = 5 * 1024 * 1024 bytes)
                 const maxSize = 5 * 1024 * 1024;
+                
                 if (file.size > maxSize) {
                     alert('File size exceeds 5MB. Please choose a smaller file.');
-                    input.value = ''; // Clear the input
+                    input.value = '';
                     preview.innerHTML = '';
                     paymentReceiptFile = null;
                     return;
                 }
                 
-                // Validate file type
                 const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
                 if (!allowedTypes.includes(file.type.toLowerCase())) {
                     alert('Invalid file type. Please upload an image file (JPG, PNG, GIF, or WebP).');
-                    input.value = ''; // Clear the input
+                    input.value = '';
                     preview.innerHTML = '';
                     paymentReceiptFile = null;
                     return;
@@ -794,7 +835,6 @@ if (session_status() === PHP_SESSION_NONE) {
             }
         }
 
-        // Update price display when vehicle type changes
         function updateVehicleTypePrice() {
             const vehicleTypeSelect = document.getElementById('vehicleType');
             const priceDisplay = document.getElementById('priceDisplay');
@@ -809,7 +849,6 @@ if (session_status() === PHP_SESSION_NONE) {
             }
         }
 
-        // Initialize calendar
         function initializeCalendar() {
             updateCalendar();
         }
@@ -818,27 +857,22 @@ if (session_status() === PHP_SESSION_NONE) {
             const calendar = document.getElementById('calendar');
             const today = new Date();
             
-            // Clear existing calendar days (keep headers)
             const calendarDays = calendar.querySelectorAll('.calendar-day');
             calendarDays.forEach(day => day.remove());
             
-            // Update month/year display
             const monthNames = ["January", "February", "March", "April", "May", "June",
                 "July", "August", "September", "October", "November", "December"];
             document.getElementById('currentMonth').textContent = `${monthNames[currentMonth]} ${currentYear}`;
             
-            // Generate calendar days
             const firstDay = new Date(currentYear, currentMonth, 1).getDay();
             const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
             
-            // Add empty cells for days before month start
             for (let i = 0; i < firstDay; i++) {
                 const emptyDay = document.createElement('div');
                 emptyDay.className = 'calendar-day unavailable';
                 calendar.appendChild(emptyDay);
             }
             
-            // Add days of the month
             for (let day = 1; day <= daysInMonth; day++) {
                 const dayElement = document.createElement('div');
                 dayElement.className = 'calendar-day';
@@ -846,7 +880,6 @@ if (session_status() === PHP_SESSION_NONE) {
                 
                 const dayDate = new Date(currentYear, currentMonth, day);
                 
-                // Disable past dates and weekends
                 if (dayDate < today.setHours(0, 0, 0, 0) || dayDate.getDay() === 0 || dayDate.getDay() === 6) {
                     dayElement.classList.add('unavailable');
                 } else {
@@ -873,33 +906,119 @@ if (session_status() === PHP_SESSION_NONE) {
         }
 
         function selectDate(date, element) {
-            // Remove previous selection
             const previousSelected = document.querySelector('.calendar-day.selected');
             if (previousSelected) {
                 previousSelected.classList.remove('selected');
             }
             
-            // Add selection to clicked date
             element.classList.add('selected');
             selectedDate = date;
+            selectedTime = null;
             
-            // Enable time slots
-            const timeSlots = document.querySelectorAll('.time-slot');
-            timeSlots.forEach(slot => {
-                slot.classList.remove('unavailable');
-            });
+            const previousTimeSelected = document.querySelector('.time-slot.selected');
+            if (previousTimeSelected) {
+                previousTimeSelected.classList.remove('selected');
+            }
+            
+            fetchSlotAvailability(date);
         }
 
         function selectTimeSlot(element, time) {
-            // Remove previous selection
+            if (element.classList.contains('full') || element.classList.contains('unavailable')) {
+                return;
+            }
+            
             const previousSelected = document.querySelector('.time-slot.selected');
             if (previousSelected) {
                 previousSelected.classList.remove('selected');
             }
             
-            // Add selection to clicked time slot
             element.classList.add('selected');
             selectedTime = time;
+        }
+
+        function fetchSlotAvailability(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const formattedDate = `${year}-${month}-${day}`;
+            
+            const timeSlots = document.querySelectorAll('.time-slot');
+            timeSlots.forEach(slot => {
+                slot.classList.add('checking');
+                if (!slot.dataset.originalTime) {
+                    slot.dataset.originalTime = slot.textContent.trim();
+                }
+                slot.innerHTML = slot.dataset.originalTime + '<br><small>Checking...</small>';
+            });
+            
+            if (!selectedBranchName) {
+                alert('Please select a branch first before choosing a date.');
+                timeSlots.forEach(slot => {
+                    slot.classList.remove('checking');
+                    slot.innerHTML = slot.dataset.originalTime;
+                });
+                return;
+            }
+            
+            const url = `check_availability.php?date=${formattedDate}&branchName=${encodeURIComponent(selectedBranchName)}`;
+            
+            fetch(url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.error) {
+                        console.error('Error from server:', data.error);
+                        alert('Error: ' + data.error);
+                        return;
+                    }
+                    
+                    slotAvailability = data.slot_counts || {};
+                    const maxSlots = data.max_slots || 3;
+                    
+                    timeSlots.forEach(slot => {
+                        slot.classList.remove('checking');
+                        const onclickAttr = slot.getAttribute('onclick');
+                        if (!onclickAttr) return;
+                        
+                        const timeMatch = onclickAttr.match(/'(\d{2}:\d{2}:\d{2})'/);
+                        if (!timeMatch) return;
+                        
+                        const timeValue = timeMatch[1];
+                        const bookedCount = slotAvailability[timeValue] || 0;
+                        const availableSlots = maxSlots - bookedCount;
+                        const timeText = slot.dataset.originalTime;
+                        
+                        if (availableSlots > 0) {
+                            slot.classList.remove('unavailable', 'full');
+                            slot.classList.add('available');
+                            
+                            const availabilityColor = availableSlots === 3 ? '#4caf50' : 
+                                                     availableSlots === 2 ? '#ff9800' : '#f44336';
+                            
+                            slot.innerHTML = `${timeText}<br><small style="color: ${availabilityColor}; font-weight: bold;">${availableSlots} slot${availableSlots > 1 ? 's' : ''} left</small>`;
+                        } else {
+                            slot.classList.remove('available');
+                            slot.classList.add('unavailable', 'full');
+                            slot.onclick = null;
+                            slot.style.cursor = 'not-allowed';
+                            slot.innerHTML = `${timeText}<br><small style="color: #999;">FULL</small>`;
+                        }
+                    });
+                })
+                .catch(error => {
+                    console.error('Fetch error:', error);
+                    alert('Failed to load time slot availability: ' + error.message);
+                    
+                    timeSlots.forEach(slot => {
+                        slot.classList.remove('checking', 'unavailable');
+                        slot.innerHTML = slot.dataset.originalTime;
+                    });
+                });
         }
 
         function nextStep() {
@@ -910,9 +1029,9 @@ if (session_status() === PHP_SESSION_NONE) {
                     updateFormDisplay();
                     updateNavigationButtons();
                     
-                    // Update summary if on confirmation step
                     if (currentStep === 5) {
                         updateSummary();
+                        updateQRCodePreview();
                     }
                 }
             }
@@ -929,18 +1048,12 @@ if (session_status() === PHP_SESSION_NONE) {
 
         function validateCurrentStep() {
             switch (currentStep) {
-                case 1:
-                    return validateBranchSelection();
-                case 2:
-                    return validateVehicleInfo();
-                case 3:
-                    return validateOwnerDetails();
-                case 4:
-                    return validateSchedule();
-                case 5:
-                    return validatePaymentMethod();
-                default:
-                    return true;
+                case 1: return validateBranchSelection();
+                case 2: return validateVehicleInfo();
+                case 3: return validateOwnerDetails();
+                case 4: return validateSchedule();
+                case 5: return validatePaymentMethod();
+                default: return true;
             }
         }
 
@@ -963,7 +1076,6 @@ if (session_status() === PHP_SESSION_NONE) {
                 return false;
             }
             
-            // Basic plate number validation (Philippine format)
             const platePattern = /^[A-Z]{1,3}[-\s]?\d{3,4}$/i;
             if (!platePattern.test(plateNumber)) {
                 alert('Please enter a valid plate number format (e.g., ABC-1234).');
@@ -974,45 +1086,25 @@ if (session_status() === PHP_SESSION_NONE) {
         }
 
         function validateOwnerDetails() {
-            const step3Form = document.getElementById('step3');
-            const firstName = step3Form.querySelector('#firstName');
-            const lastName = step3Form.querySelector('#lastName');
-            const contactNumber = step3Form.querySelector('#contactNumber');
-            const email = step3Form.querySelector('#email');
-            const address = step3Form.querySelector('#address');
+            const firstName = document.querySelector('#step3 #firstName').value.trim();
+            const lastName = document.querySelector('#step3 #lastName').value.trim();
+            const contactNumber = document.querySelector('#step3 #contactNumber').value.trim();
+            const email = document.querySelector('#step3 #email').value.trim();
+            const address = document.querySelector('#step3 #address').value.trim();
             
             if (!firstName || !lastName || !contactNumber || !email || !address) {
-                alert('One or more form elements could not be found.');
+                alert('Please fill in all required owner details fields.');
                 return false;
             }
             
-            const firstNameVal = firstName.value.trim();
-            const lastNameVal = lastName.value.trim();
-            const contactNumberVal = contactNumber.value.trim();
-            const emailVal = email.value.trim();
-            const addressVal = address.value.trim();
-            
-            if (!firstNameVal || !lastNameVal || !contactNumberVal || !emailVal || !addressVal) {
-                alert(`Missing fields: ${[
-                    !firstNameVal ? 'First Name' : '',
-                    !lastNameVal ? 'Last Name' : '',
-                    !contactNumberVal ? 'Contact Number' : '',
-                    !emailVal ? 'Email' : '',
-                    !addressVal ? 'Address' : ''
-                ].filter(Boolean).join(', ')}`);
-                return false;
-            }
-            
-            // Email validation
             const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailPattern.test(emailVal)) {
+            if (!emailPattern.test(email)) {
                 alert('Please enter a valid email address.');
                 return false;
             }
             
-            // Philippine phone number validation
             const phonePattern = /^(09|\+639)\d{9}$/;
-            if (!phonePattern.test(contactNumberVal.replace(/[-\s]/g, ''))) {
+            if (!phonePattern.test(contactNumber.replace(/[-\s]/g, ''))) {
                 alert('Please enter a valid Philippine phone number.');
                 return false;
             }
@@ -1035,7 +1127,6 @@ if (session_status() === PHP_SESSION_NONE) {
             return true;
         }
 
-        // Replace your existing validatePaymentMethod function
         function validatePaymentMethod() {
             if (!selectedPaymentMethod) {
                 alert('Please select a payment method.');
@@ -1050,14 +1141,12 @@ if (session_status() === PHP_SESSION_NONE) {
                     return false;
                 }
                 
-                // Double-check file size
-                const maxSize = 5 * 1024 * 1024; // 5MB
+                const maxSize = 5 * 1024 * 1024;
                 if (fileInput.files[0].size > maxSize) {
                     alert('Payment receipt file is too large. Maximum size is 5MB.');
                     return false;
                 }
                 
-                // Verify file type
                 const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
                 if (!allowedTypes.includes(fileInput.files[0].type.toLowerCase())) {
                     alert('Invalid payment receipt format. Please upload an image file.');
@@ -1091,33 +1180,21 @@ if (session_status() === PHP_SESSION_NONE) {
         }
 
         function updateFormDisplay() {
-            // Hide all steps
             for (let i = 1; i <= totalSteps; i++) {
                 const step = document.getElementById(`step${i}`);
-                if (step) {
-                    step.classList.remove('active');
-                }
+                if (step) step.classList.remove('active');
             }
             
-            // Show current step
             const currentStepElement = document.getElementById(`step${currentStep}`);
-            if (currentStepElement) {
-                currentStepElement.classList.add('active');
-            }
+            if (currentStepElement) currentStepElement.classList.add('active');
         }
 
         function updateNavigationButtons() {
             const prevBtn = document.getElementById('prevBtn');
             const nextBtn = document.getElementById('nextBtn');
             
-            // Previous button visibility
-            if (currentStep === 1) {
-                prevBtn.style.visibility = 'hidden';
-            } else {
-                prevBtn.style.visibility = 'visible';
-            }
+            prevBtn.style.visibility = currentStep === 1 ? 'hidden' : 'visible';
             
-            // Next button text and functionality
             if (currentStep === totalSteps) {
                 nextBtn.textContent = 'Submit Registration';
                 nextBtn.onclick = submitRegistration;
@@ -1134,31 +1211,25 @@ if (session_status() === PHP_SESSION_NONE) {
         }
 
         function updateSummary() {
-            // Branch
             document.getElementById('summary-branch').textContent = selectedBranchName || '-';
             
-            // Vehicle info
             const brand = document.getElementById('brand').value;
             const vehicleType = document.getElementById('vehicleType').value;
             const vehicleCategory = document.getElementById('vehicleCategory').value;
             document.getElementById('summary-vehicle').textContent = `${brand} (${vehicleType} - ${vehicleCategory})`;
             
-            // Plate number
             document.getElementById('summary-plate').textContent = document.getElementById('plateNumber').value;
             
-            // Owner
             const firstName = document.querySelector('#step3 #firstName').value;
             const lastName = document.querySelector('#step3 #lastName').value;
             const middleName = document.querySelector('#step3 #middleName').value;
             const fullName = middleName ? `${firstName} ${middleName} ${lastName}` : `${firstName} ${lastName}`;
             document.getElementById('summary-owner').textContent = fullName;
             
-            // Contact
             const email = document.querySelector('#step3 #email').value;
             const contactNumber = document.querySelector('#step3 #contactNumber').value;
             document.getElementById('summary-contact').textContent = `${contactNumber} | ${email}`;
             
-            // Schedule
             if (selectedDate && selectedTime) {
                 const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
                 const formattedDate = selectedDate.toLocaleDateString('en-US', options);
@@ -1166,7 +1237,6 @@ if (session_status() === PHP_SESSION_NONE) {
                 document.getElementById('summary-schedule').textContent = `${formattedDate} at ${timeString}`;
             }
             
-            // Amount
             const vehicleTypeSelect = document.getElementById('vehicleType');
             const selectedOption = vehicleTypeSelect.options[vehicleTypeSelect.selectedIndex];
             if (selectedOption && selectedOption.dataset.price) {
@@ -1183,31 +1253,23 @@ if (session_status() === PHP_SESSION_NONE) {
         }
 
         function submitRegistration() {
-            if (!validateCurrentStep()) {
-                return;
-            }
+            if (!validateCurrentStep()) return;
             
-            // Prepare form data
             const formData = new FormData();
             
-            // Branch info
             formData.append('branchId', selectedBranchId);
             formData.append('branchName', selectedBranchName);
-            
-            // Vehicle info
             formData.append('plateNumber', document.getElementById('plateNumber').value);
             formData.append('vehicleType', document.getElementById('vehicleType').value);
             formData.append('brand', document.getElementById('brand').value);
             formData.append('vehicleCategory', document.getElementById('vehicleCategory').value);
             
-            // Get price from selected vehicle type
             const vehicleTypeSelect = document.getElementById('vehicleType');
             const selectedOption = vehicleTypeSelect.options[vehicleTypeSelect.selectedIndex];
             if (selectedOption && selectedOption.dataset.price) {
                 formData.append('price', selectedOption.dataset.price);
             }
             
-            // Owner details
             formData.append('firstName', document.querySelector('#step3 #firstName').value);
             formData.append('lastName', document.querySelector('#step3 #lastName').value);
             formData.append('middleName', document.querySelector('#step3 #middleName').value);
@@ -1215,7 +1277,6 @@ if (session_status() === PHP_SESSION_NONE) {
             formData.append('email', document.querySelector('#step3 #email').value);
             formData.append('address', document.querySelector('#step3 #address').value);
             
-            // Schedule info
             const year = selectedDate.getFullYear();
             const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
             const day = String(selectedDate.getDate()).padStart(2, '0');
@@ -1223,44 +1284,29 @@ if (session_status() === PHP_SESSION_NONE) {
 
             formData.append('scheduleDate', scheduleDate);
             formData.append('scheduleTime', selectedTime);
-            
-            // Payment info
             formData.append('paymentMethod', selectedPaymentMethod);
             
-            // Add payment receipt if GCash payment
             if (selectedPaymentMethod === 'gcash' && paymentReceiptFile) {
                 formData.append('paymentReceipt', paymentReceiptFile);
             }
             
-            // Disable submit button to prevent double submission
             const nextBtn = document.getElementById('nextBtn');
             nextBtn.disabled = true;
             nextBtn.textContent = 'Submitting...';
             
-            // Submit to server
             fetch('submit_reservation.php', {
                 method: 'POST',
                 body: formData
             })
             .then(response => {
-                console.log('Response status:', response.status);
-                console.log('Response headers:', response.headers);
-                
-                // Check if response is ok
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
-                
-                // Try to get the response as text first to see what we're getting
                 return response.text();
             })
             .then(text => {
-                console.log('Raw response:', text);
-                
-                // Try to parse as JSON
                 try {
-                    const data = JSON.parse(text);
-                    return data;
+                    return JSON.parse(text);
                 } catch (e) {
                     console.error('JSON parse error:', e);
                     console.error('Response text:', text);
@@ -1268,9 +1314,7 @@ if (session_status() === PHP_SESSION_NONE) {
                 }
             })
             .then(data => {
-                console.log('Parsed data:', data);
                 if (data.success) {
-                    // Show success modal with payment-specific message
                     document.getElementById('referenceNumber').textContent = data.referenceNumber;
                     
                     const paymentMessage = document.getElementById('paymentSuccessMessage');
@@ -1291,13 +1335,8 @@ if (session_status() === PHP_SESSION_NONE) {
                     }
                     
                     document.getElementById('successModal').style.display = 'block';
-                    
-                    // Reset form after successful submission
-                    setTimeout(() => {
-                        resetForm();
-                    }, 2000);
+                    setTimeout(() => resetForm(), 2000);
                 } else {
-                    // Show error modal
                     document.getElementById('errorMessage').textContent = data.message || 'Registration failed. Please try again.';
                     document.getElementById('errorModal').style.display = 'block';
                 }
@@ -1308,14 +1347,12 @@ if (session_status() === PHP_SESSION_NONE) {
                 document.getElementById('errorModal').style.display = 'block';
             })
             .finally(() => {
-                // Re-enable submit button
                 nextBtn.disabled = false;
                 nextBtn.textContent = 'Submit Registration';
             });
         }
 
         function resetForm() {
-            // Reset all form fields
             document.querySelectorAll('input, select, textarea').forEach(element => {
                 if (element.type === 'radio' || element.type === 'checkbox') {
                     element.checked = false;
@@ -1324,7 +1361,6 @@ if (session_status() === PHP_SESSION_NONE) {
                 }
             });
             
-            // Reset selections
             selectedBranchId = null;
             selectedBranchName = null;
             selectedBranchQR = null;
@@ -1333,23 +1369,19 @@ if (session_status() === PHP_SESSION_NONE) {
             selectedPaymentMethod = null;
             paymentReceiptFile = null;
             
-            // Remove all selected classes
             document.querySelectorAll('.selected').forEach(element => {
                 element.classList.remove('selected');
             });
             
-            // Hide payment sections
             document.getElementById('gcashSection').classList.remove('active');
             document.getElementById('onsiteMessage').classList.remove('active');
             document.getElementById('receiptPreview').innerHTML = '';
             
-            // Reset to first step
             currentStep = 1;
             updateStepDisplay();
             updateFormDisplay();
             updateNavigationButtons();
             
-            // Reset calendar to current month
             currentMonth = new Date().getMonth();
             currentYear = new Date().getFullYear();
             updateCalendar();
@@ -1357,13 +1389,13 @@ if (session_status() === PHP_SESSION_NONE) {
 
         function closeModal() {
             document.getElementById('successModal').style.display = 'none';
+            window.location.href = 'index.php';
         }
 
         function closeErrorModal() {
             document.getElementById('errorModal').style.display = 'none';
         }
 
-        // Close modals when clicking outside of them
         window.addEventListener('click', function(event) {
             const successModal = document.getElementById('successModal');
             const errorModal = document.getElementById('errorModal');
@@ -1401,248 +1433,19 @@ if (session_status() === PHP_SESSION_NONE) {
         });
 
         // Plate number formatting
-        document.getElementById('plateNumber').addEventListener('input', function(e) {
-            let value = e.target.value.toUpperCase();
-            value = value.replace(/-/g, '');
-            
-            if (value.length > 3) {
-                value = value.substring(0, 3) + '-' + value.substring(3);
-            }
-            
-            e.target.value = value;
-        });
-
-        // Add this to your existing script section in registration.php
-
-let slotAvailability = {}; // Store slot availability counts
-
-// Modified selectDate function to fetch availability
-function selectDate(date, element) {
-    // Remove previous selection
-    const previousSelected = document.querySelector('.calendar-day.selected');
-    if (previousSelected) {
-        previousSelected.classList.remove('selected');
-    }
-    
-    // Add selection to clicked date
-    element.classList.add('selected');
-    selectedDate = date;
-    
-    // Reset selected time
-    selectedTime = null;
-    const previousTimeSelected = document.querySelector('.time-slot.selected');
-    if (previousTimeSelected) {
-        previousTimeSelected.classList.remove('selected');
-    }
-    
-    // Fetch availability for this date
-    fetchSlotAvailability(date);
-}
-
-// New function to fetch slot availability
-// Replace the fetchSlotAvailability function with this:
-function fetchSlotAvailability(date) {
-    // Use local date format instead of UTC
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const formattedDate = `${year}-${month}-${day}`;
-    
-    // Show loading state
-    const timeSlots = document.querySelectorAll('.time-slot');
-    timeSlots.forEach(slot => {
-        slot.classList.add('checking');
-        // Store original time text as data attribute if not already stored
-        if (!slot.dataset.originalTime) {
-            slot.dataset.originalTime = slot.textContent.trim();
-        }
-        slot.innerHTML = slot.dataset.originalTime + '<br><small>Checking...</small>';
-    });
-    
-    // Check if branch is selected
-    if (!selectedBranchName) {
-        alert('Please select a branch first before choosing a date.');
-        timeSlots.forEach(slot => {
-            slot.classList.remove('checking');
-            slot.innerHTML = slot.dataset.originalTime;
-        });
-        return;
-    }
-    
-    // Fetch availability from server - using branchName instead of branchId
-    const url = `check_availability.php?date=${formattedDate}&branchName=${encodeURIComponent(selectedBranchName)}`;
-    console.log('Fetching from URL:', url);
-    
-    fetch(url)
-        .then(response => {
-            console.log('Response status:', response.status);
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.text();
-        })
-        .then(text => {
-            console.log('Raw response:', text);
-            try {
-                const data = JSON.parse(text);
-                console.log('Parsed data:', data);
+        const plateInput = document.getElementById('plateNumber');
+        if (plateInput) {
+            plateInput.addEventListener('input', function(e) {
+                let value = e.target.value.toUpperCase();
+                value = value.replace(/-/g, '');
                 
-                if (data.error) {
-                    console.error('Error from server:', data.error);
-                    alert('Error: ' + data.error);
-                    return;
+                if (value.length > 3) {
+                    value = value.substring(0, 3) + '-' + value.substring(3);
                 }
                 
-                slotAvailability = data.slot_counts || {};
-                const maxSlots = data.max_slots || 3;
-                
-                // Update time slots with availability
-                timeSlots.forEach(slot => {
-                    slot.classList.remove('checking');
-                    const onclickAttr = slot.getAttribute('onclick');
-                    if (!onclickAttr) {
-                        console.error('No onclick attribute found for slot:', slot);
-                        return;
-                    }
-                    
-                    const timeMatch = onclickAttr.match(/'(\d{2}:\d{2}:\d{2})'/);
-                    if (!timeMatch) {
-                        console.error('Could not extract time from onclick:', onclickAttr);
-                        return;
-                    }
-                    
-                    const timeValue = timeMatch[1];
-                    const bookedCount = slotAvailability[timeValue] || 0;
-                    const availableSlots = maxSlots - bookedCount;
-                    
-                    // Use stored original time text
-                    const timeText = slot.dataset.originalTime;
-                    
-                    if (availableSlots > 0) {
-                        slot.classList.remove('unavailable', 'full');
-                        slot.classList.add('available');
-                        
-                        // Add availability indicator
-                        const availabilityColor = availableSlots === 3 ? '#4caf50' : 
-                                                 availableSlots === 2 ? '#ff9800' : '#f44336';
-                        
-                        slot.innerHTML = `${timeText}<br><small style="color: ${availabilityColor}; font-weight: bold;">${availableSlots} slot${availableSlots > 1 ? 's' : ''} left</small>`;
-                    } else {
-                        slot.classList.remove('available');
-                        slot.classList.add('unavailable', 'full');
-                        slot.onclick = null;
-                        slot.style.cursor = 'not-allowed';
-                        slot.innerHTML = `${timeText}<br><small style="color: #999;">FULL</small>`;
-                    }
-                });
-            } catch (e) {
-                console.error('JSON parse error:', e);
-                console.error('Text that failed to parse:', text);
-                alert('Failed to parse server response. Check console for details.');
-            }
-        })
-        .catch(error => {
-            console.error('Fetch error:', error);
-            alert('Failed to load time slot availability: ' + error.message);
-            
-            // Reset time slots on error
-            timeSlots.forEach(slot => {
-                slot.classList.remove('checking', 'unavailable');
-                slot.innerHTML = slot.dataset.originalTime;
+                e.target.value = value;
             });
-        });
-}
-
-// Modified selectTimeSlot function
-function selectTimeSlot(element, time) {
-    // Check if slot is full
-    if (element.classList.contains('full') || element.classList.contains('unavailable')) {
-        return; // Don't allow selection of full slots
-    }
-    
-    // Remove previous selection
-    const previousSelected = document.querySelector('.time-slot.selected');
-    if (previousSelected) {
-        previousSelected.classList.remove('selected');
-    }
-    
-    // Add selection to clicked time slot
-    element.classList.add('selected');
-    selectedTime = time;
-}
-
-// Update the branch selection to reset time slots
-function selectBranch(element, branchId, branchName, gcashQR) {
-    // Remove previous selection
-    const previousSelected = document.querySelector('.branch-card.selected');
-    if (previousSelected) {
-        previousSelected.classList.remove('selected');
-        const previousRadio = previousSelected.querySelector('.branch-radio');
-        if (previousRadio) previousRadio.checked = false;
-    }
-    
-    // Add selection to clicked branch
-    element.classList.add('selected');
-    const radio = element.querySelector('.branch-radio');
-    if (radio) radio.checked = true;
-    
-    selectedBranchId = branchId;
-    selectedBranchName = branchName;
-    selectedBranchQR = gcashQR;
-    
-    // Reset date and time selection when branch changes
-    selectedDate = null;
-    selectedTime = null;
-    
-    // Clear any selected date
-    const selectedDateElement = document.querySelector('.calendar-day.selected');
-    if (selectedDateElement) {
-        selectedDateElement.classList.remove('selected');
-    }
-    
-    // Clear any selected time
-    const selectedTimeElement = document.querySelector('.time-slot.selected');
-    if (selectedTimeElement) {
-        selectedTimeElement.classList.remove('selected');
-    }
-    
-    // Reset time slots to default state
-    const timeSlots = document.querySelectorAll('.time-slot');
-    timeSlots.forEach(slot => {
-        slot.classList.remove('available', 'unavailable', 'full', 'selected');
-        const timeText = slot.textContent.split('\n')[0].split('Checking')[0].split('slot')[0].trim();
-        slot.innerHTML = timeText;
-    });
-}
-
-// Add CSS for the new states
-const style = document.createElement('style');
-style.textContent = `
-    .time-slot.full {
-        background-color: #f5f5f5;
-        color: #999;
-        cursor: not-allowed;
-        opacity: 0.6;
-    }
-    
-    .time-slot.checking {
-        opacity: 0.7;
-        pointer-events: none;
-    }
-    
-    .time-slot small {
-        display: block;
-        margin-top: 5px;
-        font-size: 11px;
-    }
-    
-    .time-slot:not(.full):not(.unavailable):hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(164, 19, 60, 0.2);
-    }
-`;
-document.head.appendChild(style);
+        }
     </script>
 </body>
 </html>
