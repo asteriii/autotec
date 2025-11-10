@@ -349,40 +349,44 @@ try {
     // Generate reference number
     $referenceNumber = 'AT-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -6));
 
-    writeLog("Preparing database insert:");
-    writeLog("  Reference: {$referenceNumber}");
-    writeLog("  PaymentReceipt: " . ($paymentReceiptPath ?? 'NULL'));
-    writeLog("  PaymentReceipt Type: " . gettype($paymentReceiptPath));
-    writeLog("  PaymentMethod: {$paymentMethod}");
-    writeLog("  PaymentStatus: {$paymentStatus}");
+writeLog("Preparing database insert:");
+writeLog("  Reference: {$referenceNumber}");
+writeLog("  PaymentReceipt: " . ($paymentReceiptPath ?? 'NULL'));
+writeLog("  PaymentReceipt Type: " . gettype($paymentReceiptPath));
+writeLog("  PaymentMethod: {$paymentMethod}");
+writeLog("  PaymentStatus: {$paymentStatus}");
 
-    // Insert into database
-    $stmt = $conn->prepare("INSERT INTO reservations (UserID, PlateNo, Brand, TypeID, CategoryID, Fname, Lname, Mname, PhoneNum, Email, Date, Time, Address, BranchName, PaymentMethod, PaymentStatus, PaymentReceipt, Price, ReferenceNumber) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    
-    writeLog("=== BINDING PARAMETERS ===");
-    writeLog("Parameter 17 (PaymentReceipt): '" . ($paymentReceiptPath ?? 'NULL') . "' (Type: " . gettype($paymentReceiptPath) . ")");
-    
-    $stmt->bind_param("issiisssssssssssdss", 
-        $userID, 
-        $plateNo, 
-        $brand, 
-        $typeID, 
-        $categoryID, 
-        $firstName, 
-        $lastName, 
-        $middleName, 
-        $contactNumber, 
-        $email, 
-        $date, 
-        $time, 
-        $address, 
-        $branchName, 
-        $paymentMethod, 
-        $paymentStatus, 
-        $paymentReceiptPath, 
-        $price, 
-        $referenceNumber
+// Insert into database
+$stmt = $conn->prepare("INSERT INTO reservations (UserID, PlateNo, Brand, TypeID, CategoryID, Fname, Lname, Mname, PhoneNum, Email, Date, Time, Address, BranchName, PaymentMethod, PaymentStatus, PaymentReceipt, Price, ReferenceNumber) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+
+writeLog("=== BINDING PARAMETERS ===");
+writeLog("Parameter 17 (PaymentReceipt): '" . ($paymentReceiptPath ?? 'NULL') . "' (Type: " . gettype($paymentReceiptPath) . ")");
+
+// FIXED: Changed position 17 from 'd' to 's'
+// OLD: "issiisssssssssssdss" ← Position 17 was 'd'
+// NEW: "issiissssssssssssds" ← Position 17 is now 's'
+$stmt->bind_param("issiissssssssssssds", 
+    $userID,              // 1:  i - integer
+    $plateNo,             // 2:  s - string
+    $brand,               // 3:  s - string
+    $typeID,              // 4:  i - integer
+    $categoryID,          // 5:  i - integer
+    $firstName,           // 6:  s - string
+    $lastName,            // 7:  s - string
+    $middleName,          // 8:  s - string
+    $contactNumber,       // 9:  s - string
+    $email,               // 10: s - string
+    $date,                // 11: s - string
+    $time,                // 12: s - string
+    $address,             // 13: s - string
+    $branchName,          // 14: s - string
+    $paymentMethod,       // 15: s - string
+    $paymentStatus,       // 16: s - string
+    $paymentReceiptPath,  // 17: s - string ⭐ CHANGED FROM 'd' TO 's'
+    $price,               // 18: d - double
+    $referenceNumber      // 19: s - string
     );
+
 
     if ($stmt->execute()) {
         $reservation_id = $stmt->insert_id;
