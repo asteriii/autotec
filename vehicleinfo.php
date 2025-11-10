@@ -1551,7 +1551,7 @@ function resetForm() {
 
 function closeModal() {
     document.getElementById('successModal').style.display = 'none';
-    window.location.href = 'index.php';
+    window.location.href = 'vehicleinfo.php';
 }
 
 function closeErrorModal() {

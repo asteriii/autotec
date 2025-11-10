@@ -1,14 +1,12 @@
 <?php
 require_once '../db.php';
 
-// Define upload directory - go up one level from AdminSide to root
-define('UPLOAD_DIR', dirname(__DIR__) . '/uploads/branches/');
+// Define upload directory - USE ABSOLUTE PATHS FOR RAILWAY
+define('UPLOAD_DIR', '/var/www/html/uploads/branches/');
 define('UPLOAD_DIR_RELATIVE', 'uploads/branches/');
 
 // Debug logging
 error_log("=== ABOUT-EDIT.PHP ===");
-error_log("Current directory: " . __DIR__);
-error_log("Parent directory: " . dirname(__DIR__));
 error_log("Upload directory: " . UPLOAD_DIR);
 error_log("Upload dir exists: " . (file_exists(UPLOAD_DIR) ? 'YES' : 'NO'));
 error_log("======================");
@@ -49,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
                     if ($imageInfo !== false) {
                         // Generate unique filename
                         $newFileName = 'branch_' . $aboutID . '_' . time() . '.' . $fileExtension;
-                        $destPath = UPLOAD_DIR . $newFileName;
+                        $destPath = UPLOAD_DIR . $newFileName;  // Absolute path
                         
                         // Get old picture to delete
                         $oldPictureSql = "SELECT Picture FROM about_us WHERE AboutID = ?";
@@ -60,11 +58,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
                         // Move uploaded file
                         if (move_uploaded_file($fileTmpPath, $destPath)) {
                             @chmod($destPath, 0644);
-                            $pictureFileName = UPLOAD_DIR_RELATIVE . $newFileName;
+                            $pictureFileName = UPLOAD_DIR_RELATIVE . $newFileName;  // Relative path for database
                             
-                            // Delete old picture if exists
-                            if ($oldPicture && file_exists($oldPicture)) {
-                                @unlink($oldPicture);
+                            // Delete old picture if exists (construct absolute path)
+                            if ($oldPicture) {
+                                $oldPictureAbsPath = '/var/www/html/' . $oldPicture;
+                                if (file_exists($oldPictureAbsPath)) {
+                                    @unlink($oldPictureAbsPath);
+                                    error_log("Deleted old branch image: " . $oldPictureAbsPath);
+                                }
                             }
                             
                             error_log("Branch image uploaded: " . $pictureFileName);
@@ -386,6 +388,7 @@ $branches = $stmt->fetchAll(PDO::FETCH_ASSOC);
             border: 2px dashed #cbd5e0;
             border-radius: 12px;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
             color: #718096;
@@ -643,14 +646,16 @@ $branches = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 $displayPath = '../' . $branch['Picture'];
                             }
                             
-                            // Check if file exists
-                            $fileExists = !empty($displayPath) && file_exists(dirname(__DIR__) . '/' . $branch['Picture']);
+                            // Check if file exists using absolute path
+                            $absolutePath = '/var/www/html/' . $branch['Picture'];
+                            $fileExists = !empty($branch['Picture']) && file_exists($absolutePath);
                             ?>
                             
                             <?php if ($fileExists): ?>
-                                <img src="<?php echo htmlspecialchars($displayPath); ?>" 
+                                <img src="<?php echo htmlspecialchars($displayPath); ?>?v=<?php echo time(); ?>" 
                                      alt="Branch Image" 
-                                     class="branch-image">
+                                     class="branch-image"
+                                     onerror="this.parentElement.innerHTML='<div class=\'no-image\'><i class=\'fas fa-image\' style=\'font-size: 48px; opacity: 0.5;\'></i><p style=\'margin-top: 10px; font-size: 12px;\'>Image not found</p></div>'">
                             <?php else: ?>
                                 <div class="no-image">
                                     <i class="fas fa-image" style="font-size: 48px; opacity: 0.5;"></i>

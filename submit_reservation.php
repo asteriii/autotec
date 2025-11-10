@@ -8,7 +8,7 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 // Log to a file for Railway debugging
-$logFile = __DIR__ . '/upload_debug.log';
+$logFile = '/var/www/html/upload_debug.log';
 function writeLog($message) {
     global $logFile;
     $timestamp = date('Y-m-d H:i:s');
@@ -193,8 +193,9 @@ try {
         throw new Exception("This time slot is fully booked (" . $current_bookings . "/" . $max_slots . " slots taken). Please choose a different time.");
     }
 
-    // ===== RAILWAY-COMPATIBLE FILE UPLOAD =====
+    // ===== RAILWAY-COMPATIBLE FILE UPLOAD (FIXED WITH ABSOLUTE PATHS) =====
     $paymentReceiptPath = null;
+    $uploadPath = null;
     
     if ($paymentMethod === 'gcash') {
         writeLog("Processing GCash payment receipt upload");
@@ -252,41 +253,26 @@ try {
         
         writeLog("Image validated: {$imageInfo[0]}x{$imageInfo[1]}px");
         
-        // ===== RAILWAY SYMLINK-COMPATIBLE UPLOAD DIRECTORY =====
-        $uploadDir = 'uploads/payment_receipts/';
-        $fullUploadDir = __DIR__ . '/' . $uploadDir;
+        // ===== FIXED: USE ABSOLUTE PATHS FOR RAILWAY VOLUME =====
+        $uploadDir = 'uploads/payment_receipts/';  // Relative path for database
+        $fullUploadDir = '/var/www/html/uploads/payment_receipts/';  // Absolute path for file system
         
         writeLog("Upload directory path: {$fullUploadDir}");
-        writeLog("Current directory: " . __DIR__);
-        writeLog("Document root: " . $_SERVER['DOCUMENT_ROOT']);
         
-        // Check if directory exists (including symlink)
+        // Check if directory exists
         if (!file_exists($fullUploadDir)) {
             writeLog("Directory doesn't exist, attempting to create...");
-            if (!mkdir($fullUploadDir, 0777, true)) {
+            if (!mkdir($fullUploadDir, 0755, true)) {
                 writeLog("FAILED to create directory");
                 throw new Exception('Upload directory does not exist and could not be created.');
             }
             writeLog("Directory created successfully");
         }
         
-        // Check if it's a symlink (Railway setup)
+        // Check if it's a symlink (for logging)
         if (is_link($fullUploadDir)) {
             $symlinkTarget = readlink($fullUploadDir);
             writeLog("Directory is a SYMLINK pointing to: {$symlinkTarget}");
-            
-            // Verify the symlink target exists and is writable
-            if (!file_exists($symlinkTarget)) {
-                writeLog("ERROR: Symlink target does not exist: {$symlinkTarget}");
-                throw new Exception('Upload storage volume not properly mounted.');
-            }
-            
-            if (!is_writable($symlinkTarget)) {
-                writeLog("ERROR: Symlink target not writable: {$symlinkTarget}");
-                throw new Exception('Upload storage volume not writable.');
-            }
-            
-            writeLog("Symlink target is valid and writable");
         } else {
             writeLog("Directory is a regular directory (not symlink)");
         }
@@ -295,7 +281,7 @@ try {
         if (!is_writable($fullUploadDir)) {
             writeLog("ERROR: Directory not writable: {$fullUploadDir}");
             // Try to fix permissions
-            @chmod($fullUploadDir, 0777);
+            @chmod($fullUploadDir, 0755);
             if (!is_writable($fullUploadDir)) {
                 throw new Exception('Upload directory is not writable.');
             }
@@ -308,8 +294,8 @@ try {
         $uniqueId = uniqid();
         $fileName = "gcash_{$sanitizedPlateNo}_{$timestamp}_{$uniqueId}.{$fileExtension}";
         
-        $uploadPath = $fullUploadDir . $fileName;
-        $paymentReceiptPath = $uploadDir . $fileName; // Path for database (relative)
+        $uploadPath = $fullUploadDir . $fileName;  // Full absolute path
+        $paymentReceiptPath = $uploadDir . $fileName; // Relative path for database
         
         writeLog("Target upload path: {$uploadPath}");
         writeLog("Database path: {$paymentReceiptPath}");
@@ -349,44 +335,40 @@ try {
     // Generate reference number
     $referenceNumber = 'AT-' . date('Ymd') . '-' . strtoupper(substr(uniqid(), -6));
 
-writeLog("Preparing database insert:");
-writeLog("  Reference: {$referenceNumber}");
-writeLog("  PaymentReceipt: " . ($paymentReceiptPath ?? 'NULL'));
-writeLog("  PaymentReceipt Type: " . gettype($paymentReceiptPath));
-writeLog("  PaymentMethod: {$paymentMethod}");
-writeLog("  PaymentStatus: {$paymentStatus}");
+    writeLog("Preparing database insert:");
+    writeLog("  Reference: {$referenceNumber}");
+    writeLog("  PaymentReceipt: " . ($paymentReceiptPath ?? 'NULL'));
+    writeLog("  PaymentReceipt Type: " . gettype($paymentReceiptPath));
+    writeLog("  PaymentMethod: {$paymentMethod}");
+    writeLog("  PaymentStatus: {$paymentStatus}");
 
-// Insert into database
-$stmt = $conn->prepare("INSERT INTO reservations (UserID, PlateNo, Brand, TypeID, CategoryID, Fname, Lname, Mname, PhoneNum, Email, Date, Time, Address, BranchName, PaymentMethod, PaymentStatus, PaymentReceipt, Price, ReferenceNumber) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    // Insert into database
+    $stmt = $conn->prepare("INSERT INTO reservations (UserID, PlateNo, Brand, TypeID, CategoryID, Fname, Lname, Mname, PhoneNum, Email, Date, Time, Address, BranchName, PaymentMethod, PaymentStatus, PaymentReceipt, Price, ReferenceNumber) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
-writeLog("=== BINDING PARAMETERS ===");
-writeLog("Parameter 17 (PaymentReceipt): '" . ($paymentReceiptPath ?? 'NULL') . "' (Type: " . gettype($paymentReceiptPath) . ")");
+    writeLog("=== BINDING PARAMETERS ===");
+    writeLog("Parameter 17 (PaymentReceipt): '" . ($paymentReceiptPath ?? 'NULL') . "' (Type: " . gettype($paymentReceiptPath) . ")");
 
-// FIXED: Changed position 17 from 'd' to 's'
-// OLD: "issiisssssssssssdss" ← Position 17 was 'd'
-// NEW: "issiissssssssssssds" ← Position 17 is now 's'
-$stmt->bind_param("issiissssssssssssds", 
-    $userID,              // 1:  i - integer
-    $plateNo,             // 2:  s - string
-    $brand,               // 3:  s - string
-    $typeID,              // 4:  i - integer
-    $categoryID,          // 5:  i - integer
-    $firstName,           // 6:  s - string
-    $lastName,            // 7:  s - string
-    $middleName,          // 8:  s - string
-    $contactNumber,       // 9:  s - string
-    $email,               // 10: s - string
-    $date,                // 11: s - string
-    $time,                // 12: s - string
-    $address,             // 13: s - string
-    $branchName,          // 14: s - string
-    $paymentMethod,       // 15: s - string
-    $paymentStatus,       // 16: s - string
-    $paymentReceiptPath,  // 17: s - string ⭐ CHANGED FROM 'd' TO 's'
-    $price,               // 18: d - double
-    $referenceNumber      // 19: s - string
+    $stmt->bind_param("issiissssssssssssds", 
+        $userID,              // 1:  i - integer
+        $plateNo,             // 2:  s - string
+        $brand,               // 3:  s - string
+        $typeID,              // 4:  i - integer
+        $categoryID,          // 5:  i - integer
+        $firstName,           // 6:  s - string
+        $lastName,            // 7:  s - string
+        $middleName,          // 8:  s - string
+        $contactNumber,       // 9:  s - string
+        $email,               // 10: s - string
+        $date,                // 11: s - string
+        $time,                // 12: s - string
+        $address,             // 13: s - string
+        $branchName,          // 14: s - string
+        $paymentMethod,       // 15: s - string
+        $paymentStatus,       // 16: s - string
+        $paymentReceiptPath,  // 17: s - string
+        $price,               // 18: d - double
+        $referenceNumber      // 19: s - string
     );
-
 
     if ($stmt->execute()) {
         $reservation_id = $stmt->insert_id;
@@ -429,7 +411,7 @@ $stmt->bind_param("issiissssssssssssds",
         writeLog("✗ Database insert failed: " . $stmt->error);
         
         // Delete uploaded file if database insert fails
-        if ($paymentReceiptPath && file_exists($uploadPath)) {
+        if ($paymentReceiptPath && $uploadPath && file_exists($uploadPath)) {
             @unlink($uploadPath);
             writeLog("Deleted uploaded file due to database error");
         }

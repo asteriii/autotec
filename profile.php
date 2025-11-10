@@ -16,7 +16,8 @@ function alertAndRedirect($message, $url = 'profile.php') {
 // SIMPLIFIED PATH CONFIGURATION
 // The Dockerfile creates a symlink from /var/www/html/uploads/profile to the volume
 // So we can always use the same path!
-define('UPLOAD_DIR', __DIR__ . '/uploads/profile/');
+// NEW (absolute path for Railway)
+define('UPLOAD_DIR', '/var/www/html/uploads/profile/');
 define('UPLOAD_DIR_RELATIVE', 'uploads/profile/');
 error_log("Upload directory: " . UPLOAD_DIR);
 
