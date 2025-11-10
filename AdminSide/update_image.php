@@ -49,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Create AdminSide/uploads directory if it doesn't exist
-    $uploadDir = __DIR__ . '/AdminSide/uploads/';
+    $uploadDir = __DIR__ . '/uploads/homepage/';
     if (!is_dir($uploadDir)) {
         if (!mkdir($uploadDir, 0755, true)) {
             echo json_encode(['success' => false, 'error' => 'Failed to create upload directory']);
@@ -92,7 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         echo json_encode([
             'success' => true,
-            'filePath' => 'AdminSide/uploads/' . $filename,
+            'filePath' => 'uploads/homepage/' . $filename,
             'message' => ucfirst($imageType) . ' image uploaded successfully'
         ]);
     } else {

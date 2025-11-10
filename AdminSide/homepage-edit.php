@@ -12,10 +12,10 @@ $location = $row['location'] ?? '';
 $contact = $row['contact'] ?? '';
 
 // Fixed file paths to use AdminSide/uploads
-$service1_img = !empty($row['service1_img']) ? 'AdminSide/uploads/' . $row['service1_img'] : 'placeholder1.jpg';
-$service2_img = !empty($row['service2_img']) ? 'AdminSide/uploads/' . $row['service2_img'] : 'placeholder2.jpg';
-$service3_img = !empty($row['service3_img']) ? 'AdminSide/uploads/' . $row['service3_img'] : 'placeholder3.jpg';
-$announcement_img = !empty($row['announcement_img']) ? 'AdminSide/uploads/' . $row['announcement_img'] : 'announcement.png';
+$service1_img = !empty($row['service1_img']) ? 'uploads/homepage/' . $row['service1_img'] : 'placeholder1.jpg';
+$service2_img = !empty($row['service2_img']) ? 'uploads/homepage/' . $row['service2_img'] : 'placeholder2.jpg';
+$service3_img = !empty($row['service3_img']) ? 'uploads/homepage/' . $row['service3_img'] : 'placeholder3.jpg';
+$announcement_img = !empty($row['announcement_img']) ? 'uploads/homepage/' . $row['announcement_img'] : 'announcement.png';
 ?>
 
 <!DOCTYPE html>
