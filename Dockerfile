@@ -34,6 +34,7 @@ echo "=== Starting Application ==="\n\
 mkdir -p /var/www/html/uploads/profile\n\
 mkdir -p /var/www/html/uploads/branches\n\
 mkdir -p /var/www/html/uploads/payment_receipts\n\
+mkdir -p /var/www/html/uploads/qrcodes\n\
 \n\
 # Set permissions\n\
 chmod -R 755 /var/www/html/uploads\n\

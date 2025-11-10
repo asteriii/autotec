@@ -2,7 +2,113 @@
 // reservation-edit.php
 include 'db.php'; // uses mysqli $conn
 
-// fetch vehicle types (initial server render)
+// Define upload directory with absolute path for Railway
+define('UPLOAD_DIR_QRCODES', '/var/www/html/uploads/qrcodes/');
+define('UPLOAD_DIR_QRCODES_RELATIVE', 'uploads/qrcodes/');
+
+// Create directory if it doesn't exist
+if (!file_exists(UPLOAD_DIR_QRCODES)) {
+    mkdir(UPLOAD_DIR_QRCODES, 0755, true);
+}
+
+// Handle QR code upload
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'upload_qr') {
+    header('Content-Type: application/json');
+    
+    try {
+        $branchId = isset($_POST['branch_id']) ? intval($_POST['branch_id']) : 0;
+        
+        if ($branchId <= 0) {
+            throw new Exception('Invalid branch ID');
+        }
+        
+        // Check if file was uploaded
+        if (!isset($_FILES['qr_image']) || $_FILES['qr_image']['error'] !== UPLOAD_ERR_OK) {
+            throw new Exception('No file uploaded or upload error');
+        }
+        
+        $file = $_FILES['qr_image'];
+        
+        // Validate file type
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mimeType = finfo_file($finfo, $file['tmp_name']);
+        finfo_close($finfo);
+        
+        $allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+        if (!in_array($mimeType, $allowedTypes)) {
+            throw new Exception('Invalid file type. Only JPG, PNG, and GIF are allowed.');
+        }
+        
+        // Check file size (max 5MB)
+        if ($file['size'] > 5 * 1024 * 1024) {
+            throw new Exception('File size exceeds 5MB limit');
+        }
+        
+        // Verify it's actually an image
+        if (!getimagesize($file['tmp_name'])) {
+            throw new Exception('Uploaded file is not a valid image');
+        }
+        
+        // Get file extension
+        $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        
+        // Get old QR code path to delete later
+        $stmt = $conn->prepare("SELECT GcashQR FROM about_us WHERE AboutID = ?");
+        $stmt->bind_param("i", $branchId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $oldQR = null;
+        if ($row = $result->fetch_assoc()) {
+            $oldQR = $row['GcashQR'];
+        }
+        $stmt->close();
+        
+        // Generate unique filename
+        $newFileName = 'qr_branch_' . $branchId . '_' . time() . '.' . $extension;
+        $destPath = UPLOAD_DIR_QRCODES . $newFileName;
+        $dbPath = UPLOAD_DIR_QRCODES_RELATIVE . $newFileName;
+        
+        // Move uploaded file
+        if (!move_uploaded_file($file['tmp_name'], $destPath)) {
+            throw new Exception('Failed to save QR code image');
+        }
+        
+        // Set file permissions
+        chmod($destPath, 0644);
+        
+        // Update database
+        $stmt = $conn->prepare("UPDATE about_us SET GcashQR = ? WHERE AboutID = ?");
+        $stmt->bind_param("si", $dbPath, $branchId);
+        
+        if (!$stmt->execute()) {
+            // If database update fails, delete the uploaded file
+            unlink($destPath);
+            throw new Exception('Failed to update database');
+        }
+        
+        $stmt->close();
+        
+        // Delete old QR code if it exists
+        if ($oldQR && file_exists('/var/www/html/' . $oldQR)) {
+            unlink('/var/www/html/' . $oldQR);
+        }
+        
+        echo json_encode([
+            'success' => true,
+            'message' => 'QR code updated successfully',
+            'path' => $dbPath
+        ]);
+        
+    } catch (Exception $e) {
+        echo json_encode([
+            'success' => false,
+            'error' => $e->getMessage()
+        ]);
+    }
+    exit;
+}
+
+// Fetch vehicle types (initial server render)
 $sql = "SELECT VehicleTypeID, Name, Price FROM vehicle_types ORDER BY VehicleTypeID ASC";
 $result = $conn->query($sql);
 
@@ -10,6 +116,16 @@ $vehicle_types = [];
 if ($result && $result->num_rows > 0) {
     while ($r = $result->fetch_assoc()) {
         $vehicle_types[] = $r;
+    }
+}
+
+// Fetch branches with QR codes
+$branchesSql = "SELECT AboutID, BranchName, GcashQR FROM about_us ORDER BY AboutID";
+$branchesResult = $conn->query($branchesSql);
+$branches = [];
+if ($branchesResult && $branchesResult->num_rows > 0) {
+    while ($b = $branchesResult->fetch_assoc()) {
+        $branches[] = $b;
     }
 }
 ?>
@@ -71,7 +187,7 @@ if ($result && $result->num_rows > 0) {
     /* QR cards */
     .qr-grid { display:flex; gap:20px; flex-wrap:wrap; margin-top:8px; }
     .service-card { background:#fff; border-radius:8px; padding:14px; box-shadow:0 1px 6px rgba(0,0,0,0.04); width:320px; border:1px solid #eef2f6; text-align:center; }
-    .service-card img { max-width:220px; border-radius:8px; display:block; margin:8px auto; }
+    .service-card img { max-width:220px; height:220px; object-fit:contain; border-radius:8px; display:block; margin:8px auto; border:1px solid #eee; }
 
     /* modal */
     .modal { display:none; position:fixed; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.45); justify-content:center; align-items:center; z-index:1200; }
@@ -86,7 +202,7 @@ if ($result && $result->num_rows > 0) {
     .manage-add input[type="text"] { padding:8px 10px; border-radius:6px; border:1px solid #d1d5db; width:50%; }
 
     .confirm-content { text-align:center; }
-    .announcement-preview { max-width:100%; height:auto; display:block; margin-bottom:10px; border-radius:6px; }
+    .announcement-preview { max-width:100%; max-height:300px; object-fit:contain; display:block; margin:10px auto; border-radius:6px; border:1px solid #ddd; }
 
     /* toast */
     .toast { position:fixed; right:20px; bottom:20px; background:#111827; color:#fff; padding:12px 16px; border-radius:8px; display:none; z-index:1300; box-shadow:0 8px 30px rgba(0,0,0,0.3); }
@@ -95,6 +211,8 @@ if ($result && $result->num_rows > 0) {
 
     /* small utility */
     .manage-row { display:flex; justify-content:space-between; align-items:center; padding:10px; border-bottom:1px solid #f3f3f3; gap:12px; }
+    
+    .qr-placeholder { width:220px; height:220px; background:#f0f0f0; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#999; margin:8px auto; border:2px dashed #ddd; }
   </style>
 </head>
 <body>
@@ -130,21 +248,35 @@ if ($result && $result->num_rows > 0) {
         </div>
       </div>
 
-      <!-- QR Codes (unchanged) -->
+      <!-- QR Codes for Branches -->
       <div class="reservation-card">
         <h3>QR Codes for Payments</h3>
         <div class="qr-grid">
-          <div class="service-card">
-            <p><strong>SHAW Branch:</strong></p>
-            <img id="shawQR" src="uploads/shaw_qr.png" alt="SHAW Branch QR" onerror="this.src='uploads/placeholder_qr.png'">
-            <div class="button-row"><button class="btn" onclick="openQRModal('SHAW')">Edit</button></div>
-          </div>
-
-          <div class="service-card">
-            <p><strong>Subic Branch:</strong></p>
-            <img id="subicQR" src="uploads/subic_qr.png" alt="Subic Branch QR" onerror="this.src='uploads/placeholder_qr.png'">
-            <div class="button-row"><button class="btn" onclick="openQRModal('Subic')">Edit</button></div>
-          </div>
+          <?php foreach ($branches as $branch): ?>
+            <div class="service-card">
+              <p><strong><?php echo htmlspecialchars($branch['BranchName']); ?>:</strong></p>
+              <?php 
+              $qrPath = !empty($branch['GcashQR']) ? htmlspecialchars($branch['GcashQR']) : '';
+              $qrExists = !empty($qrPath) && file_exists('/var/www/html/' . $qrPath);
+              ?>
+              
+              <?php if ($qrExists): ?>
+                <img id="branchQR_<?php echo $branch['AboutID']; ?>" 
+                     src="<?php echo $qrPath; ?>?v=<?php echo time(); ?>" 
+                     alt="<?php echo htmlspecialchars($branch['BranchName']); ?> QR">
+              <?php else: ?>
+                <div class="qr-placeholder" id="branchQR_<?php echo $branch['AboutID']; ?>">
+                  <i class="fas fa-qrcode" style="font-size:48px;"></i>
+                </div>
+              <?php endif; ?>
+              
+              <div class="button-row">
+                <button class="btn" onclick="openQRModal(<?php echo $branch['AboutID']; ?>, '<?php echo htmlspecialchars($branch['BranchName'], ENT_QUOTES); ?>')">
+                  <?php echo $qrExists ? 'Edit' : 'Upload'; ?>
+                </button>
+              </div>
+            </div>
+          <?php endforeach; ?>
         </div>
       </div>
 
@@ -199,9 +331,12 @@ if ($result && $result->num_rows > 0) {
     <div class="modal-content">
       <h3 id="qrModalTitle">Edit QR Code</h3>
       <p>Current Image:</p>
-      <img id="qrPreview" src="uploads/placeholder_qr.png" class="announcement-preview" />
-      <label>Upload New QR Code:</label>
-      <input type="file" id="qrUpload" accept="image/*" />
+      <img id="qrPreview" src="" class="announcement-preview" style="display:none;" />
+      <div id="qrPreviewPlaceholder" class="qr-placeholder" style="margin:10px auto;">
+        <i class="fas fa-qrcode" style="font-size:48px;"></i>
+      </div>
+      <label style="display:block; margin-top:15px; font-weight:600;">Upload New QR Code:</label>
+      <input type="file" id="qrUpload" accept="image/*" style="margin-top:8px;" />
       <div style="text-align:right; margin-top:12px;">
         <button class="btn" id="saveQRBtn">Save</button>
         <button class="btn btn-danger" id="closeQRBtn">Cancel</button>
@@ -418,33 +553,102 @@ if ($result && $result->num_rows > 0) {
       confirmModal.classList.add('show');
     }
 
-    /* ---------- QR modal (client-side preview only) ---------- */
+    /* ---------- QR modal (with actual upload to server) ---------- */
     const qrModal = document.getElementById('qrModal');
     const qrPreview = document.getElementById('qrPreview');
-    let currentQRTarget = '';
+    const qrPreviewPlaceholder = document.getElementById('qrPreviewPlaceholder');
+    let currentQRBranchId = null;
 
-    function openQRModal(branch) {
-      currentQRTarget = branch.toLowerCase();
-      const img = document.getElementById(currentQRTarget + 'QR');
-      if (img) qrPreview.src = img.src;
-      document.getElementById('qrModalTitle').innerText = 'Edit ' + branch + ' Branch QR Code';
+    function openQRModal(branchId, branchName) {
+      currentQRBranchId = branchId;
+      document.getElementById('qrModalTitle').innerText = 'Edit ' + branchName + ' QR Code';
+      
+      // Get current QR image
+      const img = document.getElementById('branchQR_' + branchId);
+      if (img && img.tagName === 'IMG') {
+        qrPreview.src = img.src;
+        qrPreview.style.display = 'block';
+        qrPreviewPlaceholder.style.display = 'none';
+      } else {
+        qrPreview.style.display = 'none';
+        qrPreviewPlaceholder.style.display = 'flex';
+      }
+      
+      // Clear file input
+      document.getElementById('qrUpload').value = '';
+      
       qrModal.classList.add('show');
       qrModal.setAttribute('aria-hidden','false');
     }
-    document.getElementById('closeQRBtn').addEventListener('click', () => { qrModal.classList.remove('show'); });
+
+    document.getElementById('closeQRBtn').addEventListener('click', () => { 
+      qrModal.classList.remove('show'); 
+      currentQRBranchId = null;
+    });
+
     document.getElementById('saveQRBtn').addEventListener('click', function(){
       const input = document.getElementById('qrUpload');
-      if (!input.files || !input.files[0]) { qrModal.classList.remove('show'); showToast('No file selected'); return; }
-      const reader = new FileReader();
-      reader.onload = function(ev) {
-        if (currentQRTarget) {
-          const targetImg = document.getElementById(currentQRTarget + 'QR');
-          if (targetImg) targetImg.src = ev.target.result;
+      
+      if (!input.files || !input.files[0]) { 
+        showToast('Please select a file first');
+        return; 
+      }
+      
+      if (!currentQRBranchId) {
+        showToast('Invalid branch selection');
+        return;
+      }
+      
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append('action', 'upload_qr');
+      formData.append('branch_id', currentQRBranchId);
+      formData.append('qr_image', input.files[0]);
+      
+      // Disable button during upload
+      const saveBtn = document.getElementById('saveQRBtn');
+      const originalText = saveBtn.textContent;
+      saveBtn.textContent = 'Uploading...';
+      saveBtn.disabled = true;
+      
+      // Upload to server
+      fetch('reservation-edit.php', {
+        method: 'POST',
+        body: formData
+      })
+      .then(resp => resp.json())
+      .then(data => {
+        if (data.success) {
+          // Update the QR image on the page
+          const targetElement = document.getElementById('branchQR_' + currentQRBranchId);
+          
+          if (targetElement.tagName === 'IMG') {
+            // Already an image, just update src
+            targetElement.src = data.path + '?v=' + Date.now();
+          } else {
+            // Was a placeholder, replace with image
+            const newImg = document.createElement('img');
+            newImg.id = 'branchQR_' + currentQRBranchId;
+            newImg.src = data.path + '?v=' + Date.now();
+            newImg.alt = 'Branch QR';
+            targetElement.parentElement.replaceChild(newImg, targetElement);
+          }
+          
+          qrModal.classList.remove('show');
+          showToast('QR code updated successfully!');
+          currentQRBranchId = null;
+        } else {
+          alert('Upload failed: ' + (data.error || 'Unknown error'));
         }
-        qrModal.classList.remove('show');
-        showToast('QR updated (client-side only). Server upload not implemented.)');
-      };
-      reader.readAsDataURL(input.files[0]);
+      })
+      .catch(err => {
+        console.error('QR upload error:', err);
+        alert('Error uploading QR code. Please try again.');
+      })
+      .finally(() => {
+        saveBtn.textContent = originalText;
+        saveBtn.disabled = false;
+      });
     });
 
     // small helpers:
