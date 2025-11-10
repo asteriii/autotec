@@ -35,6 +35,7 @@ mkdir -p /var/www/html/uploads/profile\n\
 mkdir -p /var/www/html/uploads/branches\n\
 mkdir -p /var/www/html/uploads/payment_receipts\n\
 mkdir -p /var/www/html/uploads/qrcodes\n\
+mkdir -p /var/www/html/uploads/homepage\n\
 \n\
 # Set permissions\n\
 chmod -R 755 /var/www/html/uploads\n\
@@ -52,6 +53,9 @@ ls -la /var/www/html/uploads/branches/ 2>/dev/null | head -n 10 || echo "Empty o
 echo ""\n\
 echo "Payment receipts directory contents (first 5):"\n\
 ls -la /var/www/html/uploads/payment_receipts/ 2>/dev/null | head -n 10 || echo "Empty or not accessible"\n\
+echo ""\n\
+echo "Homepage directory contents (first 5):"\n\
+ls -la /var/www/html/uploads/homepage/ 2>/dev/null | head -n 10 || echo "Empty or not accessible"\n\
 echo "================================"\n\
 \n\
 # Configure Apache port\n\

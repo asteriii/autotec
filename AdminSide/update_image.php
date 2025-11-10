@@ -48,8 +48,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    // Create AdminSide/uploads directory if it doesn't exist
-    $uploadDir = __DIR__ . '/uploads/homepage/';
+    // Use absolute path for Railway volume
+    // Railway mounts volume at /var/www/html/uploads
+    $uploadDir = '/var/www/html/uploads/homepage/';
+    
+    // Create directory if it doesn't exist
     if (!is_dir($uploadDir)) {
         if (!mkdir($uploadDir, 0755, true)) {
             echo json_encode(['success' => false, 'error' => 'Failed to create upload directory']);
@@ -76,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Move uploaded file
     if (!move_uploaded_file($file['tmp_name'], $targetPath)) {
-        echo json_encode(['success' => false, 'error' => 'Failed to move uploaded file']);
+        echo json_encode(['success' => false, 'error' => 'Failed to move uploaded file. Check permissions.']);
         exit;
     }
 
