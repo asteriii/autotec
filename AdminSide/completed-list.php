@@ -865,12 +865,6 @@ unset($completed); // Break reference
                                 </button>
                             <?php endif; ?>
                             
-                            <button class="btn confirm-btn" onclick="confirmReservation(<?php echo $reservation['ReservationID']; ?>)">
-                                <i class="fas fa-check"></i> Confirm
-                            </button>
-                            <button class="btn cancel-btn" onclick="cancelReservation(<?php echo $reservation['ReservationID']; ?>)">
-                                <i class="fas fa-times"></i> Cancel
-                            </button>
                         </div>
                     </div>
                 <?php endforeach; ?>
