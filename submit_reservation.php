@@ -8,7 +8,7 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 // Log to a file for Railway debugging
-$logFile = __DIR__ . '/upload_debug.log';
+$logFile = '/var/www/html/upload_debug.log';
 function writeLog($message) {
     global $logFile;
     $timestamp = date('Y-m-d H:i:s');
@@ -193,9 +193,9 @@ try {
         throw new Exception("This time slot is fully booked (" . $current_bookings . "/" . $max_slots . " slots taken). Please choose a different time.");
     }
 
-    // ===== RAILWAY-COMPATIBLE FILE UPLOAD =====
+    // ===== RAILWAY-COMPATIBLE FILE UPLOAD (FIXED WITH ABSOLUTE PATHS) =====
     $paymentReceiptPath = null;
-    $uploadPath = null; // Initialize for cleanup in catch block
+    $uploadPath = null;
     
     if ($paymentMethod === 'gcash') {
         writeLog("Processing GCash payment receipt upload");
@@ -253,41 +253,26 @@ try {
         
         writeLog("Image validated: {$imageInfo[0]}x{$imageInfo[1]}px");
         
-        // ===== RAILWAY SYMLINK-COMPATIBLE UPLOAD DIRECTORY =====
-        $uploadDir = 'uploads/payment_receipts/';
-        $fullUploadDir = __DIR__ . '/' . $uploadDir;
+        // ===== FIXED: USE ABSOLUTE PATHS FOR RAILWAY VOLUME =====
+        $uploadDir = 'uploads/payment_receipts/';  // Relative path for database
+        $fullUploadDir = '/var/www/html/uploads/payment_receipts/';  // Absolute path for file system
         
         writeLog("Upload directory path: {$fullUploadDir}");
-        writeLog("Current directory: " . __DIR__);
-        writeLog("Document root: " . $_SERVER['DOCUMENT_ROOT']);
         
-        // Check if directory exists (including symlink)
+        // Check if directory exists
         if (!file_exists($fullUploadDir)) {
             writeLog("Directory doesn't exist, attempting to create...");
-            if (!mkdir($fullUploadDir, 0777, true)) {
+            if (!mkdir($fullUploadDir, 0755, true)) {
                 writeLog("FAILED to create directory");
                 throw new Exception('Upload directory does not exist and could not be created.');
             }
             writeLog("Directory created successfully");
         }
         
-        // Check if it's a symlink (Railway setup)
+        // Check if it's a symlink (for logging)
         if (is_link($fullUploadDir)) {
             $symlinkTarget = readlink($fullUploadDir);
             writeLog("Directory is a SYMLINK pointing to: {$symlinkTarget}");
-            
-            // Verify the symlink target exists and is writable
-            if (!file_exists($symlinkTarget)) {
-                writeLog("ERROR: Symlink target does not exist: {$symlinkTarget}");
-                throw new Exception('Upload storage volume not properly mounted.');
-            }
-            
-            if (!is_writable($symlinkTarget)) {
-                writeLog("ERROR: Symlink target not writable: {$symlinkTarget}");
-                throw new Exception('Upload storage volume not writable.');
-            }
-            
-            writeLog("Symlink target is valid and writable");
         } else {
             writeLog("Directory is a regular directory (not symlink)");
         }
@@ -296,7 +281,7 @@ try {
         if (!is_writable($fullUploadDir)) {
             writeLog("ERROR: Directory not writable: {$fullUploadDir}");
             // Try to fix permissions
-            @chmod($fullUploadDir, 0777);
+            @chmod($fullUploadDir, 0755);
             if (!is_writable($fullUploadDir)) {
                 throw new Exception('Upload directory is not writable.');
             }
@@ -309,8 +294,8 @@ try {
         $uniqueId = uniqid();
         $fileName = "gcash_{$sanitizedPlateNo}_{$timestamp}_{$uniqueId}.{$fileExtension}";
         
-        $uploadPath = $fullUploadDir . $fileName;
-        $paymentReceiptPath = $uploadDir . $fileName; // Path for database (relative)
+        $uploadPath = $fullUploadDir . $fileName;  // Full absolute path
+        $paymentReceiptPath = $uploadDir . $fileName; // Relative path for database
         
         writeLog("Target upload path: {$uploadPath}");
         writeLog("Database path: {$paymentReceiptPath}");
@@ -357,15 +342,13 @@ try {
     writeLog("  PaymentMethod: {$paymentMethod}");
     writeLog("  PaymentStatus: {$paymentStatus}");
 
-    // Insert into database with CORRECTED binding
+    // Insert into database
     $stmt = $conn->prepare("INSERT INTO reservations (UserID, PlateNo, Brand, TypeID, CategoryID, Fname, Lname, Mname, PhoneNum, Email, Date, Time, Address, BranchName, PaymentMethod, PaymentStatus, PaymentReceipt, Price, ReferenceNumber) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    
+
     writeLog("=== BINDING PARAMETERS ===");
     writeLog("Parameter 17 (PaymentReceipt): '" . ($paymentReceiptPath ?? 'NULL') . "' (Type: " . gettype($paymentReceiptPath) . ")");
-    
-    // *** CRITICAL FIX: Changed from "issiisssssssssssdss" to "issiissssssssssssdss" ***
-    // Position 17 (PaymentReceipt) must be 's' (string), not 'd' (decimal)
-    $stmt->bind_param("issiissssssssssssdss", 
+
+    $stmt->bind_param("issiissssssssssssds", 
         $userID,              // 1:  i - integer
         $plateNo,             // 2:  s - string
         $brand,               // 3:  s - string
@@ -382,8 +365,8 @@ try {
         $branchName,          // 14: s - string
         $paymentMethod,       // 15: s - string
         $paymentStatus,       // 16: s - string
-        $paymentReceiptPath,  // 17: s - string *** FIXED ***
-        $price,               // 18: d - decimal
+        $paymentReceiptPath,  // 17: s - string
+        $price,               // 18: d - double
         $referenceNumber      // 19: s - string
     );
 
@@ -407,18 +390,6 @@ try {
         writeLog("  PaymentReceipt from DB: '" . ($saved_data['PaymentReceipt'] ?? 'NULL') . "'");
         writeLog("  PaymentMethod from DB: '" . ($saved_data['PaymentMethod'] ?? 'NULL') . "'");
         writeLog("  PaymentStatus from DB: '" . ($saved_data['PaymentStatus'] ?? 'NULL') . "'");
-        
-        // Verify file actually exists if path was saved
-        if ($saved_data['PaymentReceipt']) {
-            $fullPath = __DIR__ . '/' . $saved_data['PaymentReceipt'];
-            $fileExists = file_exists($fullPath);
-            $fileReadable = $fileExists ? is_readable($fullPath) : false;
-            writeLog("  File exists on disk: " . ($fileExists ? 'YES' : 'NO'));
-            writeLog("  File readable: " . ($fileReadable ? 'YES' : 'NO'));
-            if ($fileExists) {
-                writeLog("  File size: " . filesize($fullPath) . " bytes");
-            }
-        }
         writeLog("================================");
         
         writeLog("✓ Reservation created successfully");
@@ -438,12 +409,11 @@ try {
         
     } else {
         writeLog("✗ Database insert failed: " . $stmt->error);
-        writeLog("  Error code: " . $stmt->errno);
         
         // Delete uploaded file if database insert fails
         if ($paymentReceiptPath && $uploadPath && file_exists($uploadPath)) {
             @unlink($uploadPath);
-            writeLog("Deleted uploaded file due to database error: {$uploadPath}");
+            writeLog("Deleted uploaded file due to database error");
         }
         
         throw new Exception("Database error: " . $stmt->error);

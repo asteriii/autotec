@@ -247,7 +247,7 @@ mysqli_stmt_close($user_stmt);
             font-weight: 600;
         }
 
-        /* Payment Status Badge - UPDATED */
+        /* Payment Status Badge */
         .payment-badge {
             padding: 6px 12px;
             border-radius: 15px;
@@ -278,7 +278,7 @@ mysqli_stmt_close($user_stmt);
             margin-top: 5px;
         }
 
-        /* Payment Info Box - NEW */
+        /* Payment Info Box */
         .payment-info-box {
             background: #fff3cd;
             border-left: 4px solid #ffc107;
@@ -475,6 +475,37 @@ mysqli_stmt_close($user_stmt);
         .form-group textarea:focus {
             outline: none;
             border-color: #bd1e51;
+        }
+
+        /* Time slot styles */
+        .time-slot-option {
+            padding: 10px;
+            position: relative;
+        }
+
+        .time-slot-option.full {
+            color: #dc3545;
+            background-color: #f8d7da;
+        }
+
+        .time-slot-option.available {
+            color: #28a745;
+        }
+
+        .time-slot-option.limited {
+            color: #ffc107;
+        }
+
+        .slot-indicator {
+            font-size: 11px;
+            margin-left: 5px;
+        }
+
+        .loading-slots {
+            text-align: center;
+            padding: 10px;
+            color: #666;
+            font-style: italic;
         }
 
         .modal-footer {
@@ -712,6 +743,7 @@ mysqli_stmt_close($user_stmt);
                     <div class="reservation-card" 
                          data-date="<?php echo htmlspecialchars($reservation['Date']); ?>"
                          data-reservation-id="<?php echo htmlspecialchars($reservation['ReservationID']); ?>"
+                         data-branch="<?php echo htmlspecialchars($reservation['BranchName']); ?>"
                          data-reservation-data="<?php echo htmlspecialchars(json_encode($reservation)); ?>">
                         
                         <div class="card-header">
@@ -730,7 +762,7 @@ mysqli_stmt_close($user_stmt);
                             </span>
                         </div>
 
-                        <!-- Payment Status Info - UPDATED -->
+                        <!-- Payment Status Info -->
                         <?php if ($paymentStatus === 'pending'): ?>
                             <div class="payment-info-box <?php echo $paymentMethod === 'gcash' ? 'pending-gcash' : 'pending-onsite'; ?>">
                                 <?php if ($paymentMethod === 'gcash'): ?>
@@ -810,6 +842,7 @@ mysqli_stmt_close($user_stmt);
             <div class="modal-body">
                 <form id="rescheduleForm">
                     <input type="hidden" id="rescheduleReservationId" name="reservationId">
+                    <input type="hidden" id="rescheduleBranch" name="branchName">
                     
                     <div class="form-group">
                         <label for="rescheduleDate">New Date</label>
@@ -820,27 +853,7 @@ mysqli_stmt_close($user_stmt);
                     <div class="form-group">
                         <label for="rescheduleTime">New Time</label>
                         <select id="rescheduleTime" name="newTime" required>
-                            <option value="">Select Time</option>
-                            <option value="09:00:00">9:00 AM</option>
-                            <option value="09:20:00">9:20 AM</option>
-                            <option value="09:40:00">9:40 AM</option>
-                            <option value="10:00:00">10:00 AM</option>
-                            <option value="10:20:00">10:20 AM</option>
-                            <option value="10:40:00">10:40 AM</option>
-                            <option value="11:00:00">11:00 AM</option>
-                            <option value="11:20:00">11:20 AM</option>
-                            <option value="11:40:00">11:40 AM</option>
-                            <option value="13:00:00">1:00 PM</option>
-                            <option value="13:20:00">1:20 PM</option>
-                            <option value="13:40:00">1:40 PM</option>
-                            <option value="14:00:00">2:00 PM</option>
-                            <option value="14:20:00">2:20 PM</option>
-                            <option value="14:40:00">2:40 PM</option>
-                            <option value="15:00:00">3:00 PM</option>
-                            <option value="15:20:00">3:20 PM</option>
-                            <option value="15:40:00">3:40 PM</option>
-                            <option value="16:00:00">4:00 PM</option>
-                            <option value="16:20:00">4:20 PM</option>
+                            <option value="">Select a date first...</option>
                         </select>
                     </div>
                     
@@ -891,550 +904,332 @@ mysqli_stmt_close($user_stmt);
 
     <script>
         let currentFilter = 'all';
+        let currentBranch = '';
+        
+        // Define all
+        // Add this script section at the end of your existing JavaScript (before closing)
 
-        function showMessage(message, type = 'info') {
-            const toast = document.getElementById('messageToast');
-            toast.textContent = message;
-            toast.className = `message ${type}`;
-            toast.classList.add('show');
-            
-            setTimeout(() => {
-                toast.classList.remove('show');
-            }, 3000);
+// Function to open reschedule modal
+function openRescheduleModal(reservationId) {
+    const card = document.querySelector(`[data-reservation-id="${reservationId}"]`);
+    const reservationData = JSON.parse(card.dataset.reservationData);
+    
+    document.getElementById('rescheduleReservationId').value = reservationId;
+    document.getElementById('rescheduleBranch').value = reservationData.BranchName;
+    
+    // Reset form
+    document.getElementById('rescheduleDate').value = '';
+    document.getElementById('rescheduleTime').innerHTML = '<option value="">Select a date first...</option>';
+    document.getElementById('rescheduleReason').value = '';
+    
+    document.getElementById('rescheduleModal').classList.add('active');
+}
+
+// Function to close reschedule modal
+function closeRescheduleModal() {
+    document.getElementById('rescheduleModal').classList.remove('active');
+}
+
+// Load available time slots when date is selected
+// Load available time slots when date is selected
+document.getElementById('rescheduleDate').addEventListener('change', function() {
+    const selectedDate = this.value;
+    const branchName = document.getElementById('rescheduleBranch').value;
+    const timeSelect = document.getElementById('rescheduleTime');
+    
+    if (!selectedDate) return;
+    
+    // Show loading state
+    timeSelect.innerHTML = '<option value="" class="loading-slots">Loading available times...</option>';
+    timeSelect.disabled = true;
+    
+    // Fetch available time slots using GET parameters
+    fetch(`check_availability.php?date=${encodeURIComponent(selectedDate)}&branchName=${encodeURIComponent(branchName)}`)
+    .then(response => response.json())
+    .then(data => {
+        timeSelect.innerHTML = '';
+        timeSelect.disabled = false;
+        
+        // Check if there's an error
+        if (data.error || !data.success) {
+            console.error('API Error:', data.error);
+            timeSelect.innerHTML = '<option value="">Error: ' + (data.error || 'Unknown error') + '</option>';
+            showMessage('Error loading time slots: ' + (data.error || 'Unknown error'), 'error');
+            return;
         }
-
-        function filterReservations(filterType) {
-            const cards = document.querySelectorAll('.reservation-card');
-            const statCards = document.querySelectorAll('.stat-card');
-            const filterInfo = document.getElementById('filterInfo');
-            const filterText = document.getElementById('filterText');
+        
+        // Use the slots returned from the API
+        const slots = data.slots || [];
+        let hasAvailableSlots = false;
+        
+        // Add default option
+        const defaultOption = document.createElement('option');
+        defaultOption.value = '';
+        defaultOption.textContent = 'Select a time slot';
+        timeSelect.appendChild(defaultOption);
+        
+        // Process each time slot from API
+        slots.forEach(slot => {
+            const option = document.createElement('option');
+            option.value = slot.time;
             
-            currentFilter = filterType;
+            const availableSlots = slot.available;
+            const displayTime = slot.display;
             
-            statCards.forEach(card => {
-                card.classList.remove('active');
-                if (card.dataset.filter === filterType) {
-                    card.classList.add('active');
-                }
-            });
+            // Determine availability status
+            let statusClass = '';
+            let statusText = '';
             
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            
-            const currentMonth = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0');
-            
-            let visibleCount = 0;
-            let filterDescription = '';
-            
-            cards.forEach(card => {
-                const reservationDate = card.dataset.date;
-                let shouldShow = false;
-                
-                if (!reservationDate) {
-                    shouldShow = filterType === 'all';
-                } else {
-                    const cardDate = new Date(reservationDate + 'T00:00:00');
-                    const cardMonth = cardDate.getFullYear() + '-' + String(cardDate.getMonth() + 1).padStart(2, '0');
-                    
-                    switch (filterType) {
-                        case 'all':
-                            shouldShow = true;
-                            filterDescription = 'Showing all reservations';
-                            break;
-                            
-                        case 'upcoming':
-                            shouldShow = cardDate >= today;
-                            filterDescription = 'Showing upcoming reservations';
-                            break;
-                            
-                        case 'thisMonth':
-                            shouldShow = cardMonth === currentMonth;
-                            filterDescription = 'Showing this month\'s reservations';
-                            break;
-                            
-                        default:
-                            shouldShow = true;
-                    }
-                }
-                
-                if (shouldShow) {
-                    card.classList.remove('hidden');
-                    visibleCount++;
-                } else {
-                    card.classList.add('hidden');
-                }
-            });
-            
-            if (filterType === 'all') {
-                filterInfo.classList.remove('active');
+            if (availableSlots <= 0) {
+                statusClass = 'full';
+                statusText = ' (FULL)';
+                option.disabled = true;
+            } else if (availableSlots <= 1) {
+                statusClass = 'limited';
+                statusText = ` (${availableSlots} slot left)`;
+                hasAvailableSlots = true;
+            } else if (availableSlots <= 2) {
+                statusClass = 'limited';
+                statusText = ` (${availableSlots} slot left)`;
+                hasAvailableSlots = true;
             } else {
-                filterInfo.classList.add('active');
-                filterText.textContent = `${filterDescription} (${visibleCount} found)`;
-            }
-        }
-
-        function clearFilter() {
-            filterReservations('all');
-        }
-
-        // Reschedule Modal Functions
-        function openRescheduleModal(reservationId) {
-            document.getElementById('rescheduleReservationId').value = reservationId;
-            document.getElementById('rescheduleModal').classList.add('active');
-            document.body.style.overflow = 'hidden';
-        }
-
-        function closeRescheduleModal() {
-            document.getElementById('rescheduleModal').classList.remove('active');
-            document.getElementById('rescheduleForm').reset();
-            document.body.style.overflow = 'auto';
-        }
-
-        function submitReschedule() {
-            const form = document.getElementById('rescheduleForm');
-            const formData = new FormData(form);
-            
-            if (!form.checkValidity()) {
-                showMessage('Please fill in all required fields', 'error');
-                return;
+                statusClass = 'available';
+                statusText = ` (${availableSlots} available)`;
+                hasAvailableSlots = true;
             }
             
-            fetch('reschedule_reservation.php', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    showMessage('Appointment rescheduled successfully!', 'success');
-                    closeRescheduleModal();
-                    setTimeout(() => {
-                        location.reload();
-                    }, 1500);
-                } else {
-                    showMessage(data.message || 'Failed to reschedule appointment', 'error');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                showMessage('An error occurred. Please try again.', 'error');
-            });
-        }
-
-        // Cancel Modal Functions
-        function confirmCancel(reservationId) {
-            document.getElementById('cancelReservationId').value = reservationId;
-            document.getElementById('cancelModal').classList.add('active');
-            document.body.style.overflow = 'hidden';
-        }
-
-        function closeCancelModal() {
-            document.getElementById('cancelModal').classList.remove('active');
-            document.getElementById('cancelForm').reset();
-            document.body.style.overflow = 'auto';
-        }
-
-        function submitCancel() {
-            const form = document.getElementById('cancelForm');
-            const formData = new FormData(form);
+            option.className = `time-slot-option ${statusClass}`;
+            option.textContent = `${displayTime}${statusText}`;
             
-            if (!form.checkValidity()) {
-                showMessage('Please provide a reason for cancellation', 'error');
-                return;
-            }
-            
-            fetch('cancel_reservation.php', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    showMessage('Appointment cancelled successfully', 'success');
-                    closeCancelModal();
-                    setTimeout(() => {
-                        location.reload();
-                    }, 1500);
-                } else {
-                    showMessage(data.message || 'Failed to cancel appointment', 'error');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                showMessage('An error occurred. Please try again.', 'error');
-            });
-        }
-
-        // Close modals when clicking outside
-        window.addEventListener('click', function(event) {
-            const rescheduleModal = document.getElementById('rescheduleModal');
-            const cancelModal = document.getElementById('cancelModal');
-            
-            if (event.target === rescheduleModal) {
-                closeRescheduleModal();
-            }
-            if (event.target === cancelModal) {
-                closeCancelModal();
-            }
+            timeSelect.appendChild(option);
         });
-
-        // PDF Generation Function with Payment Info - UPDATED
-        function generatePDF(reservationId) {
-            showMessage('Generating receipt...', 'info');
-            
-            const card = document.querySelector(`[data-reservation-id="${reservationId}"]`);
-            if (!card) {
-                showMessage('Reservation not found', 'error');
-                return;
-            }
-            
-            const reservationDataStr = card.getAttribute('data-reservation-data');
-            let data;
-            try {
-                data = JSON.parse(reservationDataStr);
-            } catch (error) {
-                console.error('Failed to parse reservation data:', error);
-                showMessage('Error loading reservation data', 'error');
-                return;
-            }
-
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            
-            const primaryColor = '#bd1e51';
-            const darkGray = '#333333';
-            const lightGray = '#666666';
-            
-            function addHorizontalLine(y, width = 170) {
-                doc.setDrawColor(224, 224, 224);
-                doc.line(20, y, 20 + width, y);
-            }
-            
-            function addColoredRect(x, y, width, height, color) {
-                const rgb = hexToRgb(color);
-                doc.setFillColor(rgb.r, rgb.g, rgb.b);
-                doc.rect(x, y, width, height, 'F');
-            }
-            
-            function hexToRgb(hex) {
-                const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-                return result ? {
-                    r: parseInt(result[1], 16),
-                    g: parseInt(result[2], 16),
-                    b: parseInt(result[3], 16)
-                } : null;
-            }
-            
-            function formatTime(timeString) {
-                if (!timeString) return 'N/A';
-                if (timeString.includes('AM') || timeString.includes('PM')) {
-                    return timeString;
-                }
-                
-                const [hours, minutes] = timeString.split(':');
-                const hour = parseInt(hours, 10);
-                const minute = minutes || '00';
-                
-                if (hour === 0) {
-                    return `12:${minute} AM`;
-                } else if (hour < 12) {
-                    return `${hour}:${minute} AM`;
-                } else if (hour === 12) {
-                    return `12:${minute} PM`;
-                } else {
-                    return `${hour - 12}:${minute} PM`;
-                }
-            }
-            
-            function formatDate(dateString) {
-                const date = new Date(dateString + 'T00:00:00');
-                const options = { 
-                    weekday: 'long', 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric' 
-                };
-                return date.toLocaleDateString('en-US', options);
-            }
-            
-            // Header
-            addColoredRect(0, 0, 210, 35, primaryColor);
-            
-            doc.setTextColor(255, 255, 255);
-            doc.setFontSize(24);
-            doc.setFont('helvetica', 'bold');
-            doc.text('AutoTEC', 20, 20);
-            
-            doc.setFontSize(12);
-            doc.setFont('helvetica', 'normal');
-            doc.text('Emission Testing Center', 20, 28);
-            
-            // Receipt title
-            doc.setTextColor(51, 51, 51);
-            doc.setFontSize(16);
-            doc.setFont('helvetica', 'bold');
-            doc.text('APPOINTMENT RECEIPT', 105, 48, { align: 'center' });
-            
-            // Reference number section
-            addColoredRect(20, 55, 170, 12, '#f8f9fa');
-            doc.setTextColor(51, 51, 51);
-            doc.setFontSize(11);
-            doc.setFont('helvetica', 'bold');
-            doc.text('Reference Number:', 25, 63);
-            doc.setTextColor(189, 30, 81);
-            doc.setFontSize(12);
-            const refNumber = data.ReferenceNumber || `NO-${reservationId}`;
-            doc.text(refNumber, 185, 63, { align: 'right' });
-            
-            // Payment status section - UPDATED TO SHOW PENDING STATUS
-            let yPos = 72;
-            const paymentMethod = data.PaymentMethod || 'onsite';
-            const paymentStatus = data.PaymentStatus || 'pending';
-            
-            // Set background color based on status
-            let statusBgColor = '#fff3cd'; // pending yellow
-            if (paymentStatus === 'paid' || paymentStatus === 'verified') {
-                statusBgColor = '#d4edda'; // green
-            }
-            
-            addColoredRect(20, yPos, 170, 10, statusBgColor);
-            doc.setTextColor(51, 51, 51);
-            doc.setFontSize(10);
-            doc.setFont('helvetica', 'bold');
-            doc.text('Payment Status:', 25, yPos + 6);
-            
-            // Set text color based on status
-            let statusTextColor = '#856404'; // pending yellow text
-            if (paymentStatus === 'paid' || paymentStatus === 'verified') {
-                statusTextColor = '#155724'; // green text
-            }
-            
-            const statusRgb = hexToRgb(statusTextColor);
-            doc.setTextColor(statusRgb.r, statusRgb.g, statusRgb.b);
-            doc.text(paymentStatus.toUpperCase(), 70, yPos + 6);
-            
-            doc.setTextColor(51, 51, 51);
-            doc.text('Payment Method:', 120, yPos + 6);
-            doc.text(paymentMethod === 'gcash' ? 'GCash' : 'On-Site', 165, yPos + 6);
-            
-            // Generated date
-            yPos += 12;
-            doc.setTextColor(102, 102, 102);
-            doc.setFontSize(9);
-            doc.setFont('helvetica', 'normal');
-            const now = new Date();
-            doc.text(`Generated: ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`, 185, yPos, { align: 'right' });
-            
-            // Vehicle Information
-            yPos += 8;
-            doc.setTextColor(189, 30, 81);
-            doc.setFontSize(12);
-            doc.setFont('helvetica', 'bold');
-            doc.text('VEHICLE INFORMATION', 20, yPos);
-            
-            yPos += 3;
-            addHorizontalLine(yPos);
-            yPos += 8;
-            
-            doc.setTextColor(51, 51, 51);
-            doc.setFontSize(10);
-            doc.setFont('helvetica', 'normal');
-            
-            const vehicleInfo = [
-                ['Plate Number:', (data.PlateNo || 'N/A').toUpperCase()],
-                ['Vehicle Type:', data.VehicleTypeName || data.VehicleType || 'N/A'],
-                ['Brand:', data.Brand || 'N/A'],
-                ['Category:', data.CategoryName || data.Category || 'N/A']
-            ];
-            
-            vehicleInfo.forEach(([label, value]) => {
-                doc.setFont('helvetica', 'bold');
-                doc.text(label, 25, yPos);
-                doc.setFont('helvetica', 'normal');
-                doc.text(value, 80, yPos);
-                yPos += 8;
-            });
-            
-            // Owner Information
-            yPos += 5;
-            doc.setTextColor(189, 30, 81);
-            doc.setFontSize(12);
-            doc.setFont('helvetica', 'bold');
-            doc.text('OWNER INFORMATION', 20, yPos);
-            
-            yPos += 3;
-            addHorizontalLine(yPos);
-            yPos += 8;
-            
-            doc.setTextColor(51, 51, 51);
-            doc.setFontSize(10);
-            doc.setFont('helvetica', 'normal');
-            
-            const fullName = data.Mname ? 
-                `${data.Fname} ${data.Mname} ${data.Lname}` : 
-                `${data.Fname} ${data.Lname}`;
-            
-            const ownerInfo = [
-                ['Full Name:', fullName],
-                ['Contact Number:', data.PhoneNum || 'N/A'],
-                ['Email Address:', data.Email || 'N/A'],
-                ['Address:', data.Address || 'N/A']
-            ];
-            
-            ownerInfo.forEach(([label, value]) => {
-                doc.setFont('helvetica', 'bold');
-                doc.text(label, 25, yPos);
-                doc.setFont('helvetica', 'normal');
-                
-                if (label === 'Address:' && value.length > 40) {
-                    const lines = doc.splitTextToSize(value, 110);
-                    doc.text(lines, 80, yPos);
-                    yPos += (lines.length - 1) * 4;
-                } else {
-                    doc.text(value, 80, yPos);
-                }
-                yPos += 8;
-            });
-            
-            // Appointment Details
-            yPos += 5;
-            doc.setTextColor(189, 30, 81);
-            doc.setFontSize(12);
-            doc.setFont('helvetica', 'bold');
-            doc.text('APPOINTMENT DETAILS', 20, yPos);
-            
-            yPos += 3;
-            addHorizontalLine(yPos);
-            yPos += 8;
-            
-            doc.setTextColor(51, 51, 51);
-            doc.setFontSize(10);
-            doc.setFont('helvetica', 'normal');
-            
-            const formattedDate = formatDate(data.Date);
-            const formattedTime = formatTime(data.Time);
-            
-            const appointmentInfo = [
-                ['Branch:', data.BranchName || 'AutoTEC'],
-                ['Date:', formattedDate],
-                ['Time:', formattedTime],
-                ['Duration:', 'Approximately 20 minutes']
-            ];
-            
-            appointmentInfo.forEach(([label, value]) => {
-                doc.setFont('helvetica', 'bold');
-                doc.text(label, 25, yPos);
-                doc.setFont('helvetica', 'normal');
-                doc.text(value, 80, yPos);
-                yPos += 8;
-            });
-            
-            // Fee Summary
-            yPos += 5;
-            addColoredRect(20, yPos - 3, 170, 18, '#f8f9fa');
-            
-            doc.setTextColor(189, 30, 81);
-            doc.setFontSize(12);
-            doc.setFont('helvetica', 'bold');
-            doc.text('FEE SUMMARY', 25, yPos + 3);
-            
-            const amount = parseFloat(data.Price) || 0;
-            const serviceName = `${data.VehicleTypeName || data.VehicleType || 'Vehicle'} Emission Testing`;
-            
-            doc.setTextColor(51, 51, 51);
-            doc.setFontSize(10);
-            doc.setFont('helvetica', 'normal');
-            doc.text(serviceName, 25, yPos + 12);
-            
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(12);
-            doc.text(`Php ${amount.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`, 185, yPos + 12, { align: 'right' });
-            
-            // Payment Instructions - UPDATED TO SHOW FOR BOTH PENDING STATUSES
-            if (paymentStatus === 'pending') {
-                yPos += 25;
-                
-                if (paymentMethod === 'gcash') {
-                    // GCash pending verification message
-                    addColoredRect(20, yPos - 3, 170, 25, '#fff3cd');
-                    
-                    doc.setTextColor(133, 100, 4);
-                    doc.setFontSize(10);
-                    doc.setFont('helvetica', 'bold');
-                    doc.text('PAYMENT VERIFICATION PENDING:', 25, yPos + 3);
-                    
-                    doc.setFont('helvetica', 'normal');
-                    doc.setFontSize(8);
-                    doc.text('• Your GCash payment receipt is being verified by our team', 25, yPos + 10);
-                    doc.text('• You will be notified once your payment is approved', 25, yPos + 15);
-                    doc.text('• Please wait for confirmation before your appointment date', 25, yPos + 20);
-                } else {
-                    // On-site payment instructions
-                    addColoredRect(20, yPos - 3, 170, 25, '#e7f3ff');
-                    
-                    doc.setTextColor(12, 84, 96);
-                    doc.setFontSize(10);
-                    doc.setFont('helvetica', 'bold');
-                    doc.text('PAYMENT INSTRUCTIONS:', 25, yPos + 3);
-                    
-                    doc.setFont('helvetica', 'normal');
-                    doc.setFontSize(8);
-                    doc.text('• Payment must be made at the testing center before your appointment', 25, yPos + 10);
-                    doc.text('• Please bring this receipt and exact amount', 25, yPos + 15);
-                    doc.text('• Cash payment only at the testing center', 25, yPos + 20);
-                }
-            } else if (paymentStatus === 'paid' || paymentStatus === 'verified') {
-                // Payment confirmed message
-                yPos += 25;
-                addColoredRect(20, yPos - 3, 170, 20, '#d4edda');
-                
-                doc.setTextColor(21, 87, 36);
-                doc.setFontSize(10);
-                doc.setFont('helvetica', 'bold');
-                doc.text('PAYMENT CONFIRMED:', 25, yPos + 3);
-                
-                doc.setFont('helvetica', 'normal');
-                doc.setFontSize(8);
-                doc.text('• Your payment has been verified and confirmed', 25, yPos + 10);
-                doc.text('• Please arrive on time for your scheduled appointment', 25, yPos + 15);
-            }
-            
-            // Important Notes
-            yPos += 25;
-            addColoredRect(20, yPos - 3, 170, 25, '#e8f4f8');
-            
-            doc.setTextColor(23, 162, 184);
-            doc.setFontSize(10);
-            doc.setFont('helvetica', 'bold');
-            doc.text('IMPORTANT REMINDERS:', 25, yPos + 3);
-            
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(8);
-            doc.setTextColor(51, 51, 51);
-            doc.text('• Please arrive 15 minutes before your scheduled time', 25, yPos + 10);
-            doc.text('• Bring this receipt and your vehicle registration documents', 25, yPos + 15);
-            doc.text('• Vehicle must be physically present for testing', 25, yPos + 20);
-            
-            // Footer
-            yPos += 25;
-            addHorizontalLine(yPos);
-            yPos += 8;
-            
-            doc.setTextColor(102, 102, 102);
-            doc.setFontSize(8);
-            doc.setFont('helvetica', 'italic');
-            doc.text('Thank you for choosing AutoTEC Emission Testing Center', 105, yPos, { align: 'center' });
-            
-            yPos += 6;
-            doc.setFontSize(7);
-            doc.text('For inquiries, contact us at autotec_mandaluyong@yahoo.com or call 286527257', 105, yPos, { align: 'center' });
-
-            // Save PDF
-            const fileName = `AutoTEC_Receipt_${refNumber.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
-            doc.save(fileName);
-            
-            showMessage('Receipt downloaded successfully!', 'success');
+        
+        // Show message if no slots available
+        if (!hasAvailableSlots) {
+            showMessage('No available time slots for the selected date', 'info');
         }
-   </script>
-</body>
-</html>
+    })
+    .catch(error => {
+        console.error('Error fetching time slots:', error);
+        timeSelect.innerHTML = '<option value="">Error loading time slots. Please try again.</option>';
+        timeSelect.disabled = false;
+        showMessage('Error loading time slots. Please try again.', 'error');
+    });
+});
+
+// Function to submit reschedule
+function submitReschedule() {
+    const form = document.getElementById('rescheduleForm');
+    const reservationId = document.getElementById('rescheduleReservationId').value;
+    const newDate = document.getElementById('rescheduleDate').value;
+    const newTime = document.getElementById('rescheduleTime').value;
+    const reason = document.getElementById('rescheduleReason').value;
+    
+    // Validation
+    if (!newDate || !newTime) {
+        showMessage('Please select both date and time', 'error');
+        return;
+    }
+    
+    // Disable submit button to prevent double submission
+    const submitBtn = event.target;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Processing...';
+    
+    // Create form data
+    const formData = new FormData();
+    formData.append('reservationId', reservationId);
+    formData.append('newDate', newDate);
+    formData.append('newTime', newTime);
+    formData.append('reason', reason);
+    
+    // Submit reschedule request
+    fetch('reschedule_reservation.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showMessage('Appointment rescheduled successfully!', 'success');
+            closeRescheduleModal();
+            
+            // Reload page after short delay to show updated data
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            showMessage(data.message || 'Failed to reschedule appointment', 'error');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Confirm Reschedule';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showMessage('An error occurred. Please try again.', 'error');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Confirm Reschedule';
+    });
+}
+
+// Function to confirm cancel
+function confirmCancel(reservationId) {
+    document.getElementById('cancelReservationId').value = reservationId;
+    document.getElementById('cancelReason').value = '';
+    document.getElementById('cancelModal').classList.add('active');
+}
+
+// Function to close cancel modal
+function closeCancelModal() {
+    document.getElementById('cancelModal').classList.remove('active');
+}
+
+// Function to submit cancel
+function submitCancel() {
+    const reservationId = document.getElementById('cancelReservationId').value;
+    const reason = document.getElementById('cancelReason').value;
+    
+    if (!reason.trim()) {
+        showMessage('Please provide a reason for cancellation', 'error');
+        return;
+    }
+    
+    // Disable submit button
+    const submitBtn = event.target;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Cancelling...';
+    
+    // Create form data
+    const formData = new FormData();
+    formData.append('reservationId', reservationId);
+    formData.append('reason', reason);
+    
+    // Submit cancellation request
+    fetch('cancel_reservation.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showMessage('Appointment cancelled successfully', 'success');
+            closeCancelModal();
+            
+            // Reload page after short delay
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            showMessage(data.message || 'Failed to cancel appointment', 'error');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Yes, Cancel';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showMessage('An error occurred. Please try again.', 'error');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Yes, Cancel';
+    });
+}
+
+// Function to show message toast
+function showMessage(message, type = 'info') {
+    const toast = document.getElementById('messageToast');
+    toast.textContent = message;
+    toast.className = `message ${type}`;
+    toast.classList.add('show');
+    
+    setTimeout(() => {
+        toast.classList.remove('show');
+    }, 4000);
+}
+
+// Function to filter reservations
+function filterReservations(filter) {
+    currentFilter = filter;
+    
+    // Update active stat card
+    document.querySelectorAll('.stat-card').forEach(card => {
+        card.classList.remove('active');
+        if (card.dataset.filter === filter) {
+            card.classList.add('active');
+        }
+    });
+    
+    // Filter reservation cards
+    const cards = document.querySelectorAll('.reservation-card');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+    
+    let visibleCount = 0;
+    
+    cards.forEach(card => {
+        const dateStr = card.dataset.date;
+        const cardDate = new Date(dateStr);
+        cardDate.setHours(0, 0, 0, 0);
+        
+        let show = false;
+        
+        switch(filter) {
+            case 'all':
+                show = true;
+                break;
+            case 'upcoming':
+                show = cardDate >= today;
+                break;
+            case 'thisMonth':
+                show = cardDate.getMonth() === currentMonth && 
+                       cardDate.getFullYear() === currentYear;
+                break;
+        }
+        
+        if (show) {
+            card.classList.remove('hidden');
+            visibleCount++;
+        } else {
+            card.classList.add('hidden');
+        }
+    });
+    
+    // Update filter info
+    const filterInfo = document.getElementById('filterInfo');
+    const filterText = document.getElementById('filterText');
+    
+    if (filter === 'all') {
+        filterInfo.classList.remove('active');
+    } else {
+        filterInfo.classList.add('active');
+        const filterLabels = {
+            'upcoming': 'Showing upcoming reservations',
+            'thisMonth': 'Showing reservations for this month'
+        };
+        filterText.textContent = `${filterLabels[filter]} (${visibleCount} found)`;
+    }
+}
+
+// Function to clear filter
+function clearFilter() {
+    filterReservations('all');
+}
+
+// Close modals when clicking outside
+window.addEventListener('click', function(event) {
+    if (event.target.classList.contains('modal')) {
+        event.target.classList.remove('active');
+    }
+});
+
+// Function to generate PDF receipt (placeholder - implement based on your needs)
+function generatePDF(reservationId) {
+    const card = document.querySelector(`[data-reservation-id="${reservationId}"]`);
+    const reservationData = JSON.parse(card.dataset.reservationData);
+    
+    // You can implement PDF generation here using jsPDF
+    // For now, we'll redirect to a receipt page or download endpoint
+    window.open(`receipt.php?id=${reservationId}`, '_blank');
+}
+</script>
