@@ -4,7 +4,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-require_once 'db.php';
+require_once 'AdminSide/db.php';
 
 // Fetch homepage data
 $sql = "SELECT * FROM homepage LIMIT 1";
@@ -18,11 +18,13 @@ $operate = $homepage['operate'] ?? 'Monday to Saturday, 8:00 AM to 5:00 PM';
 $location = $homepage['location'] ?? 'Barangay Central, City Proper, Philippines';
 $contact = $homepage['contact'] ?? '(02) 1234-5678 | autotec_mandaluyong@yahoo.com';
 
-// Handle image paths (same logic as adminside)
-$service1_img = !empty($homepage['service1_img']) ? 'AdminSide/uploads/homepage/' . $homepage['service1_img'] : 'AdminSide/uploads/homepage/placeholder1.jpg';
-$service2_img = !empty($homepage['service2_img']) ? 'AdminSide/uploads/homepage/' . $homepage['service2_img'] : 'AdminSide/uploads/homepage/placeholder2.jpg';
-$service3_img = !empty($homepage['service3_img']) ? 'AdminSide/uploads/homepage/' . $homepage['service3_img'] : 'AdminSide/uploads/homepage/placeholder3.jpg';
-$announcement_img = !empty($homepage['announcement_img']) ? 'AdminSide/uploads/homepage/' . $homepage['announcement_img'] : 'AdminSide/uploads/homepage/announcement.png';
+// FIXED: Use absolute path from document root
+$baseUrl = '/uploads/homepage/';
+
+$service1_img = !empty($homepage['service1_img']) ? $baseUrl . $homepage['service1_img'] : $baseUrl . 'placeholder1.jpg';
+$service2_img = !empty($homepage['service2_img']) ? $baseUrl . $homepage['service2_img'] : $baseUrl . 'placeholder2.jpg';
+$service3_img = !empty($homepage['service3_img']) ? $baseUrl . $homepage['service3_img'] : $baseUrl . 'placeholder3.jpg';
+$announcement_img = !empty($homepage['announcement_img']) ? $baseUrl . $homepage['announcement_img'] : $baseUrl . 'announcement.png';
 ?>
 
 <!DOCTYPE html>
@@ -80,7 +82,7 @@ $announcement_img = !empty($homepage['announcement_img']) ? 'AdminSide/uploads/h
 
                         foreach ($serviceImgs as $img) {
                             echo "<div class='carousel-slide $active'>
-                                    <img src='" . htmlspecialchars($img) . "' alt='Service Image'>
+                                    <img src='" . htmlspecialchars($img) . "' alt='Service Image' onerror='this.src=\"" . $baseUrl . "placeholder1.jpg\"'>
                                   </div>";
                             $active = "";
                         }
@@ -89,7 +91,7 @@ $announcement_img = !empty($homepage['announcement_img']) ? 'AdminSide/uploads/h
 
                     <div class="carousel-indicators">
                         <?php
-                        $count = count(array_filter($serviceImgs));
+                        $count = count($serviceImgs);
                         for ($i = 1; $i <= $count; $i++) {
                             $activeClass = ($i == 1) ? "active" : "";
                             echo "<div class='indicator $activeClass' onclick='currentSlide($i)'></div>";
@@ -106,6 +108,7 @@ $announcement_img = !empty($homepage['announcement_img']) ? 'AdminSide/uploads/h
             <div class="announcement-content" style="text-align:center;">
                 <img src="<?= htmlspecialchars($announcement_img) ?>" 
                      alt="Announcement" 
+                     onerror="this.src='<?= $baseUrl ?>announcement.png'"
                      style="width:100%;max-width:700px;border-radius:10px;">
             </div>
         </section>

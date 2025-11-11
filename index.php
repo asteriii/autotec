@@ -1,16 +1,18 @@
 <?php
-require_once 'db.php';
+require_once 'AdminSide/db.php';
 
 // Fetch homepage data (expecting 1 row)
 $sql = "SELECT * FROM homepage LIMIT 1";
 $result = $conn->query($sql);
 $homepage = $result->fetch_assoc();
 
-// Fix image paths like in AdminSide/homepage-edit.php
-$service1_img = !empty($homepage['service1_img']) ? 'AdminSide/uploads/homepage/' . $homepage['service1_img'] : 'AdminSide/uploads/homepage/placeholder1.jpg';
-$service2_img = !empty($homepage['service2_img']) ? 'AdminSide/uploads/homepage/' . $homepage['service2_img'] : 'AdminSide/uploads/homepage/placeholder2.jpg';
-$service3_img = !empty($homepage['service3_img']) ? 'AdminSide/uploads/homepage/' . $homepage['service3_img'] : 'AdminSide/uploads/homepage/placeholder3.jpg';
-$announcement_img = !empty($homepage['announcement_img']) ? 'AdminSide/uploads/homepage/' . $homepage['announcement_img'] : 'AdminSide/uploads/homepage/announcement.png';
+// FIXED: Use absolute path from document root
+$baseUrl = '/uploads/homepage/';
+
+$service1_img = !empty($homepage['service1_img']) ? $baseUrl . $homepage['service1_img'] : $baseUrl . 'placeholder1.jpg';
+$service2_img = !empty($homepage['service2_img']) ? $baseUrl . $homepage['service2_img'] : $baseUrl . 'placeholder2.jpg';
+$service3_img = !empty($homepage['service3_img']) ? $baseUrl . $homepage['service3_img'] : $baseUrl . 'placeholder3.jpg';
+$announcement_img = !empty($homepage['announcement_img']) ? $baseUrl . $homepage['announcement_img'] : $baseUrl . 'announcement.png';
 
 ?>
 <!DOCTYPE html>
@@ -67,7 +69,7 @@ $announcement_img = !empty($homepage['announcement_img']) ? 'AdminSide/uploads/h
 
                         foreach ($serviceImgs as $img) {
                             echo "<div class='carousel-slide $active'>
-                                    <img src='" . htmlspecialchars($img) . "' alt='Service Image'>
+                                    <img src='" . htmlspecialchars($img) . "' alt='Service Image' onerror='this.src=\"" . $baseUrl . "placeholder1.jpg\"'>
                                   </div>";
                             $active = "";
                         }
@@ -92,7 +94,8 @@ $announcement_img = !empty($homepage['announcement_img']) ? 'AdminSide/uploads/h
         <h2>Announcement</h2>
         <div class="announcement-content" style="text-align:center;">
             <img src="<?= htmlspecialchars($announcement_img) ?>" 
-                alt="Announcement" 
+                alt="Announcement"
+                onerror="this.src='<?= $baseUrl ?>announcement.png'"
                 style="width:100%;max-width:700px;border-radius:10px;">
         </div>
     </section>

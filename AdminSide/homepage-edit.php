@@ -11,11 +11,19 @@ $operate = $row['operate'] ?? '';
 $location = $row['location'] ?? '';
 $contact = $row['contact'] ?? '';
 
-// Fixed file paths to use AdminSide/uploads
-$service1_img = !empty($row['service1_img']) ? 'uploads/homepage/' . $row['service1_img'] : 'placeholder1.jpg';
-$service2_img = !empty($row['service2_img']) ? 'uploads/homepage/' . $row['service2_img'] : 'placeholder2.jpg';
-$service3_img = !empty($row['service3_img']) ? 'uploads/homepage/' . $row['service3_img'] : 'placeholder3.jpg';
-$announcement_img = !empty($row['announcement_img']) ? 'uploads/homepage/' . $row['announcement_img'] : 'announcement.png';
+// FIXED: Use absolute path from document root
+$baseUrl = '/uploads/homepage/';
+
+$service1_img = !empty($row['service1_img']) ? $baseUrl . $row['service1_img'] : 'placeholder1.jpg';
+$service2_img = !empty($row['service2_img']) ? $baseUrl . $row['service2_img'] : 'placeholder2.jpg';
+$service3_img = !empty($row['service3_img']) ? $baseUrl . $row['service3_img'] : 'placeholder3.jpg';
+$announcement_img = !empty($row['announcement_img']) ? $baseUrl . $row['announcement_img'] : 'announcement.png';
+
+// Debug output - you can remove this after testing
+error_log("Service 1 Image Path: " . $service1_img);
+error_log("Service 2 Image Path: " . $service2_img);
+error_log("Service 3 Image Path: " . $service3_img);
+error_log("Announcement Image Path: " . $announcement_img);
 ?>
 
 <!DOCTYPE html>
@@ -300,6 +308,11 @@ $announcement_img = !empty($row['announcement_img']) ? 'uploads/homepage/' . $ro
         box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
 
+    .service-item img.error {
+        border: 2px solid #ef4444;
+        background: #fee;
+    }
+
     .service-title {
         font-weight: 600;
         color: #334155;
@@ -489,6 +502,17 @@ $announcement_img = !empty($row['announcement_img']) ? 'uploads/homepage/' . $ro
         }
     }
 
+    .error-badge {
+        display: inline-block;
+        background: #fee;
+        color: #dc2626;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        margin-top: 8px;
+        font-weight: 600;
+    }
+
     @media (max-width: 768px) {
       .modal-content {
         width: 90%;
@@ -639,7 +663,10 @@ $announcement_img = !empty($row['announcement_img']) ? 'uploads/homepage/' . $ro
                             <div class="service-title">
                                 <i class="fas fa-car"></i> Service 1
                             </div>
-                            <img id="preview-service1" src="<?php echo $service1_img . '?v=' . time(); ?>" alt="Service 1" />
+                            <img id="preview-service1" 
+                                 src="<?php echo htmlspecialchars($service1_img) . '?v=' . time(); ?>" 
+                                 alt="Service 1"
+                                 onerror="this.classList.add('error'); this.alt='Image not found';" />
                             <button class="btn-edit" onclick="openServiceModal(1)">
                                 <i class="fas fa-edit"></i> Edit Image
                             </button>
@@ -648,7 +675,10 @@ $announcement_img = !empty($row['announcement_img']) ? 'uploads/homepage/' . $ro
                             <div class="service-title">
                                 <i class="fas fa-car"></i> Service 2
                             </div>
-                            <img id="preview-service2" src="<?php echo $service2_img . '?v=' . time(); ?>" alt="Service 2" />
+                            <img id="preview-service2" 
+                                 src="<?php echo htmlspecialchars($service2_img) . '?v=' . time(); ?>" 
+                                 alt="Service 2"
+                                 onerror="this.classList.add('error'); this.alt='Image not found';" />
                             <button class="btn-edit" onclick="openServiceModal(2)">
                                 <i class="fas fa-edit"></i> Edit Image
                             </button>
@@ -657,7 +687,10 @@ $announcement_img = !empty($row['announcement_img']) ? 'uploads/homepage/' . $ro
                             <div class="service-title">
                                 <i class="fas fa-car"></i> Service 3
                             </div>
-                            <img id="preview-service3" src="<?php echo $service3_img . '?v=' . time(); ?>" alt="Service 3" />
+                            <img id="preview-service3" 
+                                 src="<?php echo htmlspecialchars($service3_img) . '?v=' . time(); ?>" 
+                                 alt="Service 3"
+                                 onerror="this.classList.add('error'); this.alt='Image not found';" />
                             <button class="btn-edit" onclick="openServiceModal(3)">
                                 <i class="fas fa-edit"></i> Edit Image
                             </button>
@@ -674,7 +707,10 @@ $announcement_img = !empty($row['announcement_img']) ? 'uploads/homepage/' . $ro
                 </div>
                 <div class="card-body">
                     <div class="announcement-preview-box">
-                        <img id="preview-announcement" src="<?= $announcement_img  . '?v=' . time(); ?>" alt="Announcement" />
+                        <img id="preview-announcement" 
+                             src="<?php echo htmlspecialchars($announcement_img) . '?v=' . time(); ?>" 
+                             alt="Announcement"
+                             onerror="this.classList.add('error'); this.alt='Image not found';" />
                     </div>
                     <button class="btn-edit" onclick="openAnnouncementModal()">
                         <i class="fas fa-edit"></i>
@@ -761,7 +797,7 @@ $announcement_img = !empty($row['announcement_img']) ? 'uploads/homepage/' . $ro
             
             <div class="preview-container">
                 <p>Preview:</p>
-                <img id="announcementImagePreview" src="<?= $announcement_img ?>" />
+                <img id="announcementImagePreview" src="<?= htmlspecialchars($announcement_img) ?>" />
             </div>
             
             <div class="modal-footer">
@@ -869,7 +905,9 @@ function saveServiceImage() {
   .then(res => res.json())
   .then(data => {
     if (data.success) {
-      document.getElementById('preview-service' + currentService).src = data.filePath + '?v=' + new Date().getTime();
+      // Update the image with cache busting
+      const newSrc = '/' + data.filePath + '?v=' + new Date().getTime();
+      document.getElementById('preview-service' + currentService).src = newSrc;
       closeServiceModal();
       showToast("Service image updated successfully!");
     } else {
@@ -918,7 +956,9 @@ function saveAnnouncementImage() {
   .then(res => res.json())
   .then(data => {
     if (data.success) {
-      document.getElementById('preview-announcement').src = data.filePath + '?v=' + new Date().getTime();
+      // Update the image with cache busting
+      const newSrc = '/' + data.filePath + '?v=' + new Date().getTime();
+      document.getElementById('preview-announcement').src = newSrc;
       closeAnnouncementModal();
       showToast("Announcement image updated successfully!");
     } else {
