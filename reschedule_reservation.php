@@ -35,10 +35,18 @@ try {
         throw new Exception('Reservation not found');
     }
 
+    // Check if reservation can be rescheduled (at least 24 hours before)
+    $reservationDateTime = strtotime($reservation['Date'] . ' ' . $reservation['Time']);
+    $now = time();
+    
+    if ($reservationDateTime - $now < 24 * 60 * 60) {
+        throw new Exception('Reservations can only be rescheduled at least 24 hours in advance');
+    }
+
     // Check if new time slot is available
     $checkStmt = $conn->prepare("SELECT COUNT(*) as count FROM reservations 
-                                 WHERE Date = ? AND Time = ? AND BranchName = ? AND ReservationID != ?");
-    $checkStmt->bind_param("sssi", $newDate, $newTime, $reservation['BranchName'], $reservationId);
+                                 WHERE Date = ? AND Time = ? AND BranchName = ?");
+    $checkStmt->bind_param("sss", $newDate, $newTime, $reservation['BranchName']);
     $checkStmt->execute();
     $checkResult = $checkStmt->get_result();
     $slotCheck = $checkResult->fetch_assoc();
@@ -89,16 +97,14 @@ try {
     }
     $insertReschedule->close();
 
-    // Update the reservation with new date and time
-    $updateStmt = $conn->prepare("UPDATE reservations 
-                                  SET Date = ?, Time = ? 
-                                  WHERE ReservationID = ?");
-    $updateStmt->bind_param("ssi", $newDate, $newTime, $reservationId);
+    // DELETE from reservations table instead of UPDATE
+    $deleteStmt = $conn->prepare("DELETE FROM reservations WHERE ReservationID = ? AND UserID = ?");
+    $deleteStmt->bind_param("ii", $reservationId, $_SESSION['user_id']);
     
-    if (!$updateStmt->execute()) {
-        throw new Exception('Failed to update reservation: ' . $updateStmt->error);
+    if (!$deleteStmt->execute()) {
+        throw new Exception('Failed to remove original reservation: ' . $deleteStmt->error);
     }
-    $updateStmt->close();
+    $deleteStmt->close();
 
     // Commit transaction
     $conn->commit();
