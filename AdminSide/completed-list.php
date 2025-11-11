@@ -839,37 +839,38 @@ unset($completed); // Break reference
                         <div class="buttons">
                             <?php if ($isGcash && $hasReceipt && $receiptExists): ?>
                                 <button class="btn view-receipt-btn" 
-                                        onclick="viewReceipt('/<?php echo htmlspecialchars($receiptPath); ?>', 
-                                                             '<?php echo htmlspecialchars($completed['ReferenceNumber'] ?? 'N/A'); ?>', 
-                                                             '<?php echo htmlspecialchars($completed['PaymentMethod']); ?>', 
-                                                             '<?php echo htmlspecialchars($completed['PaymentStatus'] ?? 'pending'); ?>',
-                                                             '<?php echo htmlspecialchars($completed['Fname'] . ' ' . $completed['Lname']); ?>',
+                                        type="button"
+                                        onclick="viewReceipt('/<?php echo addslashes($receiptPath); ?>', 
+                                                             '<?php echo addslashes($completed['ReferenceNumber'] ?? 'N/A'); ?>', 
+                                                             '<?php echo addslashes($completed['PaymentMethod']); ?>', 
+                                                             '<?php echo addslashes($completed['PaymentStatus'] ?? 'pending'); ?>',
+                                                             '<?php echo addslashes($completed['Fname'] . ' ' . $completed['Lname']); ?>',
                                                              '₱<?php echo number_format($completed['VehiclePrice'] ?? 0, 2); ?>')">
                                     <i class="fas fa-receipt"></i> View Receipt
                                 </button>
                             <?php elseif ($isGcash && !$hasReceipt): ?>
-                                <button class="btn view-receipt-btn" disabled title="Customer has not uploaded receipt yet">
+                                <button class="btn view-receipt-btn" type="button" disabled title="Customer has not uploaded receipt yet">
                                     <i class="fas fa-exclamation-triangle"></i> No Receipt
                                 </button>
                             <?php elseif ($isGcash && $hasReceipt && !$receiptExists): ?>
-                                <button class="btn view-receipt-btn" disabled title="Receipt file not found: <?php echo htmlspecialchars($receiptPath); ?>">
+                                <button class="btn view-receipt-btn" type="button" disabled title="Receipt file not found: <?php echo htmlspecialchars($receiptPath); ?>">
                                     <i class="fas fa-times-circle"></i> File Missing
                                 </button>
                             <?php elseif ($isOnsite): ?>
-                                <button class="btn view-receipt-btn" disabled title="On-site payment - no receipt required">
+                                <button class="btn view-receipt-btn" type="button" disabled title="On-site payment - no receipt required">
                                     <i class="fas fa-money-bill"></i> Pay On-Site
                                 </button>
                             <?php else: ?>
-                                <button class="btn view-receipt-btn" disabled>
+                                <button class="btn view-receipt-btn" type="button" disabled>
                                     <i class="fas fa-receipt"></i> N/A
                                 </button>
                             <?php endif; ?>
                             
-                            <button class="btn confirm-btn" onclick="confirmReservation(<?php echo $reservation['ReservationID']; ?>)">
-                                <i class="fas fa-check"></i> Confirm
+                            <button class="btn confirm-btn" type="button" onclick="confirmCompleted(<?php echo $completed['CompletedID']; ?>)">
+                                <i class="fas fa-check"></i> Mark as Done
                             </button>
-                            <button class="btn cancel-btn" onclick="cancelReservation(<?php echo $reservation['ReservationID']; ?>)">
-                                <i class="fas fa-times"></i> Cancel
+                            <button class="btn cancel-btn" type="button" onclick="deleteCompleted(<?php echo $completed['CompletedID']; ?>)">
+                                <i class="fas fa-trash"></i> Delete
                             </button>
                         </div>
                     </div>
@@ -927,7 +928,9 @@ unset($completed); // Break reference
         </div>
     </div>
 
+    <!-- JavaScript -->
     <script>
+        // Menu toggle function
         function toggleMenu(id) {
             const menu = document.getElementById(id);
             const isVisible = menu.classList.contains('show');
@@ -943,6 +946,7 @@ unset($completed); // Break reference
             }
         }
 
+        // View Receipt Modal Function
         function viewReceipt(receiptPath, referenceNumber, paymentMethod, paymentStatus, customerName, amount) {
             console.log('=== Opening Receipt Modal ===');
             console.log('Receipt Path:', receiptPath);
@@ -1011,6 +1015,60 @@ unset($completed); // Break reference
             document.getElementById('receiptError').style.display = 'none';
         }
 
+        // Completed management functions
+        function confirmCompleted(completedID) {
+            if (!confirm("Mark this appointment as fully completed and paid?")) {
+                return;
+            }
+
+            fetch('mark_completed_done.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'completed_id=' + encodeURIComponent(completedID)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert("✅ Marked as completed!");
+                    location.reload();
+                } else {
+                    alert("❌ Error: " + data.message);
+                }
+            })
+            .catch(err => {
+                alert("⚠️ Request failed: " + err);
+            });
+        }
+
+        function deleteCompleted(completedID) {
+            if (!confirm("Are you sure you want to delete this completed record? This cannot be undone.")) {
+                return;
+            }
+
+            fetch('delete_completed.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'completed_id=' + encodeURIComponent(completedID)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert("✅ Record deleted!");
+                    location.reload();
+                } else {
+                    alert("⚠️ Error: " + data.message);
+                }
+            })
+            .catch(err => {
+                alert("⚠️ Request failed: " + err);
+            });
+        }
+
+        // Mobile sidebar toggle
+        function toggleMobileSidebar() {
+            document.querySelector('.sidebar').classList.toggle('mobile-open');
+        }
+
         // Close modal when clicking outside of it
         window.onclick = function(event) {
             const modal = document.getElementById('receiptModal');
@@ -1026,81 +1084,13 @@ unset($completed); // Break reference
             }
         });
 
-        function confirmReservation(id) {
-            if (confirm('Are you sure you want to confirm this reservation?')) {
-                // You can create a confirm_reservation.php file or handle via AJAX
-                window.location.href = 'confirm_reservation.php?id=' + id;
-            }
-        }
-
-        function cancelReservation(id) {
-            if (confirm('Are you sure you want to cancel this reservation? This action cannot be undone.')) {
-                // You can create a cancel_reservation.php file or handle via AJAX
-                window.location.href = 'cancel_reservation.php?id=' + id;
-            }
-        }
-
-        // Mobile sidebar toggle
-        function toggleMobileSidebar() {
-            document.querySelector('.sidebar').classList.toggle('mobile-open');
-        }
-
-        // Add loading indicator for images
+        // Page load handler
         document.addEventListener('DOMContentLoaded', function() {
             console.log('Completed page loaded');
-            console.log('Total Completed on page:', <?php echo count($reservations); ?>);
+            console.log('Total Completed on page:', <?php echo count($completeds); ?>);
+            console.log('viewReceipt function defined:', typeof viewReceipt === 'function');
         });
     </script>
-
-    <script>
-        function confirmReservation(reservationID) {
-            if (!confirm("Are you sure you want to confirm and move this reservation to Completed?")) {
-                return;
-            }
-
-            fetch('confirm_reservation.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'reservation_id=' + encodeURIComponent(reservationID)
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert("✅ Reservation successfully moved to Completed!");
-                    location.reload();
-                } else {
-                    alert("❌ Error: " + data.message);
-                }
-            })
-            .catch(err => {
-                alert("⚠️ Request failed: " + err);
-            });
-        }
-    </script>
-
-    <script>
-        function cancelReservation(reservationID) {
-            if (!confirm("Are you sure you want to cancel this reservation?")) return;
-
-            fetch('cancel_reservation.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'reservation_id=' + encodeURIComponent(reservationID)
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    alert("❌ Reservation successfully canceled!");
-                    location.reload();
-                } else {
-                    alert("⚠️ Error: " + data.message);
-                }
-            })
-            .catch(err => alert("⚠️ Request failed: " + err));
-        }
-    </script>
-
-
 
 </body>
 </html>

@@ -163,18 +163,6 @@
     </div>
 
     <div class="section">
-        <div class="section-title" onclick="toggleMenu('activity-logs')">
-            <span><i class="fas fa-history"></i> Activity Logs</span>
-            <i class="fas fa-chevron-down"></i>
-        </div>
-        <ul class="submenu" id="activity-logs">
-            <li><a href="page-edits.php"><i class="fas fa-edit"></i> Page Edits</a></li>
-            <li><a href="confirmed-logs.php"><i class="fas fa-check"></i> Confirmed Logs</a></li>
-            <li><a href="ongoing-logs.php"><i class="fas fa-clock"></i> Ongoing Logs</a></li>
-        </ul>
-    </div>
-
-    <div class="section">
         <div class="section-title" onclick="toggleMenu('master-controls')">
             <span><i class="fas fa-user-shield"></i> Master Controls</span>
             <i class="fas fa-chevron-down"></i>
@@ -183,6 +171,18 @@
             <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'admin_acc_manage.php') ? 'active' : ''; ?>">
                 <a href="admin_acc_manage.php"><i class="fas fa-users-cog"></i> Admin Accounts Manager</a>
             </li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <div class="section-title" onclick="toggleMenu('activity-logs')">
+            <span><i class="fas fa-history"></i> Activity Logs</span>
+            <i class="fas fa-chevron-down"></i>
+        </div>
+        <ul class="submenu" id="activity-logs">
+            <li><a href="page-edits.php"><i class="fas fa-edit"></i> Page Edits Logs</a></li>
+            <li><a href="confirmed-logs.php"><i class="fas fa-check"></i> Admin Control Logs</a></li>
+            <li><a href="ongoing-logs.php"><i class="fas fa-clock"></i> Account Management Logs</a></li>
         </ul>
     </div>
 </div>
