@@ -55,12 +55,12 @@ mysqli_stmt_close($cancel_stmt);
 $reschedule_sql = "SELECT r.*, vt.Name AS VehicleType, vc.Name AS Category, 
         vt.Price, vt.Name AS VehicleTypeName, vc.Name AS CategoryName,
         r.PaymentMethod, r.PaymentStatus, r.PaymentReceipt, r.ReferenceNumber,
-        r.CreatedAt, r.RescheduledAt, r.NewDate, r.NewTime, r.Reason, 'rescheduled' as Status
+        r.CreatedAt, r.CreatedAt, r.NewDate, r.NewTime, r.Reason, 'rescheduled' as Status
         FROM reschedule r
         LEFT JOIN vehicle_types vt ON r.TypeID = vt.VehicleTypeID 
         LEFT JOIN vehicle_categories vc ON r.CategoryID = vc.CategoryID 
         WHERE r.UserID = ? 
-        ORDER BY r.RescheduledAt DESC";
+        ORDER BY r.CreatedAt DESC";
 
 $reschedule_stmt = mysqli_prepare($conn, $reschedule_sql);
 mysqli_stmt_bind_param($reschedule_stmt, "i", $_SESSION['user_id']);
