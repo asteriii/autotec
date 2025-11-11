@@ -1,7 +1,7 @@
 <?php 
 session_start();
 
-if (!isset($_SESSION['user_id'])) {
+if (!isset($_SESSION['UserID'])) {
     header("Location: login.php");
     exit();
 }
@@ -21,7 +21,7 @@ $sql = "SELECT r.*, vt.Name AS VehicleType, vc.Name AS Category,
                  STR_TO_DATE(r.Time, '%H:%i:%s') DESC";
 
 $stmt = mysqli_prepare($conn, $sql);
-mysqli_stmt_bind_param($stmt, "i", $_SESSION['user_id']);
+mysqli_stmt_bind_param($stmt, "i", $_SESSION['UserID']);
 mysqli_stmt_execute($stmt);
 $result = mysqli_stmt_get_result($stmt);
 $active_reservations = [];
@@ -42,7 +42,7 @@ $cancel_sql = "SELECT c.*, vt.Name AS VehicleType, vc.Name AS Category,
         ORDER BY c.CanceledAt DESC";
 
 $cancel_stmt = mysqli_prepare($conn, $cancel_sql);
-mysqli_stmt_bind_param($cancel_stmt, "i", $_SESSION['user_id']);
+mysqli_stmt_bind_param($cancel_stmt, "i", $_SESSION['UserID']);
 mysqli_stmt_execute($cancel_stmt);
 $cancel_result = mysqli_stmt_get_result($cancel_stmt);
 $cancelled_reservations = [];
@@ -63,7 +63,7 @@ $reschedule_sql = "SELECT r.*, vt.Name AS VehicleType, vc.Name AS Category,
         ORDER BY r.RescheduledAt DESC";
 
 $reschedule_stmt = mysqli_prepare($conn, $reschedule_sql);
-mysqli_stmt_bind_param($reschedule_stmt, "i", $_SESSION['user_id']);
+mysqli_stmt_bind_param($reschedule_stmt, "i", $_SESSION['UserID']);
 mysqli_stmt_execute($reschedule_stmt);
 $reschedule_result = mysqli_stmt_get_result($reschedule_stmt);
 $rescheduled_reservations = [];
@@ -84,7 +84,7 @@ $completed_sql = "SELECT c.*, vt.Name AS VehicleType, vc.Name AS Category,
         ORDER BY c.CompletedAt DESC";
 
 $completed_stmt = mysqli_prepare($conn, $completed_sql);
-mysqli_stmt_bind_param($completed_stmt, "i", $_SESSION['user_id']);
+mysqli_stmt_bind_param($completed_stmt, "i", $_SESSION['UserID']);
 mysqli_stmt_execute($completed_stmt);
 $completed_result = mysqli_stmt_get_result($completed_stmt);
 $completed_reservations = [];
@@ -103,7 +103,7 @@ $total_count = $active_count + $cancel_count + $reschedule_count + $completed_co
 // Get user name for display
 $user_sql = "SELECT Fname FROM users WHERE UserID = ?";
 $user_stmt = mysqli_prepare($conn, $user_sql);
-mysqli_stmt_bind_param($user_stmt, "i", $_SESSION['user_id']);
+mysqli_stmt_bind_param($user_stmt, "i", $_SESSION['UserID']);
 mysqli_stmt_execute($user_stmt);
 $user_result = mysqli_stmt_get_result($user_stmt);
 $user_data = mysqli_fetch_assoc($user_result);
