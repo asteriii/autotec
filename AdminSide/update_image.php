@@ -48,24 +48,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    // Create AdminSide/uploads directory if it doesn't exist
-    $uploadDir = __DIR__ . '/AdminSide/uploads/';
+    // FIXED: Use Railway volume path or fallback to local path
+    $baseUploadDir = getenv('RAILWAY_VOLUME_MOUNT_PATH') ?: '/var/www/html';
+    $uploadDir = $baseUploadDir . '/uploads/homepage/';
+    $uploadDirRelative = 'uploads/homepage/';
+    
+    // Debug logging
+    error_log("=== HOMEPAGE-EDIT.PHP DEBUG ===");
+    error_log("BASE_UPLOAD_DIR: " . $baseUploadDir);
+    error_log("UPLOAD_DIR (absolute): " . $uploadDir);
+    error_log("UPLOAD_DIR_RELATIVE: " . $uploadDirRelative);
+    error_log("RAILWAY_VOLUME_MOUNT_PATH: " . (getenv('RAILWAY_VOLUME_MOUNT_PATH') ?: 'NOT SET'));
+    error_log("===============================");
+
+    // Create uploads/homepage directory if it doesn't exist
     if (!is_dir($uploadDir)) {
         if (!mkdir($uploadDir, 0755, true)) {
+            error_log("Failed to create directory: " . $uploadDir);
             echo json_encode(['success' => false, 'error' => 'Failed to create upload directory']);
             exit;
         }
+        error_log("Created directory: " . $uploadDir);
     }
 
     // Ensure directory is writable
     if (!is_writable($uploadDir)) {
         chmod($uploadDir, 0755);
+        error_log("Set permissions 0755 on: " . $uploadDir);
     }
 
     // Generate unique filename
     $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
     $filename = $filenamePrefix . uniqid() . '_' . time() . '.' . $extension;
     $targetPath = $uploadDir . $filename;
+
+    error_log("Uploading file to: " . $targetPath);
 
     // Get old image to delete
     $stmt = $conn->prepare("SELECT $columnName FROM homepage WHERE id = 1");
@@ -76,9 +93,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Move uploaded file
     if (!move_uploaded_file($file['tmp_name'], $targetPath)) {
+        error_log("Failed to move uploaded file from " . $file['tmp_name'] . " to " . $targetPath);
+        error_log("Last error: " . print_r(error_get_last(), true));
         echo json_encode(['success' => false, 'error' => 'Failed to move uploaded file']);
         exit;
     }
+
+    // Set file permissions
+    chmod($targetPath, 0644);
+    error_log("File uploaded successfully: " . $targetPath);
 
     // Update database with just the filename (not full path)
     $stmt = $conn->prepare("UPDATE homepage SET $columnName = ? WHERE id = 1");
@@ -87,17 +110,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($stmt->execute()) {
         // Delete old image if it exists
         if ($oldImage && file_exists($uploadDir . $oldImage)) {
-            unlink($uploadDir . $oldImage);
+            if (unlink($uploadDir . $oldImage)) {
+                error_log("Deleted old image: " . $uploadDir . $oldImage);
+            } else {
+                error_log("Failed to delete old image: " . $uploadDir . $oldImage);
+            }
         }
 
+        error_log("Database updated successfully with filename: " . $filename);
+        
         echo json_encode([
             'success' => true,
-            'filePath' => 'AdminSide/uploads/' . $filename,
+            'filePath' => $uploadDirRelative . $filename,
             'message' => ucfirst($imageType) . ' image uploaded successfully'
         ]);
     } else {
         // If database update fails, remove the uploaded file
         unlink($targetPath);
+        error_log("Database update failed: " . $conn->error);
         echo json_encode(['success' => false, 'error' => 'Database update failed: ' . $conn->error]);
     }
 
