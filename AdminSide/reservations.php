@@ -1051,5 +1051,56 @@ unset($reservation); // Break reference
             console.log('Total reservations on page:', <?php echo count($reservations); ?>);
         });
     </script>
+
+    <script>
+        function confirmReservation(reservationID) {
+            if (!confirm("Are you sure you want to confirm and move this reservation to Completed?")) {
+                return;
+            }
+
+            fetch('confirm_reservation.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'reservation_id=' + encodeURIComponent(reservationID)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert("✅ Reservation successfully moved to Completed!");
+                    location.reload();
+                } else {
+                    alert("❌ Error: " + data.message);
+                }
+            })
+            .catch(err => {
+                alert("⚠️ Request failed: " + err);
+            });
+        }
+    </script>
+
+    <script>
+        function cancelReservation(reservationID) {
+            if (!confirm("Are you sure you want to cancel this reservation?")) return;
+
+            fetch('cancel_reservation.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'reservation_id=' + encodeURIComponent(reservationID)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert("❌ Reservation successfully canceled!");
+                    location.reload();
+                } else {
+                    alert("⚠️ Error: " + data.message);
+                }
+            })
+            .catch(err => alert("⚠️ Request failed: " + err));
+        }
+    </script>
+
+
+
 </body>
 </html>
