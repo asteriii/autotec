@@ -32,13 +32,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $file = $_FILES['image'];
     
     // Validate file type
-    $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/jpg', 'image/jfif'];
+    $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/jpg', 'image/jfif', 'image/webp'];
     $finfo = finfo_open(FILEINFO_MIME_TYPE);
     $mimeType = finfo_file($finfo, $file['tmp_name']);
     finfo_close($finfo);
 
     if (!in_array($mimeType, $allowedTypes)) {
-        echo json_encode(['success' => false, 'error' => 'Invalid file type. Only JPG, PNG, GIF, and JFIF allowed']);
+        echo json_encode(['success' => false, 'error' => 'Invalid file type. Only JPG, PNG, GIF, JFIF, and WebP allowed']);
         exit;
     }
 
@@ -48,18 +48,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    // FIXED: Use Railway volume path or fallback to local path
-    $baseUploadDir = getenv('RAILWAY_VOLUME_MOUNT_PATH') ?: '/var/www/html';
-    $uploadDir = $baseUploadDir . '/uploads/homepage/';
+    // FIXED: Direct path to uploads directory (Railway volume is mounted here)
+    $uploadDir = $_SERVER['DOCUMENT_ROOT'] . '/uploads/homepage/';
     $uploadDirRelative = 'uploads/homepage/';
     
     // Debug logging
-    error_log("=== HOMEPAGE-EDIT.PHP DEBUG ===");
-    error_log("BASE_UPLOAD_DIR: " . $baseUploadDir);
+    error_log("=== UPDATE_IMAGE.PHP DEBUG ===");
+    error_log("DOCUMENT_ROOT: " . $_SERVER['DOCUMENT_ROOT']);
     error_log("UPLOAD_DIR (absolute): " . $uploadDir);
     error_log("UPLOAD_DIR_RELATIVE: " . $uploadDirRelative);
-    error_log("RAILWAY_VOLUME_MOUNT_PATH: " . (getenv('RAILWAY_VOLUME_MOUNT_PATH') ?: 'NOT SET'));
-    error_log("===============================");
+    error_log("Directory exists: " . (is_dir($uploadDir) ? 'YES' : 'NO'));
+    error_log("Directory writable: " . (is_writable($uploadDir) ? 'YES' : 'NO'));
+    error_log("==============================");
 
     // Create uploads/homepage directory if it doesn't exist
     if (!is_dir($uploadDir)) {
@@ -95,7 +95,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!move_uploaded_file($file['tmp_name'], $targetPath)) {
         error_log("Failed to move uploaded file from " . $file['tmp_name'] . " to " . $targetPath);
         error_log("Last error: " . print_r(error_get_last(), true));
-        echo json_encode(['success' => false, 'error' => 'Failed to move uploaded file']);
+        echo json_encode(['success' => false, 'error' => 'Failed to move uploaded file. Check permissions.']);
         exit;
     }
 
