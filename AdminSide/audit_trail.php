@@ -92,11 +92,11 @@ function logAddVehicleType($username, $vehicletype){
 }
 
 function logRemoveVehicleType($username, $vehicletype){
-    logAction($username, 'Remove Vehicle Type', "Removed new $vehicletype");
+    logAction($username, 'Remove Vehicle Type', "Removed vehicle type $vehicletype");
 }
 
 function logVehiclePrice($username, $vehicleprice){
-    logAction($username, 'Edit Vehicle Price', "Added new $vehicleprice");
+    logAction($username, 'Edit Vehicle Price', "Added new Price for vehicle type $vehicleprice");
 }
 
 function logGcashQR($username, $branch){
