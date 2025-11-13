@@ -658,7 +658,7 @@ unset($reschedule); // Break reference
             <div class="logo">
                 <i class="fas fa-car"></i> AutoTec Admin
             </div>
-            <button class="logout-btn">
+            <button class="logout-btn" onclick="window.location.href='logout.php'">
                 <i class="fas fa-sign-out-alt"></i> Logout
             </button>
         </div>

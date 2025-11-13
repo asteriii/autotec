@@ -463,7 +463,7 @@ $read_count = $read_stmt->fetch(PDO::FETCH_ASSOC)['count'];
             <div class="logo">
                 <i class="fas fa-envelope"></i> Contact Messages
             </div>
-            <button class="logout-btn">
+            <button class="logout-btn" onclick="window.location.href='logout.php'">
                 <i class="fas fa-sign-out-alt"></i> Logout
             </button>
         </div>

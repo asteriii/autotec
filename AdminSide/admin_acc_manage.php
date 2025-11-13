@@ -340,9 +340,9 @@ $result = $stmt->get_result();
       <div class="logo">
         <i class="fas fa-car"></i> AutoTec Admin
       </div>
-      <button class="logout-btn">
-        <i class="fas fa-sign-out-alt"></i> Logout
-      </button>
+        <button class="logout-btn" onclick="window.location.href='logout.php'">
+            <i class="fas fa-sign-out-alt"></i> Logout
+        </button>
     </div>
 
     <div class="content">
