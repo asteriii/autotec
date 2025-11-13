@@ -95,8 +95,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             setcookie('admin_remember', $cookie_token, time() + (86400 * 30), '/', '', false, true);
                         }
                         
-                        // Log successful login
-                        logLogin($admin['username']);
+                        // Log successful login with branch information
+                        logLogin($admin['username'], $branch_filter);
                         
                         // Redirect to dashboard
                         header('Location: adminDash.php');
