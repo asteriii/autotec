@@ -135,75 +135,440 @@ if ($branchesResult && $branchesResult->num_rows > 0) {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Reservation Details - AutoTec</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"/>
   <style>
-    /* Clean, minimal styles (kept consistent with previous design) */
     * { box-sizing: border-box; font-family: 'Inter', sans-serif; margin:0; padding:0; }
-    body { display:flex; min-height:100vh; background:#f4f4f4; color:#2d3748; }
-
+    body { display:flex; min-height:100vh; background:#f5f7fa; color:#2d3748; }
 
     /* Main and topbar */
-    .main { flex:1; display:flex; flex-direction:column; background:#f9f9f9; }
-    .topbar { display:flex; justify-content:space-between; align-items:center; background:#fff; padding:10px 20px; border-bottom:1px solid #ccc; }
-    .logo { font-size:20px; }
-    .logout-btn { background:#e57373; color:#fff; border:none; padding:8px 16px; border-radius:4px; cursor:pointer; }
+    .main { flex:1; display:flex; flex-direction:column; background:#f5f7fa; }
+    .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+            padding: 15px 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            border-bottom: 1px solid #e2e8f0;
+        }
+    
+    .logo {
+            font-size: 24px;
+            color: #a4133c;
+            font-weight: 600;
+        }
+      
+    .logo i { font-size: 28px; }
+    .logout-btn {
+            background: linear-gradient(135deg, #a4133c, #ff4d6d);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3);
+        }
+
+        .logout-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4);
+        }
 
     /* content */
-    .content { padding:30px; flex:1; }
-    .content h2 { margin-bottom:20px; font-size:22px; }
+    .content { padding:32px; flex:1; max-width: 1400px; margin: 0 auto; width: 100%; }
+    .page-header {
+      margin-bottom: 32px;
+    }
+    .page-header h2 { 
+      font-size:32px; 
+      font-weight:800; 
+      color:#1a202c;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .page-header p {
+      color: #718096;
+      font-size: 15px;
+    }
 
     /* cards */
-    .reservation-card { background:#fff; border-radius:10px; padding:25px; box-shadow:0 2px 8px rgba(0,0,0,0.07); border:1px solid #e6e6e6; margin-bottom:24px; }
-    .reservation-card h3 { color:#a93226; margin-bottom:16px; font-size:18px; }
+    .reservation-card { 
+      background:#fff; 
+      border-radius:16px; 
+      padding:32px; 
+      box-shadow:0 1px 3px rgba(0,0,0,0.08); 
+      border:1px solid #e2e8f0; 
+      margin-bottom:28px;
+      transition: box-shadow 0.3s ease;
+    }
+    .reservation-card:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 2px solid #f7fafc;
+    }
+    .card-header h3 { 
+      color:#a4133c; 
+      font-size:22px; 
+      font-weight:700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
 
     /* price grid equal cards */
-    .price-container { display:grid; grid-template-columns: repeat(3,1fr); gap:20px; }
-    @media (max-width:980px){ .price-container{grid-template-columns:repeat(2,1fr);} }
-    @media (max-width:640px){ .price-container{grid-template-columns:1fr;} }
+    .price-container { display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:20px; margin-bottom: 20px; }
 
-    .price-item { background:#fafafa; border-radius:8px; border:1px solid #eef0f2; padding:18px; display:flex; flex-direction:column; justify-content:center; align-items:center; height:140px; text-align:center; transition:transform .18s, box-shadow .18s; }
-    .price-item:hover { transform:translateY(-5px); box-shadow:0 8px 22px rgba(0,0,0,0.06); }
-    .price-item h4 { margin-bottom:8px; font-size:16px; color:#2d3748; }
-    .price-value { font-size:18px; font-weight:700; color:#2d3748; }
+    .price-item { 
+      background: linear-gradient(135deg, #fff 0%, #f7fafc 100%);
+      border-radius:12px; 
+      border:2px solid #e2e8f0; 
+      padding:24px; 
+      display:flex; 
+      flex-direction:column; 
+      justify-content:center; 
+      align-items:center; 
+      min-height:150px; 
+      text-align:center; 
+      transition: all .3s ease; 
+      position: relative;
+      overflow: hidden;
+    }
+    .price-item::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: linear-gradient(90deg, #a4133c 0%, #ff4d6d 100%);
+      transform: scaleX(0);
+      transition: transform 0.3s ease;
+    }
+    .price-item:hover::before {
+      transform: scaleX(1);
+    }
+    .price-item:hover { 
+      transform:translateY(-6px); 
+      box-shadow:0 8px 24px rgba(164, 19, 60, 0.15);
+      border-color: #ff4d6d;
+    }
+    .price-item h4 { 
+      margin-bottom:12px; 
+      font-size:17px; 
+      color:#2d3748; 
+      font-weight:600;
+    }
+    .price-value { 
+      font-size:28px; 
+      font-weight:800; 
+      background: linear-gradient(135deg, #a4133c 0%, #ff4d6d 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
 
     /* controls */
-    .controls { display:flex; gap:10px; justify-content:flex-end; margin-top:14px; }
-    .button-row { margin-top:18px; text-align:right; }
-    .btn { background:#a93226; color:#fff; border:none; padding:9px 16px; border-radius:6px; cursor:pointer; font-weight:600; }
-    .btn:hover { background:#922b20; }
-    .btn-danger { background:#e57373; }
-    .btn-danger:hover { background:#d32f2f; }
+    .controls { display:flex; gap:12px; justify-content:flex-end; }
+    .button-row { margin-top:18px; text-align:center; }
+    .btn { 
+      background: linear-gradient(135deg, #a4133c 0%, #ff4d6d 100%);
+      color:#fff; 
+      border:none; 
+      padding:12px 24px; 
+      border-radius:8px; 
+      cursor:pointer; 
+      font-weight:600;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 8px rgba(164, 19, 60, 0.2);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn:hover { 
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(164, 19, 60, 0.3);
+    }
+    .btn:active {
+      transform: translateY(0);
+    }
+    .btn-danger { 
+      background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+      box-shadow: 0 2px 8px rgba(220, 38, 38, 0.2);
+    }
+    .btn-danger:hover { 
+      box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+    }
+    .btn-outline {
+      background: transparent;
+      border: 2px solid #a4133c;
+      color: #a4133c;
+      box-shadow: none;
+    }
+    .btn-outline:hover {
+      background: linear-gradient(135deg, #a4133c 0%, #ff4d6d 100%);
+      color: #fff;
+    }
 
     /* QR cards */
-    .qr-grid { display:flex; gap:20px; flex-wrap:wrap; margin-top:8px; }
-    .service-card { background:#fff; border-radius:8px; padding:14px; box-shadow:0 1px 6px rgba(0,0,0,0.04); width:320px; border:1px solid #eef2f6; text-align:center; }
-    .service-card img { max-width:220px; height:220px; object-fit:contain; border-radius:8px; display:block; margin:8px auto; border:1px solid #eee; }
+    .qr-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap:24px; margin-top:8px; }
+    .service-card { 
+      background:#fff; 
+      border-radius:12px; 
+      padding:24px; 
+      box-shadow:0 2px 8px rgba(0,0,0,0.06); 
+      border:2px solid #e2e8f0; 
+      text-align:center;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .service-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: linear-gradient(90deg, #a4133c 0%, #ff4d6d 100%);
+    }
+    .service-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+      border-color: #ff4d6d;
+    }
+    .service-card p {
+      font-size: 16px;
+      font-weight: 700;
+      color: #1a202c;
+      margin-bottom: 16px;
+    }
+    .service-card img { 
+      max-width:100%; 
+      height:240px; 
+      object-fit:contain; 
+      border-radius:8px; 
+      display:block; 
+      margin:12px auto; 
+      border:1px solid #e2e8f0; 
+    }
 
     /* modal */
-    .modal { display:none; position:fixed; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.45); justify-content:center; align-items:center; z-index:1200; }
+    .modal { 
+      display:none; 
+      position:fixed; 
+      left:0; 
+      top:0; 
+      width:100%; 
+      height:100%; 
+      background:rgba(0,0,0,0.5); 
+      justify-content:center; 
+      align-items:center; 
+      z-index:1200;
+      backdrop-filter: blur(4px);
+    }
     .modal.show { display:flex; }
-    .modal-content { background:#fff; border-radius:10px; padding:18px; width:560px; max-width:96%; box-shadow:0 10px 30px rgba(0,0,0,0.2); }
-    .modal-content h3 { margin-bottom:12px; color:#a93226; }
-    .modal-row { display:flex; gap:12px; align-items:center; justify-content:space-between; margin-bottom:10px; }
-    .modal-row .mtitle { width:60%; font-weight:600; color:#2d3748; }
-    .modal-row input[type="text"] { width:40%; padding:8px 10px; border-radius:6px; border:1px solid #d1d5db; text-align:right; }
+    .modal-content { 
+      background:#fff; 
+      border-radius:16px; 
+      padding:32px; 
+      width:600px; 
+      max-width:96%; 
+      box-shadow:0 20px 60px rgba(0,0,0,0.3);
+      animation: modalSlideIn 0.3s ease;
+    }
+    @keyframes modalSlideIn {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .modal-content h3 { 
+      margin-bottom:24px; 
+      color:#a4133c; 
+      font-size: 24px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .modal-row { 
+      display:flex; 
+      gap:16px; 
+      align-items:center; 
+      justify-content:space-between; 
+      margin-bottom:16px;
+      padding: 12px;
+      background: #f7fafc;
+      border-radius: 8px;
+    }
+    .modal-row .mtitle { 
+      flex: 1;
+      font-weight:600; 
+      color:#2d3748; 
+    }
+    .modal-row input[type="text"] { 
+      width:140px; 
+      padding:10px 14px; 
+      border-radius:8px; 
+      border:2px solid #e2e8f0; 
+      text-align:right;
+      font-weight: 600;
+      transition: border-color 0.3s ease;
+    }
+    .modal-row input[type="text"]:focus {
+      outline: none;
+      border-color: #ff4d6d;
+    }
 
-    .manage-add { display:flex; gap:10px; margin-bottom:10px; }
-    .manage-add input[type="text"] { padding:8px 10px; border-radius:6px; border:1px solid #d1d5db; width:50%; }
+    .manage-add { 
+      display:flex; 
+      gap:12px; 
+      margin-bottom:20px;
+      padding: 16px;
+      background: #f7fafc;
+      border-radius: 8px;
+    }
+    .manage-add input[type="text"] { 
+      padding:10px 14px; 
+      border-radius:8px; 
+      border:2px solid #e2e8f0; 
+      flex: 1;
+      transition: border-color 0.3s ease;
+    }
+    .manage-add input[type="text"]:focus {
+      outline: none;
+      border-color: #ff4d6d;
+    }
 
     .confirm-content { text-align:center; }
-    .announcement-preview { max-width:100%; max-height:300px; object-fit:contain; display:block; margin:10px auto; border-radius:6px; border:1px solid #ddd; }
+    .confirm-content p {
+      font-size: 16px;
+      color: #4a5568;
+      margin: 20px 0;
+    }
+    .announcement-preview { 
+      max-width:100%; 
+      max-height:300px; 
+      object-fit:contain; 
+      display:block; 
+      margin:16px auto; 
+      border-radius:8px; 
+      border:2px solid #e2e8f0; 
+    }
 
     /* toast */
-    .toast { position:fixed; right:20px; bottom:20px; background:#111827; color:#fff; padding:12px 16px; border-radius:8px; display:none; z-index:1300; box-shadow:0 8px 30px rgba(0,0,0,0.3); }
+    .toast { 
+      position:fixed; 
+      right:20px; 
+      bottom:20px; 
+      background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+      color:#fff; 
+      padding:16px 24px; 
+      border-radius:12px; 
+      display:none; 
+      z-index:1300; 
+      box-shadow:0 8px 30px rgba(0,0,0,0.3);
+      font-weight: 600;
+    }
     .toast.show { display:block; animation: fadeInOut 3s forwards; }
-    @keyframes fadeInOut { 0%{opacity:0;transform:translateY(8px)}10%{opacity:1;transform:translateY(0)}90%{opacity:1}100%{opacity:0;transform:translateY(8px)} }
+    @keyframes fadeInOut { 
+      0%{opacity:0;transform:translateY(20px)}
+      10%{opacity:1;transform:translateY(0)}
+      90%{opacity:1}
+      100%{opacity:0;transform:translateY(20px)} 
+    }
 
-    /* small utility */
-    .manage-row { display:flex; justify-content:space-between; align-items:center; padding:10px; border-bottom:1px solid #f3f3f3; gap:12px; }
+    /* manage row */
+    .manage-row { 
+      display:flex; 
+      justify-content:space-between; 
+      align-items:center; 
+      padding:14px; 
+      border-bottom:1px solid #e2e8f0; 
+      gap:16px;
+      transition: background 0.2s ease;
+    }
+    .manage-row:hover {
+      background: #f7fafc;
+    }
+    .manage-row:last-child {
+      border-bottom: none;
+    }
     
-    .qr-placeholder { width:220px; height:220px; background:#f0f0f0; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#999; margin:8px auto; border:2px dashed #ddd; }
+    .qr-placeholder { 
+      width:100%; 
+      height:240px; 
+      background: linear-gradient(135deg, #f7fafc 0%, #e2e8f0 100%);
+      border-radius:8px; 
+      display:flex; 
+      align-items:center; 
+      justify-content:center; 
+      color:#a0aec0; 
+      margin:12px auto; 
+      border:2px dashed #cbd5e0; 
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid #e2e8f0;
+    }
+
+    #manageList {
+      max-height: 400px;
+      overflow-y: auto;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    /* Scrollbar styling */
+    #manageList::-webkit-scrollbar {
+      width: 8px;
+    }
+    #manageList::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 8px;
+    }
+    #manageList::-webkit-scrollbar-thumb {
+      background: #cbd5e0;
+      border-radius: 8px;
+    }
+    #manageList::-webkit-scrollbar-thumb:hover {
+      background: #a0aec0;
+    }
+
+    input[type="file"] {
+      padding: 10px;
+      border: 2px dashed #e2e8f0;
+      border-radius: 8px;
+      width: 100%;
+      cursor: pointer;
+      transition: border-color 0.3s ease;
+    }
+    input[type="file"]:hover {
+      border-color: #ff4d6d;
+    }
+
+    label {
+      display: block;
+      margin-top: 20px;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #2d3748;
+    }
   </style>
 </head>
 <body>
@@ -213,41 +578,64 @@ if ($branchesResult && $branchesResult->num_rows > 0) {
   <!-- Main content -->
   <div class="main">
     <div class="topbar">
-      <div class="logo">☰</div>
-        <button class="logout-btn" onclick="window.location.href='logout.php'">
-            <i class="fas fa-sign-out-alt"></i> Logout
-          </button>
+      <div class="topbar-left">
+        <div class="logo">
+          <i class="fas fa-clipboard-list"></i>
+          Reservation Details
+        </div>
+      </div>
+      <button class="logout-btn">
+        <i class="fas fa-sign-out-alt"></i>
+        Logout
+      </button>
     </div>
 
     <div class="content">
-      <h2>Reservation Details</h2>
+      <div class="page-header">
+        <p>Manage pricing and payment QR codes for your branches</p>
+      </div>
 
       <!-- Pricing Card -->
       <div class="reservation-card">
-        <h3>Pricing Details</h3>
+        <div class="card-header">
+          <h3>
+            <i class="fas fa-tags"></i>
+            Pricing Details
+          </h3>
+          <div class="controls">
+            <button class="btn btn-outline" id="editPricingBtn">
+              <i class="fas fa-edit"></i>
+              Edit Pricing
+            </button>
+            <button class="btn" id="managePricingBtn">
+              <i class="fas fa-cog"></i>
+              Manage
+            </button>
+          </div>
+        </div>
 
         <div class="price-container" id="priceContainer">
           <?php foreach ($vehicle_types as $vt): ?>
             <div class="price-item" data-id="<?php echo (int)$vt['VehicleTypeID']; ?>">
               <h4><?php echo htmlspecialchars($vt['Name']); ?></h4>
-              <div class="price-value" data-price-id="<?php echo (int)$vt['VehicleTypeID']; ?>">PHP <?php echo number_format((float)$vt['Price'], 2); ?></div>
+              <div class="price-value" data-price-id="<?php echo (int)$vt['VehicleTypeID']; ?>">₱<?php echo number_format((float)$vt['Price'], 2); ?></div>
             </div>
           <?php endforeach; ?>
-        </div>
-
-        <div class="controls">
-          <button class="btn" id="editPricingBtn">Edit Pricing</button>
-          <button class="btn" id="managePricingBtn">Manage</button>
         </div>
       </div>
 
       <!-- QR Codes for Branches -->
       <div class="reservation-card">
-        <h3>QR Codes for Payments</h3>
+        <div class="card-header">
+          <h3>
+            <i class="fas fa-qrcode"></i>
+            QR Codes for Payments
+          </h3>
+        </div>
         <div class="qr-grid">
           <?php foreach ($branches as $branch): ?>
             <div class="service-card">
-              <p><strong><?php echo htmlspecialchars($branch['BranchName']); ?>:</strong></p>
+              <p><strong><?php echo htmlspecialchars($branch['BranchName']); ?></strong></p>
               <?php 
               $qrPath = !empty($branch['GcashQR']) ? htmlspecialchars($branch['GcashQR']) : '';
               $qrExists = !empty($qrPath) && file_exists('/var/www/html/' . $qrPath);
@@ -259,12 +647,13 @@ if ($branchesResult && $branchesResult->num_rows > 0) {
                      alt="<?php echo htmlspecialchars($branch['BranchName']); ?> QR">
               <?php else: ?>
                 <div class="qr-placeholder" id="branchQR_<?php echo $branch['AboutID']; ?>">
-                  <i class="fas fa-qrcode" style="font-size:48px;"></i>
+                  <i class="fas fa-qrcode" style="font-size:64px;"></i>
                 </div>
               <?php endif; ?>
               
               <div class="button-row">
                 <button class="btn" onclick="openQRModal(<?php echo $branch['AboutID']; ?>, '<?php echo htmlspecialchars($branch['BranchName'], ENT_QUOTES); ?>')">
+                  <i class="fas fa-<?php echo $qrExists ? 'edit' : 'upload'; ?>"></i>
                   <?php echo $qrExists ? 'Edit' : 'Upload'; ?>
                 </button>
               </div>
@@ -279,11 +668,20 @@ if ($branchesResult && $branchesResult->num_rows > 0) {
   <!-- Edit Pricing Modal -->
   <div id="pricingModal" class="modal" aria-hidden="true">
     <div class="modal-content">
-      <h3>Edit Pricing Details</h3>
+      <h3>
+        <i class="fas fa-edit"></i>
+        Edit Pricing Details
+      </h3>
       <div id="pricingRows"></div>
-      <div style="text-align:right; margin-top:14px;">
-        <button class="btn" id="savePricingBtn">Save</button>
-        <button class="btn btn-danger" id="closePricingBtn">Cancel</button>
+      <div class="modal-actions">
+        <button class="btn" id="savePricingBtn">
+          <i class="fas fa-save"></i>
+          Save Changes
+        </button>
+        <button class="btn btn-danger" id="closePricingBtn">
+          <i class="fas fa-times"></i>
+          Cancel
+        </button>
       </div>
     </div>
   </div>
@@ -291,18 +689,27 @@ if ($branchesResult && $branchesResult->num_rows > 0) {
   <!-- Manage Modal -->
   <div id="manageModal" class="modal" aria-hidden="true">
     <div class="modal-content">
-      <h3>Manage Vehicle Types</h3>
+      <h3>
+        <i class="fas fa-cog"></i>
+        Manage Vehicle Types
+      </h3>
 
       <div class="manage-add">
-        <input type="text" id="newName" placeholder="New vehicle name (e.g. 'Tricycle')" />
-        <input type="text" id="newPrice" placeholder="Price (numeric only)" />
-        <button class="btn" id="addNewBtn">Add</button>
+        <input type="text" id="newName" placeholder="Vehicle name (e.g. 'Tricycle')" />
+        <input type="text" id="newPrice" placeholder="Price" />
+        <button class="btn" id="addNewBtn">
+          <i class="fas fa-plus"></i>
+          Add
+        </button>
       </div>
 
-      <div id="manageList" style="max-height:300px; overflow:auto;"></div>
+      <div id="manageList"></div>
 
-      <div style="text-align:right; margin-top:12px;">
-        <button class="btn btn-danger" id="closeManageBtn">Close</button>
+      <div class="modal-actions">
+        <button class="btn btn-danger" id="closeManageBtn">
+          <i class="fas fa-times"></i>
+          Close
+        </button>
       </div>
     </div>
   </div>
@@ -310,11 +717,20 @@ if ($branchesResult && $branchesResult->num_rows > 0) {
   <!-- Confirm Delete Modal -->
   <div id="confirmModal" class="modal" aria-hidden="true">
     <div class="modal-content confirm-content">
-      <h3>Confirm Remove</h3>
+      <h3>
+        <i class="fas fa-exclamation-triangle"></i>
+        Confirm Remove
+      </h3>
       <p id="confirmText">Are you sure you want to remove this item?</p>
-      <div style="display:flex; gap:10px; justify-content:center; margin-top:12px;">
-        <button class="btn btn-danger" id="confirmYes">Yes, remove</button>
-        <button class="btn" id="confirmNo">Cancel</button>
+      <div style="display:flex; gap:12px; justify-content:center; margin-top:20px;">
+        <button class="btn btn-danger" id="confirmYes">
+          <i class="fas fa-trash"></i>
+          Yes, Remove
+        </button>
+        <button class="btn btn-outline" id="confirmNo">
+          <i class="fas fa-times"></i>
+          Cancel
+        </button>
       </div>
     </div>
   </div>
@@ -322,17 +738,26 @@ if ($branchesResult && $branchesResult->num_rows > 0) {
   <!-- QR Modal -->
   <div id="qrModal" class="modal" aria-hidden="true">
     <div class="modal-content">
-      <h3 id="qrModalTitle">Edit QR Code</h3>
-      <p>Current Image:</p>
+      <h3 id="qrModalTitle">
+        <i class="fas fa-qrcode"></i>
+        Edit QR Code
+      </h3>
+      <p style="font-weight:600; color:#4a5568; margin-bottom:12px;">Current Image:</p>
       <img id="qrPreview" src="" class="announcement-preview" style="display:none;" />
-      <div id="qrPreviewPlaceholder" class="qr-placeholder" style="margin:10px auto;">
-        <i class="fas fa-qrcode" style="font-size:48px;"></i>
+      <div id="qrPreviewPlaceholder" class="qr-placeholder" style="margin:10px auto; height:200px;">
+        <i class="fas fa-qrcode" style="font-size:64px;"></i>
       </div>
-      <label style="display:block; margin-top:15px; font-weight:600;">Upload New QR Code:</label>
-      <input type="file" id="qrUpload" accept="image/*" style="margin-top:8px;" />
-      <div style="text-align:right; margin-top:12px;">
-        <button class="btn" id="saveQRBtn">Save</button>
-        <button class="btn btn-danger" id="closeQRBtn">Cancel</button>
+      <label>Upload New QR Code:</label>
+      <input type="file" id="qrUpload" accept="image/*" />
+      <div class="modal-actions">
+        <button class="btn" id="saveQRBtn">
+          <i class="fas fa-save"></i>
+          Save
+        </button>
+        <button class="btn btn-danger" id="closeQRBtn">
+          <i class="fas fa-times"></i>
+          Cancel
+        </button>
       </div>
     </div>
   </div>
@@ -409,7 +834,7 @@ if ($branchesResult && $branchesResult->num_rows > 0) {
           // update DOM
           data.updated.forEach(row => {
             const el = document.querySelector('.price-value[data-price-id="' + row.VehicleTypeID + '"]');
-            if (el) el.innerText = 'PHP ' + parseFloat(row.Price).toFixed(2);
+            if (el) el.innerText = '₱' + parseFloat(row.Price).toFixed(2);
           });
           closePricingModal();
           showToast('Pricing updated successfully');
@@ -451,10 +876,13 @@ if ($branchesResult && $branchesResult->num_rows > 0) {
         row.innerHTML = `
           <div style="display:flex;gap:12px;align-items:center;">
             <div style="font-weight:600;">${escapeHtml(name)}</div>
-            <div style="color:#555;" class="manage-price" data-id="${id}">${parseFloat(priceText).toFixed(2)}</div>
+            <div style="color:#718096;" class="manage-price" data-id="${id}">₱${parseFloat(priceText).toFixed(2)}</div>
           </div>
           <div>
-            <button class="btn btn-danger" data-remove-id="${id}" data-remove-name="${escapeAttr(name)}">Remove</button>
+            <button class="btn btn-danger" data-remove-id="${id}" data-remove-name="${escapeAttr(name)}">
+              <i class="fas fa-trash"></i>
+              Remove
+            </button>
           </div>
         `;
         manageList.appendChild(row);
@@ -478,7 +906,7 @@ if ($branchesResult && $branchesResult->num_rows > 0) {
       if (priceRaw === '' || isNaN(priceRaw)) { alert('Enter valid numeric price'); return; }
       const price = parseFloat(priceRaw).toFixed(2);
 
-      if (!confirm(`Add "${name}" with price PHP ${price}?`)) return;
+      if (!confirm(`Add "${name}" with price ₱${price}?`)) return;
 
       fetch('manage_vehicle_types.php', {
         method: 'POST',
@@ -494,7 +922,7 @@ if ($branchesResult && $branchesResult->num_rows > 0) {
           const el = document.createElement('div');
           el.className = 'price-item';
           el.setAttribute('data-id', vt.VehicleTypeID);
-          el.innerHTML = `<h4>${escapeHtml(vt.Name)}</h4><div class="price-value" data-price-id="${vt.VehicleTypeID}">PHP ${parseFloat(vt.Price).toFixed(2)}</div>`;
+          el.innerHTML = `<h4>${escapeHtml(vt.Name)}</h4><div class="price-value" data-price-id="${vt.VehicleTypeID}">₱${parseFloat(vt.Price).toFixed(2)}</div>`;
           pc.appendChild(el);
 
           // clear inputs and refresh
@@ -554,7 +982,7 @@ if ($branchesResult && $branchesResult->num_rows > 0) {
 
     function openQRModal(branchId, branchName) {
       currentQRBranchId = branchId;
-      document.getElementById('qrModalTitle').innerText = 'Edit ' + branchName + ' QR Code';
+      document.getElementById('qrModalTitle').innerHTML = '<i class="fas fa-qrcode"></i> Edit ' + branchName + ' QR Code';
       
       // Get current QR image
       const img = document.getElementById('branchQR_' + branchId);
@@ -600,8 +1028,8 @@ if ($branchesResult && $branchesResult->num_rows > 0) {
       
       // Disable button during upload
       const saveBtn = document.getElementById('saveQRBtn');
-      const originalText = saveBtn.textContent;
-      saveBtn.textContent = 'Uploading...';
+      const originalText = saveBtn.innerHTML;
+      saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
       saveBtn.disabled = true;
       
       // Upload to server
@@ -639,7 +1067,7 @@ if ($branchesResult && $branchesResult->num_rows > 0) {
         alert('Error uploading QR code. Please try again.');
       })
       .finally(() => {
-        saveBtn.textContent = originalText;
+        saveBtn.innerHTML = originalText;
         saveBtn.disabled = false;
       });
     });

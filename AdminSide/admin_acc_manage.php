@@ -41,7 +41,6 @@ if ($search_sql === '') {
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("ii", $records_per_page, $offset);
 } else {
-    // Note: mysqli requires the exact types in bind_param. 4s for search then ii for limit offset.
     $sql = "SELECT * FROM admin $search_sql ORDER BY admin_id ASC LIMIT ? OFFSET ?";
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("ssssii", $params[0], $params[1], $params[2], $params[3], $records_per_page, $offset);
@@ -54,8 +53,8 @@ $result = $stmt->get_result();
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Admin Accounts manager</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter&display=swap" rel="stylesheet"/>
+  <title>Admin Accounts Manager</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet"/>
   <style>
     * {
@@ -68,148 +67,290 @@ $result = $stmt->get_result();
     body {
       display: flex;
       min-height: 100vh;
-      background-color: #f4f4f4;
+      background-color: #f5f5f5;
     }
 
     .main {
       flex: 1;
-      background-color: #f9f9f9;
+      background-color: #f5f5f5;
     }
 
     .topbar {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: #fff;
-      padding: 10px 20px;
-      border-bottom: 1px solid #ccc;
+      background: white;
+      padding: 15px 30px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    }
+
+    .logo {
+      font-size: 24px;
+      color: #a4133c;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
     .logout-btn {
-      background-color: #e57373;
+      background: linear-gradient(180deg, #a4133c 0%, #ff4d6d 100%);
       color: white;
       border: none;
-      padding: 8px 16px;
-      border-radius: 4px;
+      padding: 10px 20px;
+      border-radius: 6px;
       cursor: pointer;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .logout-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(164, 19, 60, 0.4);
     }
 
     .content {
       padding: 30px;
+      max-width: 1400px;
+      margin: 0 auto;
     }
 
-    .content h2 {
-      margin-bottom: 20px;
+    .page-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 30px;
     }
 
-    .search-pagination {
+    .page-header h2 {
+      font-size: 28px;
+      font-weight: 700;
+      color: #2c3e50;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .search-bar-container {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 20px;
-      gap: 12px;
-      flex-wrap:wrap;
+      margin-bottom: 25px;
+      gap: 15px;
+      flex-wrap: wrap;
+    }
+
+    .search-box {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+      min-width: 300px;
     }
 
     .search-box input {
-      padding: 8px 10px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      width: 260px;
+      flex: 1;
+      padding: 12px 16px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: all 0.3s ease;
+    }
+
+    .search-box input:focus {
+      outline: none;
+      border-color: #c0392b;
+      box-shadow: 0 0 0 3px rgba(192, 57, 43, 0.1);
     }
 
     .search-btn {
-      padding: 9px 12px;
-      background: #a93226;
+      padding: 12px 20px;
+      background: linear-gradient(180deg, #a4133c 0%, #ff4d6d 100%);
       color: #fff;
       border: none;
-      border-radius: 4px;
+      border-radius: 8px;
       cursor: pointer;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.3s ease;
     }
 
-    .add-btn {
-      padding: 9px 12px;
-      background: #388e3c;
-      color: #fff;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
+    .search-btn:hover {
+      background: linear-gradient(180deg, #ff4d6d 0%, #a4133c 100%);
+      transform: translateY(-2px);
     }
 
     .pagination {
       display: flex;
-      gap: 6px;
+      gap: 8px;
+      align-items: center;
     }
 
     .pagination a, .pagination span {
-      padding: 6px 10px;
-      border: 1px solid #aaa;
+      min-width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid #ddd;
       background-color: white;
       cursor: pointer;
-      border-radius: 4px;
+      border-radius: 8px;
       text-decoration: none;
-      color: #333;
+      color: #555;
+      font-weight: 500;
+      transition: all 0.3s ease;
+    }
+
+    .pagination a:hover {
+      background-color: #f8f9fa;
+      border-color: #c0392b;
+      color: #c0392b;
     }
 
     .pagination .current {
-      background-color: #922b20;
+      background: linear-gradient(180deg, #a4133c 0%, #ff4d6d 100%);
       color: #fff;
-      border-color: #922b20;
     }
 
     .admin-card {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-left: 4px solid #c0392b;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      transition: all 0.3s ease;
+    }
+
+    .admin-card:hover {
+      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+      transform: translateY(-2px);
+    }
+
+    .card-header {
       display: flex;
       justify-content: space-between;
-      background-color: white;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      padding: 18px;
-      margin-bottom: 16px;
-      gap: 12px;
       align-items: flex-start;
+      margin-bottom: 20px;
     }
 
-    .admin-details {
-      flex: 1;
+    .admin-id-badge {
+      background: #c0392b;
+      color: white;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
     }
 
-    .admin-details h4 {
-      margin-bottom: 8px;
-      font-size: 18px;
+    .card-body {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      margin-bottom: 20px;
     }
 
-    .admin-details p {
-      margin: 4px 0;
-      color: #444;
+    .info-section {
+      padding: 16px;
+      background: #f8f9fa;
+      border-radius: 8px;
+    }
+
+    .info-section h4 {
+      font-size: 13px;
+      color: #6c757d;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    .info-row {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .info-item {
+      display: flex;
+      gap: 8px;
       font-size: 14px;
+    }
+
+    .info-label {
+      font-weight: 600;
+      color: #495057;
+      min-width: 80px;
+    }
+
+    .info-value {
+      color: #212529;
     }
 
     .card-actions {
       display: flex;
-      flex-direction: column;
-      gap: 8px;
-      align-items: flex-end;
+      gap: 10px;
+      justify-content: flex-end;
+      padding-top: 16px;
+      border-top: 1px solid #e5e7eb;
     }
 
     .btn {
-      padding: 8px 12px;
-      border-radius: 6px;
+      padding: 10px 20px;
+      border-radius: 8px;
       border: none;
       cursor: pointer;
       color: white;
       font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      transition: all 0.3s ease;
     }
 
-    .edit-btn { background: #3182ce; }
-    .remove-btn { background: #e53e3e; }
+    .edit-btn { 
+      background: linear-gradient(135deg, #a4133c 0%, #ff4d6d 100%);
+      color:#fff; 
+    }
+
+    .edit-btn:hover {
+      background: linear-gradient(180deg, #ff4d6d 0%, #a4133c 100%);
+      transform: translateY(-2px);
+    }
+
+    .remove-btn { 
+      background: linear-gradient(180deg, #a4133c 0%, #ff4d6d 100%);
+    }
+
+    .remove-btn:hover {
+      background: linear-gradient(180deg, #ff4d6d 0%, #a4133c 100%);
+      transform: translateY(-2px);
+    }
 
     .modal {
       display: none;
       position: fixed;
       z-index: 999;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background-color: rgba(0,0,0,0.45);
+      top: 0; 
+      left: 0;
+      width: 100%; 
+      height: 100%;
+      background-color: rgba(0,0,0,0.6);
+      backdrop-filter: blur(4px);
       align-items: center;
       justify-content: center;
       padding: 20px;
@@ -220,114 +361,222 @@ $result = $stmt->get_result();
     .modal-content {
       background-color: #fff;
       width: 100%;
-      max-width: 480px;
-      border-radius: 10px;
-      padding: 22px;
-      box-shadow: 0 12px 30px rgba(0,0,0,0.15);
+      max-width: 520px;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-30px) scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
     }
 
     .modal-header {
+      background: linear-gradient(180deg, #a4133c 0%, #ff4d6d 100%);
+      color: white;
+      padding: 24px 28px;
       font-weight: 700;
-      margin-bottom: 12px;
-      font-size: 18px;
+      font-size: 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 2px 8px rgba(164, 19, 60, 0.2);
+    }
+    
+    .modal-header i {
+      font-size: 24px;
+    }
+    
+    .modal-body {
+      padding: 28px;
     }
 
-    .modal form label { display:block; margin:10px 0 6px; font-weight:600; }
-    .modal form input[type="text"], .modal form input[type="email"], .modal form input[type="password"] {
-      width:100%; padding:10px; border:1px solid #ddd; border-radius:6px;
+    .modal form label { 
+      display: block; 
+      margin: 18px 0 8px; 
+      font-weight: 600;
+      color: #2c3e50;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .modal form label:first-of-type {
+      margin-top: 0;
     }
 
-    .modal-actions { margin-top:18px; text-align:right; display:flex; gap:8px; justify-content:flex-end; }
-    .save-btn { background:#38a169; color:white; border:none; padding:8px 14px; border-radius:6px; cursor:pointer; }
-    .cancel-btn { background:#a0aec0; color:white; border:none; padding:8px 14px; border-radius:6px; cursor:pointer; }
-
-    /* tiny modal styles for success/error */
-    .small-modal-content { text-align:center; padding:24px; }
-    .small-modal-content p { margin:12px 0; font-size:16px; color:#2d3748; }
-    .ok-btn { padding:8px 14px; border-radius:6px; border:none; background:#3182ce; color:white; cursor:pointer; }
-
-    @media (max-width: 800px) {
-      .sidebar { display:none; }
-      .search-box input { width:100%; }
-      .admin-card { flex-direction: column; align-items:stretch; }
-      .card-actions { flex-direction:row; justify-content:flex-end; }
+    .modal form input[type="text"], 
+    .modal form input[type="email"], 
+    .modal form input[type="password"],
+    .modal form select {
+      width: 100%; 
+      padding: 12px 16px; 
+      border: 2px solid #e5e7eb; 
+      border-radius: 8px;
+      font-size: 15px;
+      transition: all 0.3s ease;
+      background-color: #f8f9fa;
     }
 
-  
-    .section-title {
-        padding: 15px 0;
-        cursor: pointer;
-        font-weight: 600;
-        font-size: 16px;
-        border-radius: 8px;
-        margin: 5px 0;
-        transition: all 0.3s ease;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
+    .modal form input:focus,
+    .modal form select:focus {
+      outline: none;
+      border-color: #a4133c;
+      box-shadow: 0 0 0 4px rgba(164, 19, 60, 0.1);
+      background-color: white;
     }
 
-    .section-title:hover {
-        background-color: rgba(255,255,255,0.1);
-        padding-left: 10px;
+    .modal-actions { 
+      margin-top: 28px; 
+      display: flex; 
+      gap: 12px; 
+      justify-content: flex-end;
+      padding-top: 24px;
+      border-top: 2px solid #f1f3f5;
     }
 
-    .section-title.active {
-        background-color: rgba(255,255,255,0.15);
-        font-weight: 600;
-        padding-left: 10px;
+    .save-btn { 
+      background: linear-gradient(180deg, #a4133c 0%, #ff4d6d 100%);
+      color: white; 
+      border: none; 
+      padding: 12px 28px; 
+      border-radius: 8px; 
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 15px;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 12px rgba(164, 19, 60, 0.3);
     }
 
-    .submenu {
-        list-style: none;
-        padding-left: 15px;
-        display: none;
-        animation: slideDown 0.3s ease;
+    .save-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(164, 19, 60, 0.4);
+    }
+    
+    .save-btn:active {
+      transform: translateY(0);
     }
 
-    .submenu.show {
-        display: block;
+    .cancel-btn { 
+      background: white;
+      color: #6c757d; 
+      border: 2px solid #dee2e6; 
+      padding: 12px 28px; 
+      border-radius: 8px; 
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 15px;
+      transition: all 0.3s ease;
     }
 
-    @keyframes slideDown {
-        from { opacity: 0; transform: translateY(-10px); }
-        to { opacity: 1; transform: translateY(0); }
+    .cancel-btn:hover {
+      background: #f8f9fa;
+      border-color: #adb5bd;
+      color: #495057;
     }
 
-    .topbar {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        background: white;
-        padding: 15px 30px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-        border-bottom: 1px solid #e2e8f0;
+    .small-modal-content { 
+      text-align: center; 
+      padding: 40px 32px;
     }
 
-    .logo {
-        font-size: 24px;
-        color: #c0392b;
-        font-weight: 600;
+    .small-modal-content p { 
+      margin: 20px 0; 
+      font-size: 16px; 
+      color: #495057;
+      font-weight: 500;
+      line-height: 1.6;
     }
 
-    .logout-btn {
-        background: linear-gradient(135deg, #a4133c, #ff4d6d);
-        color: white;
-        border: none;
-        padding: 10px 20px;
-        border-radius: 8px;
-        cursor: pointer;
-        font-weight: 500;
-        transition: all 0.3s ease;
-        box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3);
+    .ok-btn { 
+      padding: 12px 32px; 
+      border-radius: 8px; 
+      border: none; 
+      background: linear-gradient(180deg, #a4133c 0%, #ff4d6d 100%);
+      color: white; 
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 15px;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 12px rgba(164, 19, 60, 0.3);
+      margin-top: 8px;
     }
 
-    .logout-btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4);
+    .ok-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(164, 19, 60, 0.4);
+    }
+    
+    .delete-warning {
+      background: #fff3cd;
+      border-left: 4px solid #ffc107;
+      padding: 16px;
+      border-radius: 8px;
+      margin: 16px 0;
+      display: flex;
+      align-items: start;
+      gap: 12px;
+    }
+    
+    .delete-warning i {
+      color: #ff9800;
+      font-size: 20px;
+      margin-top: 2px;
+    }
+    
+    .delete-warning p {
+      margin: 0;
+      color: #856404;
+      font-size: 14px;
+      text-align: left;
+      line-height: 1.5;
     }
 
-    /* end appended adminDash styles */
+    .no-results {
+      text-align: center;
+      padding: 60px 20px;
+      background: white;
+      border-radius: 12px;
+      color: #6c757d;
+    }
+
+    .no-results i {
+      font-size: 48px;
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
+
+    @media (max-width: 768px) {
+      .card-body {
+        grid-template-columns: 1fr;
+      }
+
+      .search-bar-container {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .pagination {
+        justify-content: center;
+      }
+
+      .card-actions {
+        flex-direction: column;
+      }
+
+      .btn {
+        width: 100%;
+        justify-content: center;
+      }
+    }
   </style>
 </head>
 <body>
@@ -338,23 +587,28 @@ $result = $stmt->get_result();
   <div class="main">
     <div class="topbar">
       <div class="logo">
-        <i class="fas fa-car"></i> AutoTec Admin
+        <i class="fas fa-user-shield"></i> Admin Accounts Manager
       </div>
-        <button class="logout-btn" onclick="window.location.href='logout.php'">
-            <i class="fas fa-sign-out-alt"></i> Logout
-        </button>
+      <button class="logout-btn" onclick="window.location.href='logout.php'">
+        <i class="fas fa-sign-out-alt"></i> Logout
+      </button>
     </div>
 
     <div class="content">
-      <h2>Admin Accounts Manager</h2>
+      <div class="page-header">
+      </div>
 
-      <div class="search-pagination">
-        <form method="GET" class="search-box" style="display:flex; align-items:center; gap:8px;">
-          <label style="display:none">Search:</label>
+      <div class="search-bar-container">
+        <form method="GET" class="search-box">
           <input type="text" name="search" placeholder="Search by username, email, branch, or role..." value="<?php echo htmlspecialchars($search, ENT_QUOTES, 'UTF-8'); ?>">
-          <button type="submit" class="search-btn"><i class="fas fa-search"></i> Search</button>
-          <button type="button" class="add-btn" onclick="openModal('addModal')"><i class="fas fa-plus"></i> Add Admin</button>
+          <button type="submit" class="search-btn">
+            <i class="fas fa-search"></i> Search
+          </button>
         </form>
+
+        <button class="btn edit-btn" onclick="openModal('addModal')" style="white-space: nowrap;">
+          <i class="fas fa-user-plus"></i> Add Admin
+        </button>
 
         <div class="pagination">
           <?php
@@ -371,145 +625,208 @@ $result = $stmt->get_result();
         </div>
       </div>
 
-      <!-- NOTE: removed small inline success text; using modals below -->
-
       <!-- Admin cards -->
       <?php if ($result && $result->num_rows > 0): ?>
         <?php while ($row = $result->fetch_assoc()): ?>
           <?php
-            // ensure keys exist
             $row['BranchName'] = isset($row['BranchName']) ? $row['BranchName'] : '';
             $row['role'] = isset($row['role']) ? $row['role'] : '';
-            // safe JSON for JS: escape
             $json_admin = htmlspecialchars(json_encode($row), ENT_QUOTES, 'UTF-8');
           ?>
           <div class="admin-card">
-            <div class="admin-details">
-              <h4><?php echo htmlspecialchars($row['username']); ?></h4>
-              <p><strong>Email:</strong> <?php echo htmlspecialchars($row['Email']); ?></p>
-              <p><strong>Branch:</strong> <?php echo htmlspecialchars($row['BranchName']); ?></p>
-              <p><strong>Role:</strong> <?php echo htmlspecialchars($row['role']); ?></p>
-              <p style="font-size:12px; color:#666; margin-top:8px;">ID: <?php echo (int)$row['admin_id']; ?></p>
+            <div class="card-header">
+              <div class="admin-id-badge">
+                <i class="fas fa-id-badge"></i> ID: <?php echo (int)$row['admin_id']; ?>
+              </div>
+            </div>
+
+            <div class="card-body">
+              <div class="info-section">
+                <h4><i class="fas fa-user"></i> Account Details</h4>
+                <div class="info-row">
+                  <div class="info-item">
+                    <span class="info-label">Username:</span>
+                    <span class="info-value"><?php echo htmlspecialchars($row['username']); ?></span>
+                  </div>
+                  <div class="info-item">
+                    <span class="info-label">Email:</span>
+                    <span class="info-value"><?php echo htmlspecialchars($row['Email']); ?></span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="info-section">
+                <h4><i class="fas fa-building"></i> Branch & Role</h4>
+                <div class="info-row">
+                  <div class="info-item">
+                    <span class="info-label">Branch:</span>
+                    <span class="info-value"><?php echo htmlspecialchars($row['BranchName']); ?></span>
+                  </div>
+                  <div class="info-item">
+                    <span class="info-label">Role:</span>
+                    <span class="info-value"><?php echo htmlspecialchars($row['role']); ?></span>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div class="card-actions">
-              <button class="btn edit-btn" onclick='openEditModal(<?php echo $json_admin; ?>)'><i class="fas fa-pen"></i> Edit</button>
-              <button class="btn remove-btn" onclick="openDeleteModal(<?php echo (int)$row['admin_id']; ?>)"><i class="fas fa-trash"></i> Remove</button>
+              <button class="btn edit-btn" onclick='openEditModal(<?php echo $json_admin; ?>)'>
+                <i class="fas fa-pen"></i> Edit
+              </button>
+              <button class="btn remove-btn" onclick="openDeleteModal(<?php echo (int)$row['admin_id']; ?>)">
+                <i class="fas fa-trash"></i> Delete
+              </button>
             </div>
           </div>
         <?php endwhile; ?>
       <?php else: ?>
-        <div class="reservation-card" style="padding:20px;">
-          <div style="flex:1;">
-            <p>No admins found.</p>
-          </div>
+        <div class="no-results">
+          <i class="fas fa-users-slash"></i>
+          <p>No admins found.</p>
         </div>
       <?php endif; ?>
 
     </div>
   </div>
 
-  <!-- ✅ Add Admin Modal -->
+  <!-- Add Admin Modal -->
   <div class="modal" id="addModal" role="dialog" aria-modal="true">
     <div class="modal-content" role="document">
-      <div class="modal-header">Add new admin account</div>
-      <form id="addForm" method="POST" action="add_admin.php">
-        <label>username:</label>
-        <input type="text" name="username" required>
+      <div class="modal-header">
+        <i class="fas fa-user-plus"></i> Add New Admin Account
+      </div>
+      <div class="modal-body">
+        <form id="addForm" method="POST" action="add_admin.php">
+          <label>Username:</label>
+          <input type="text" name="username" required>
 
-        <label>email:</label>
-        <input type="email" name="Email" required>
+          <label>Email:</label>
+          <input type="email" name="Email" required>
 
-        <label>password:</label>
-        <input type="text" name="password" required>
+          <label>Password:</label>
+          <input type="text" name="password" required>
 
-        <label>Branch:</label>
-        <input type="text" name="BranchName">
+          <label>Branch:</label>
+          <select name="BranchName" required>
+            <option value="">Select Branch</option>
+            <option value="Autotec Shaw">Autotec Shaw</option>
+            <option value="Autotec Subic">Autotec Subic</option>
+          </select>
 
-        <label>Role:</label>
-        <input type="text" name="role">
+          <label>Role:</label>
+          <input type="text" name="role">
 
-        <div class="modal-actions">
-          <button type="button" class="cancel-btn" onclick="closeModal('addModal')">Cancel</button>
-          <button type="submit" class="save-btn">Add</button>
-        </div>
-      </form>
+          <div class="modal-actions">
+            <button type="button" class="cancel-btn" onclick="closeModal('addModal')">Cancel</button>
+            <button type="submit" class="save-btn">Add Admin</button>
+          </div>
+        </form>
+      </div>
     </div>
   </div>
 
   <!-- Edit Modal -->
   <div class="modal" id="editModal" role="dialog" aria-modal="true">
     <div class="modal-content" role="document">
-      <div class="modal-header">Edit Admin</div>
-      <form id="editForm" method="POST" action="update_admin.php">
-        <input type="hidden" name="admin_id" id="edit_admin_id">
-        <label for="edit_username">username:</label>
-        <input type="text" name="username" id="edit_username" required>
+      <div class="modal-header">
+        <i class="fas fa-edit"></i> Edit Admin Account
+      </div>
+      <div class="modal-body">
+        <form id="editForm" method="POST" action="update_admin.php">
+          <input type="hidden" name="admin_id" id="edit_admin_id">
+          
+          <label for="edit_username">Username:</label>
+          <input type="text" name="username" id="edit_username" required>
 
-        <label for="edit_email">email:</label>
-        <input type="email" name="Email" id="edit_email" required>
+          <label for="edit_email">Email:</label>
+          <input type="email" name="Email" id="edit_email" required>
 
-        <label for="edit_password">password:</label>
-        <input type="text" name="password" id="edit_password" required>
+          <label for="edit_password">Password:</label>
+          <input type="text" name="password" id="edit_password" required>
 
-        <label for="edit_branch">Branch:</label>
-        <input type="text" name="BranchName" id="edit_branch">
+          <label for="edit_branch">Branch:</label>
+          <select name="BranchName" id="edit_branch" required>
+            <option value="">Select Branch</option>
+            <option value="Autotec Shaw">Autotec Shaw</option>
+            <option value="Autotec Subic">Autotec Subic</option>
+          </select>
 
-        <label for="edit_role">Role:</label>
-        <input type="text" name="role" id="edit_role">
+          <label for="edit_role">Role:</label>
+          <input type="text" name="role" id="edit_role">
 
-        <div class="modal-actions">
-          <button type="button" class="cancel-btn" onclick="closeModal('editModal')">Cancel</button>
-          <button type="submit" class="save-btn">Save</button>
-        </div>
-      </form>
+          <div class="modal-actions">
+            <button type="button" class="cancel-btn" onclick="closeModal('editModal')">Cancel</button>
+            <button type="submit" class="save-btn">Save Changes</button>
+          </div>
+        </form>
+      </div>
     </div>
   </div>
 
   <!-- Delete Modal -->
   <div class="modal" id="deleteModal" role="dialog" aria-modal="true">
     <div class="modal-content" role="document">
-      <div class="modal-header">Confirm Deletion</div>
-      <p>Are you sure you want to remove this admin?</p>
-
-      <form id="deleteForm" method="POST" action="delete_admin.php">
-        <input type="hidden" name="admin_id" id="delete_admin_id">
-        <div class="modal-actions">
-          <button type="button" class="cancel-btn" onclick="closeModal('deleteModal')">Cancel</button>
-          <button type="submit" class="save-btn">Yes, Delete</button>
+      <div class="modal-header">
+        <i class="fas fa-exclamation-triangle"></i> Confirm Deletion
+      </div>
+      <div class="modal-body">
+        <div class="delete-warning">
+          <i class="fas fa-exclamation-circle"></i>
+          <p>Are you sure you want to remove this admin account? This action cannot be undone and will permanently delete all associated data.</p>
         </div>
-      </form>
+
+        <form id="deleteForm" method="POST" action="delete_admin.php">
+          <input type="hidden" name="admin_id" id="delete_admin_id">
+          <div class="modal-actions">
+            <button type="button" class="cancel-btn" onclick="closeModal('deleteModal')">Cancel</button>
+            <button type="submit" class="save-btn" style="background: linear-gradient(180deg, #a4133c 0%, #ff4d6d 100%);">
+              <i class="fas fa-trash"></i> Yes, Delete
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   </div>
 
-  <!-- Success Modal (auto-hide) -->
+  <!-- Success Modal -->
   <div class="modal" id="successModal" aria-modal="true">
-    <div class="modal-content small-modal-content">
-      <p id="successText">Success</p>
+    <div class="modal-content">
+      <div class="modal-header">
+        <i class="fas fa-check-circle"></i> Success
+      </div>
+      <div class="modal-body small-modal-content">
+        <i class="fas fa-check-circle" style="font-size: 56px; color: #27ae60; margin-bottom: 16px;"></i>
+        <p id="successText">Success</p>
+      </div>
     </div>
   </div>
 
-  <!-- Error Modal (requires OK) -->
+  <!-- Error Modal -->
   <div class="modal" id="errorModal" aria-modal="true">
-    <div class="modal-content small-modal-content">
-      <p id="errorText">An error occurred</p>
-      <button class="ok-btn" onclick="closeModal('errorModal')">OK</button>
+    <div class="modal-content">
+      <div class="modal-header">
+        <i class="fas fa-exclamation-circle"></i> Error
+      </div>
+      <div class="modal-body small-modal-content">
+        <i class="fas fa-exclamation-circle" style="font-size: 56px; color: #e74c3c; margin-bottom: 16px;"></i>
+        <p id="errorText">An error occurred</p>
+        <button class="ok-btn" onclick="closeModal('errorModal')">OK</button>
+      </div>
     </div>
   </div>
 
   <script>
-    function toggleMenu(id) {
-      const menu = document.getElementById(id);
-      const isVisible = menu.style.display === 'block';
-      menu.style.display = isVisible ? 'none' : 'block';
-    }
-
     function openEditModal(admin) {
       document.getElementById('edit_admin_id').value = admin.admin_id || '';
       document.getElementById('edit_username').value = admin.username || '';
       document.getElementById('edit_email').value = admin.Email || '';
       document.getElementById('edit_password').value = admin.password || '';
-      document.getElementById('edit_branch').value = admin.BranchName || '';
+      
+      // Set the branch dropdown value
+      const branchSelect = document.getElementById('edit_branch');
+      branchSelect.value = admin.BranchName || '';
+      
       document.getElementById('edit_role').value = admin.role || '';
       document.getElementById('editModal').classList.add('show');
     }
@@ -541,20 +858,19 @@ $result = $stmt->get_result();
       }
     });
 
-    // show success/error modals based on URL params
+    // Show success/error modals based on URL params
     (function() {
       const url = new URL(window.location.href);
       const success = url.searchParams.get('success');
       const added = url.searchParams.get('added');
       const deleted = url.searchParams.get('deleted');
-      const error = url.searchParams.get('error'); // 'duplicate_add' or 'duplicate_edit' or others
+      const error = url.searchParams.get('error');
 
       if (success === '1') {
         document.getElementById('successText').textContent = 'Admin updated successfully.';
         const m = document.getElementById('successModal');
         m.classList.add('show');
         setTimeout(()=>m.classList.remove('show'), 2500);
-        // remove query param so refresh/back doesn't keep showing (optional but handy)
         url.searchParams.delete('success');
         window.history.replaceState({}, '', url.toString());
       }
@@ -585,8 +901,6 @@ $result = $stmt->get_result();
 
         document.getElementById('errorText').textContent = message;
         document.getElementById('errorModal').classList.add('show');
-
-        // remove error param to avoid repeating on refresh
         url.searchParams.delete('error');
         window.history.replaceState({}, '', url.toString());
       }
@@ -594,19 +908,18 @@ $result = $stmt->get_result();
   </script>
 
   <script>
-  // Keep the dropdown open if it contains an active item
-  document.querySelectorAll('.submenu').forEach(menu => {
-    if (menu.querySelector('.active')) {
-      menu.style.display = 'block';
-    }
-  });
-</script>
+    // Keep the dropdown open if it contains an active item
+    document.querySelectorAll('.submenu').forEach(menu => {
+      if (menu.querySelector('.active')) {
+        menu.style.display = 'block';
+      }
+    });
+  </script>
 
 </body>
 </html>
 
 <?php
-// cleanup
 $stmt->close();
 $conn->close();
 ?>

@@ -181,12 +181,12 @@ $read_count = $read_stmt->fetch(PDO::FETCH_ASSOC)['count'];
 
         .logo {
             font-size: 24px;
-            color: #c0392b;
+            color: #a4133c;
             font-weight: 600;
         }
 
         .logout-btn {
-            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            background: linear-gradient(135deg, #a4133c, #ff4d6d);
             color: white;
             border: none;
             padding: 10px 20px;
@@ -461,15 +461,15 @@ $read_count = $read_stmt->fetch(PDO::FETCH_ASSOC)['count'];
     <div class="main">
         <div class="topbar">
             <div class="logo">
-                <i class="fas fa-envelope"></i> Contact Messages
+                <i class="fa-solid fa-envelope" aria-hidden="true"></i> Contact Messages
             </div>
-            <button class="logout-btn" onclick="window.location.href='logout.php'">
+            <button class="logout-btn">
                 <i class="fas fa-sign-out-alt"></i> Logout
             </button>
         </div>
 
         <div class="content">
-            <h2>Contact Messages</h2>
+            <br>
             <p class="subtitle">Manage and respond to customer inquiries and messages.</p>
 
             <!-- Filter Tabs -->

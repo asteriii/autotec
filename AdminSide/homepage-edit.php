@@ -158,7 +158,7 @@ error_log("Announcement Image Path: " . $announcement_img);
 
     .logo {
         font-size: 24px;
-        color: #c0392b;
+        color: #a4133c;
         font-weight: 600;
     }
 
@@ -540,7 +540,7 @@ error_log("Announcement Image Path: " . $announcement_img);
     <div class="main">
         <div class="topbar">
             <div class="logo">
-                <i class="fas fa-car"></i> AutoTec Admin
+                <i class="fas fa-home"></i> Homepage Settings</h2>
             </div>
             <button class="logout-btn" onclick="window.location.href='logout.php'">
                 <i class="fas fa-sign-out-alt"></i> Logout
@@ -548,7 +548,7 @@ error_log("Announcement Image Path: " . $announcement_img);
         </div>
 
         <div class="content">
-            <h2><i class="fas fa-home"></i> Homepage Settings</h2>
+
 
             <!-- Description Card -->
             <div class="card">
