@@ -151,6 +151,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
     exit;
 }
+
+// Fetch vehicle types (initial server render)
+$sql = "SELECT VehicleTypeID, Name, Price FROM vehicle_types ORDER BY VehicleTypeID ASC";
+$result = $conn->query($sql);
+
+$vehicle_types = [];
+if ($result && $result->num_rows > 0) {
+    while ($r = $result->fetch_assoc()) {
+        $vehicle_types[] = $r;
+    }
+}
+
+// Fetch branches with QR codes
+$branchesSql = "SELECT AboutID, BranchName, GcashQR FROM about_us ORDER BY AboutID";
+$branchesResult = $conn->query($branchesSql);
+$branches = [];
+if ($branchesResult && $branchesResult->num_rows > 0) {
+    while ($b = $branchesResult->fetch_assoc()) {
+        $branches[] = $b;
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
