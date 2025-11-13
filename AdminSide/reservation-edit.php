@@ -214,7 +214,9 @@ if ($branchesResult && $branchesResult->num_rows > 0) {
   <div class="main">
     <div class="topbar">
       <div class="logo">☰</div>
-      <button class="logout-btn">Logout</button>
+        <button class="logout-btn" onclick="window.location.href='logout.php'">
+            <i class="fas fa-sign-out-alt"></i> Logout
+          </button>
     </div>
 
     <div class="content">
