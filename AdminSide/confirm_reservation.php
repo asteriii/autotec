@@ -43,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $reservation = $result->fetch_assoc();
         $stmt->close();
         
-        // Fetch Vehicle Type Name
+        // Fetch Vehicle Type Name (for email only, not for database insert)
         $stmt = $conn->prepare("SELECT TypeName FROM vehicle_types WHERE TypeID = ?");
         $stmt->bind_param("i", $reservation['TypeID']);
         $stmt->execute();
@@ -55,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $stmt->close();
         
-        // Fetch Category Name
+        // Fetch Category Name (for email only, not for database insert)
         $stmt = $conn->prepare("SELECT CategoryName FROM vehicle_categories WHERE CategoryID = ?");
         $stmt->bind_param("i", $reservation['CategoryID']);
         $stmt->execute();
@@ -79,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
-        // Prepare insert into completed table
+        // Prepare insert into completed table (WITHOUT VehicleTypeName and CategoryName)
         $sql_insert = "INSERT INTO completed (
             ReservationID, UserID, PlateNo, Brand, TypeID, CategoryID, 
             Fname, Lname, Mname, PhoneNum, Email, Date, Time, Address, BranchName, 
