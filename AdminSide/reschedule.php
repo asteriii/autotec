@@ -24,7 +24,7 @@ $count_stmt->execute($params);
 $total_records = $count_stmt->fetch(PDO::FETCH_ASSOC)['total'];
 $total_pages = ceil($total_records / $records_per_page);
 
-// Fetch reschedule with vehicle type information
+// Fetch reschedules with vehicle type information - ALIGNED TO DATABASE
 $sql = "SELECT r.*, vt.Name as VehicleTypeName, vt.Price as VehiclePrice 
         FROM reschedule r 
         LEFT JOIN vehicle_types vt ON r.TypeID = vt.VehicleTypeID 
@@ -48,10 +48,11 @@ foreach ($vehicle_types_data as $type) {
     $vehicle_prices[$type['VehicleTypeID']] = $type['Price'];
 }
 
+// Vehicle categories - ALIGNED TO DATABASE
 $categories = [
-    1 => 'Basic',
-    2 => 'Standard', 
-    3 => 'Premium'
+    1 => 'Private',
+    2 => 'Commercial', 
+    3 => 'Government'
 ];
 
 // Process receipt paths for each reschedule
@@ -81,9 +82,6 @@ foreach ($reschedules as &$reschedule) {
         $reschedule['_receiptExists'] = $receiptExists;
         $reschedule['_receiptPath'] = $cleanPath;
         $reschedule['_fullPath'] = $fullPath;
-        
-        // Debug logging
-        error_log("reschedule ID {$reschedule['RescheduleID']}: Receipt Path = {$receiptPath}, Clean Path = {$cleanPath}, Full Path = {$fullPath}, Exists = " . ($receiptExists ? 'YES' : 'NO'));
     } else {
         $reschedule['_hasReceipt'] = false;
         $reschedule['_receiptExists'] = false;
@@ -114,82 +112,6 @@ unset($reschedule); // Break reference
             display: flex;
             min-height: 100vh;
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-        }
-
-        .sidebar::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.03)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.03)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
-            opacity: 0.3;
-        }
-
-        .sidebar .section {
-            padding: 0 20px;
-            position: relative;
-            z-index: 1;
-        }
-
-        .section-title {
-            padding: 15px 0;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 16px;
-            border-radius: 8px;
-            margin: 5px 0;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .section-title:hover {
-            background-color: rgba(255,255,255,0.1);
-            padding-left: 10px;
-        }
-
-        .submenu {
-            list-style: none;
-            padding-left: 15px;
-            display: none;
-            animation: slideDown 0.3s ease;
-        }
-
-        .submenu.show {
-            display: block;
-        }
-
-        @keyframes slideDown {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .submenu li {
-            padding: 12px 0;
-            font-size: 14px;
-            cursor: pointer;
-            border-radius: 6px;
-            margin: 2px 0;
-            transition: all 0.3s ease;
-        }
-
-        .submenu li:hover {
-            background-color: rgba(255,255,255,0.1);
-            padding-left: 10px;
-        }
-
-        .submenu li a {
-            color: white;
-            text-decoration: none;
-            display: block;
-        }
-
-        .active {
-            background-color: rgba(255,255,255,0.15);
-            font-weight: 500;
         }
 
         .main {
@@ -476,10 +398,16 @@ unset($reschedule); // Break reference
             border: 1px solid #ffeaa7;
         }
 
-        .status-confirmed {
+        .status-paid {
             background: #d4edda;
             color: #155724;
             border: 1px solid #c3e6cb;
+        }
+
+        .status-verified {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
         }
 
         .receipt-status {
@@ -695,17 +623,6 @@ unset($reschedule); // Break reference
         }
 
         @media (max-width: 768px) {
-            .sidebar {
-                transform: translateX(-100%);
-                position: fixed;
-                z-index: 1000;
-                height: 100vh;
-            }
-
-            .sidebar.mobile-open {
-                transform: translateX(0);
-            }
-
             .card-content {
                 grid-template-columns: 1fr;
             }
@@ -782,23 +699,26 @@ unset($reschedule); // Break reference
                     $receiptExists = $reschedule['_receiptExists'];
                     $receiptPath = $reschedule['_receiptPath'];
                     
-                    // Payment method checks
+                    // Payment method checks - ALIGNED TO DATABASE ENUM
                     $paymentMethod = strtolower($reschedule['PaymentMethod'] ?? '');
                     $isGcash = $paymentMethod === 'gcash';
-                    $isOnsite = $paymentMethod === 'onsite' || $paymentMethod === 'cash';
+                    $isOnsite = $paymentMethod === 'onsite';
+                    
+                    // Payment status - ALIGNED TO DATABASE ENUM (pending, paid, verified)
+                    $paymentStatus = strtolower($reschedule['PaymentStatus'] ?? 'pending');
                     ?>
                     <div class="reschedule-card">
                         <div class="card-header">
                             <div class="reschedule-id">ID: <?php echo $reschedule['RescheduleID']; ?></div>
-                            <div class="status-badge <?php echo $reschedule['PaymentStatus'] === 'confirmed' ? 'status-confirmed' : 'status-pending'; ?>">
-                                <?php echo ucfirst($reschedule['PaymentStatus'] ?? 'Pending'); ?>
+                            <div class="status-badge status-<?php echo $paymentStatus; ?>">
+                                <?php echo ucfirst($paymentStatus); ?>
                             </div>
                         </div>
                         
                         <div class="card-content">
                             <div class="info-section">
                                 <h4><i class="fas fa-user"></i> Customer Details</h4>
-                                <p><strong>Name:</strong> <?php echo htmlspecialchars($reschedule['Fname'] . ' ' . $reschedule['Mname'] . ' ' . $reschedule['Lname']); ?></p>
+                                <p><strong>Name:</strong> <?php echo htmlspecialchars($reschedule['Fname'] . ' ' . ($reschedule['Mname'] ?? '') . ' ' . $reschedule['Lname']); ?></p>
                                 <p><strong>Phone:</strong> <?php echo htmlspecialchars($reschedule['PhoneNum']); ?></p>
                                 <p><strong>Email:</strong> <?php echo htmlspecialchars($reschedule['Email']); ?></p>
                                 <p><strong>Address:</strong> <?php echo htmlspecialchars($reschedule['Address']); ?></p>
@@ -818,6 +738,7 @@ unset($reschedule); // Break reference
                                 <p><strong>Old Time:</strong> <?php echo date('g:i A', strtotime($reschedule['Time'])); ?></p>
                                 <p><strong>New Date:</strong> <?php echo $reschedule['NewDate'] ? date('M d, Y', strtotime($reschedule['NewDate'])) : 'N/A'; ?></p>
                                 <p><strong>New Time:</strong> <?php echo $reschedule['NewTime'] ? date('g:i A', strtotime($reschedule['NewTime'])) : 'N/A'; ?></p>
+                                <p><strong>Branch:</strong> <?php echo htmlspecialchars($reschedule['BranchName'] ?? 'N/A'); ?></p>
                                 <br>
                                 <p><strong>Reason:</strong> <?php echo htmlspecialchars($reschedule['Reason'] ?? 'N/A'); ?></p>
                                 <p><strong>Payment:</strong> <?php echo strtoupper($reschedule['PaymentMethod'] ?? 'N/A'); ?>
@@ -834,7 +755,7 @@ unset($reschedule); // Break reference
                                     <?php endif; ?>
                                 </p>
                                 <div class="price-tag">
-                                    ₱<?php echo number_format($reschedule['VehiclePrice'] ?? 0, 2); ?>
+                                    ₱<?php echo number_format($reschedule['Price'] ?? 0, 2); ?>
                                 </div>
                             </div>
                         </div>
@@ -847,7 +768,7 @@ unset($reschedule); // Break reference
                                                              '<?php echo htmlspecialchars($reschedule['PaymentMethod']); ?>', 
                                                              '<?php echo htmlspecialchars($reschedule['PaymentStatus'] ?? 'pending'); ?>',
                                                              '<?php echo htmlspecialchars($reschedule['Fname'] . ' ' . $reschedule['Lname']); ?>',
-                                                             '₱<?php echo number_format($reschedule['VehiclePrice'] ?? 0, 2); ?>')">
+                                                             '₱<?php echo number_format($reschedule['Price'] ?? 0, 2); ?>')">
                                     <i class="fas fa-receipt"></i> View Receipt
                                 </button>
                             <?php elseif ($isGcash && !$hasReceipt): ?>
@@ -931,21 +852,6 @@ unset($reschedule); // Break reference
     </div>
 
     <script>
-        function toggleMenu(id) {
-            const menu = document.getElementById(id);
-            const isVisible = menu.classList.contains('show');
-            
-            // Hide all submenus first
-            document.querySelectorAll('.submenu').forEach(submenu => {
-                submenu.classList.remove('show');
-            });
-            
-            // Show the clicked menu if it wasn't visible
-            if (!isVisible) {
-                menu.classList.add('show');
-            }
-        }
-
         function viewReceipt(receiptPath, referenceNumber, paymentMethod, paymentStatus, customerName, amount) {
             console.log('=== Opening Receipt Modal ===');
             console.log('Receipt Path:', receiptPath);
@@ -1029,58 +935,37 @@ unset($reschedule); // Break reference
             }
         });
 
-        function confirmReschedule(id) {
-            if (confirm('Are you sure you want to confirm this reschedule?')) {
-                // You can create a confirm_reschedule.php file or handle via AJAX
-                window.location.href = 'confirm_reschedule.php?id=' + id;
-            }
+        function handleReschedule(action, rescheduleID) {
+            const confirmationText = action === 'confirm'
+                ? "Are you sure you want to CONFIRM this reschedule (use NEW date/time)?"
+                : "Are you sure you want to DENY this reschedule (keep OLD date/time)?";
+
+            if (!confirm(confirmationText)) return;
+
+            fetch('process_reschedule_action.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({
+                    action: action,
+                    rescheduleID: rescheduleID
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert(data.message);
+                if (data.success) location.reload();
+            })
+            .catch(err => {
+                console.error(err);
+                alert('An error occurred.');
+            });
         }
 
-        function cancelReschedule(id) {
-            if (confirm('Are you sure you want to cancel this reschedule? This action cannot be undone.')) {
-                // You can create a cancel_reschedule.php file or handle via AJAX
-                window.location.href = 'cancel_reschedule.php?id=' + id;
-            }
-        }
-
-        // Mobile sidebar toggle
-        function toggleMobileSidebar() {
-            document.querySelector('.sidebar').classList.toggle('mobile-open');
-        }
-
-        // Add loading indicator for images
+        // Page load logging
         document.addEventListener('DOMContentLoaded', function() {
             console.log('Reschedule page loaded');
-            console.log('Total Reschedule on page:', <?php echo count($reschedules); ?>);
+            console.log('Total Reschedules on page:', <?php echo count($reschedules); ?>);
         });
-    </script>
-
-    <script>
-    function handleReschedule(action, rescheduleID) {
-        const confirmationText = action === 'confirm'
-            ? "Are you sure you want to CONFIRM this reschedule (use NEW date/time)?"
-            : "Are you sure you want to DENY this reschedule (keep OLD date/time)?";
-
-        if (!confirm(confirmationText)) return;
-
-        fetch('process_reschedule_action.php', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({
-                action: action,
-                rescheduleID: rescheduleID
-            })
-        })
-        .then(res => res.json())
-        .then(data => {
-            alert(data.message);
-            if (data.success) location.reload();
-        })
-        .catch(err => {
-            console.error(err);
-            alert('An error occurred.');
-        });
-    }
     </script>
 
 </body>
