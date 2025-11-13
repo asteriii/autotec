@@ -27,12 +27,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         // Fetch reservation details with all needed information
         $stmt = $conn->prepare("
-            SELECT r.*, 
-                   vt.TypeName as VehicleTypeName,
-                   vc.CategoryName
+            SELECT r.*
             FROM reservations r
-            LEFT JOIN vehicle_types vt ON r.TypeID = vt.TypeID
-            LEFT JOIN vehicle_categories vc ON r.CategoryID = vc.CategoryID
             WHERE r.ReservationID = ?
         ");
         $stmt->bind_param("i", $reservation_id);
@@ -45,6 +41,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $reservation = $result->fetch_assoc();
+        $stmt->close();
+        
+        // Fetch Vehicle Type Name
+        $stmt = $conn->prepare("SELECT TypeName FROM vehicle_types WHERE TypeID = ?");
+        $stmt->bind_param("i", $reservation['TypeID']);
+        $stmt->execute();
+        $typeResult = $stmt->get_result();
+        if ($typeRow = $typeResult->fetch_assoc()) {
+            $reservation['VehicleTypeName'] = $typeRow['TypeName'];
+        } else {
+            $reservation['VehicleTypeName'] = 'N/A';
+        }
+        $stmt->close();
+        
+        // Fetch Category Name
+        $stmt = $conn->prepare("SELECT CategoryName FROM vehicle_categories WHERE CategoryID = ?");
+        $stmt->bind_param("i", $reservation['CategoryID']);
+        $stmt->execute();
+        $catResult = $stmt->get_result();
+        if ($catRow = $catResult->fetch_assoc()) {
+            $reservation['CategoryName'] = $catRow['CategoryName'];
+        } else {
+            $reservation['CategoryName'] = 'N/A';
+        }
         $stmt->close();
 
         // Check if branch matches admin's branch (branch-specific access control)

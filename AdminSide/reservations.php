@@ -1,6 +1,17 @@
 <?php
 session_start();
+
+// Check if user is logged in
+if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
+    header('Location: login.php');
+    exit;
+}
+
 require_once '../db.php';
+
+// Get session variables for branch filtering
+$username = $_SESSION['admin_username'] ?? 'Unknown Admin';
+$admin_branch = $_SESSION['branch_filter'] ?? null;
 
 // Pagination setup
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
@@ -12,20 +23,35 @@ $search = isset($_GET['search']) ? $_GET['search'] : '';
 $search_condition = '';
 $params = [];
 
+// Build WHERE clause with branch filter
+$where_clauses = [];
+
+// Add branch filter if admin has one assigned
+if ($admin_branch) {
+    $where_clauses[] = "r.BranchName = ?";
+    $params[] = $admin_branch;
+}
+
+// Add search condition if search term exists
 if (!empty($search)) {
-    $search_condition = "WHERE Fname LIKE ? OR Lname LIKE ? OR PlateNo LIKE ? OR Email LIKE ?";
+    $where_clauses[] = "(Fname LIKE ? OR Lname LIKE ? OR PlateNo LIKE ? OR Email LIKE ?)";
     $search_param = "%$search%";
-    $params = [$search_param, $search_param, $search_param, $search_param];
+    $params = array_merge($params, [$search_param, $search_param, $search_param, $search_param]);
+}
+
+// Combine WHERE clauses
+if (!empty($where_clauses)) {
+    $search_condition = "WHERE " . implode(" AND ", $where_clauses);
 }
 
 // Get total records for pagination
-$count_sql = "SELECT COUNT(*) as total FROM reservations $search_condition";
+$count_sql = "SELECT COUNT(*) as total FROM reservations r $search_condition";
 $count_stmt = $pdo->prepare($count_sql);
 $count_stmt->execute($params);
 $total_records = $count_stmt->fetch(PDO::FETCH_ASSOC)['total'];
 $total_pages = ceil($total_records / $records_per_page);
 
-// Fetch reservations with vehicle type information
+// Fetch reservations with vehicle type information and branch filter
 $sql = "SELECT r.*, vt.Name as VehicleTypeName, vt.Price as VehiclePrice 
         FROM reservations r 
         LEFT JOIN vehicle_types vt ON r.TypeID = vt.VehicleTypeID 
@@ -35,6 +61,13 @@ $sql = "SELECT r.*, vt.Name as VehicleTypeName, vt.Price as VehiclePrice
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $reservations = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Debug logging
+error_log("=== RESERVATIONS BRANCH FILTER ===");
+error_log("Admin Username: " . $username);
+error_log("Branch Filter: " . ($admin_branch ?? 'None (Super Admin)'));
+error_log("Total Reservations Found: " . $total_records);
+error_log("==================================");
 
 // Fetch vehicle types from database
 $vehicle_types_sql = "SELECT VehicleTypeID, Name, Price FROM vehicle_types";
@@ -115,6 +148,16 @@ unset($reservation); // Break reference
             display: flex;
             min-height: 100vh;
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        }
+
+        .sidebar {
+            width: 280px;
+            background: linear-gradient(180deg, #c0392b 0%, #a93226 100%);
+            color: white;
+            padding-top: 20px;
+            box-shadow: 4px 0 15px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
         }
 
         .sidebar::before {
@@ -240,6 +283,17 @@ unset($reservation); // Break reference
             color: #2d3748;
             font-weight: 700;
             font-size: 28px;
+        }
+
+        .branch-info-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #4299e1, #3182ce);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-left: 15px;
         }
 
         .search-pagination {
@@ -695,6 +749,10 @@ unset($reservation); // Break reference
             box-shadow: 0 4px 12px rgba(72, 187, 120, 0.3);
         }
 
+        .modal-body {
+            padding: 20px 0;
+        }
+
         @media (max-width: 768px) {
             .sidebar {
                 transform: translateX(-100%);
@@ -748,7 +806,14 @@ unset($reservation); // Break reference
         </div>
 
         <div class="content">
-            <h2><i class="fas fa-calendar-check"></i> Reservations Management</h2>
+            <h2>
+                <i class="fas fa-calendar-check"></i> Reservations Management
+                <?php if ($admin_branch): ?>
+                    <span class="branch-info-badge">
+                        <i class="fas fa-map-marker-alt"></i> <?php echo htmlspecialchars($admin_branch); ?>
+                    </span>
+                <?php endif; ?>
+            </h2>
 
             <div class="search-pagination">
                 <form method="GET" class="search-box">
@@ -870,9 +935,8 @@ unset($reservation); // Break reference
                                 <i class="fas fa-check"></i> Confirm
                             </button>
                             <button class="btn cancel-btn" onclick="openCancelModal(<?php echo $reservation['ReservationID']; ?>)">
-                            <i class="fas fa-ban"></i> Cancel
+                                <i class="fas fa-ban"></i> Cancel
                             </button>
-                            
                         </div>
                     </div>
                 <?php endforeach; ?>
@@ -925,6 +989,32 @@ unset($reservation); // Break reference
                 <a id="downloadReceiptBtn" href="#" download class="download-btn">
                     <i class="fas fa-download"></i> Download Receipt
                 </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cancel Reason Modal -->
+    <div id="cancelModal" class="modal">
+        <div class="modal-content" style="max-width:500px;">
+            <div class="modal-header">
+                <h3><i class="fas fa-ban"></i> Input Reason for Canceling</h3>
+                <button class="close-modal" onclick="closeCancelModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <label for="cancelReason" style="display:block; font-weight:600; margin-bottom:8px; color:#2d3748;">
+                    Reason for canceling:
+                </label>
+                <textarea id="cancelReason" rows="4" 
+                    style="width:100%; padding:10px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px; resize:none;"
+                    placeholder="Type your reason here..."></textarea>
+            </div>
+            <div class="modal-actions">
+                <button class="btn cancel-btn" onclick="closeCancelModal()">
+                    <i class="fas fa-times"></i> Close
+                </button>
+                <button class="btn confirm-btn" onclick="confirmCancelAction()">
+                    <i class="fas fa-check"></i> Confirm
+                </button>
             </div>
         </div>
     </div>
@@ -1015,9 +1105,14 @@ unset($reservation); // Break reference
 
         // Close modal when clicking outside of it
         window.onclick = function(event) {
-            const modal = document.getElementById('receiptModal');
-            if (event.target === modal) {
+            const receiptModal = document.getElementById('receiptModal');
+            const cancelModal = document.getElementById('cancelModal');
+            
+            if (event.target === receiptModal) {
                 closeReceiptModal();
+            }
+            if (event.target === cancelModal) {
+                closeCancelModal();
             }
         }
 
@@ -1025,36 +1120,10 @@ unset($reservation); // Break reference
         document.addEventListener('keydown', function(event) {
             if (event.key === 'Escape') {
                 closeReceiptModal();
+                closeCancelModal();
             }
         });
 
-        function confirmReservation(id) {
-            if (confirm('Are you sure you want to confirm this reservation?')) {
-                // You can create a confirm_reservation.php file or handle via AJAX
-                window.location.href = 'confirm_reservation.php?id=' + id;
-            }
-        }
-
-        function cancelReservation(id) {
-            if (confirm('Are you sure you want to cancel this reservation? This action cannot be undone.')) {
-                // You can create a cancel_reservation.php file or handle via AJAX
-                window.location.href = 'cancel_reservation.php?id=' + id;
-            }
-        }
-
-        // Mobile sidebar toggle
-        function toggleMobileSidebar() {
-            document.querySelector('.sidebar').classList.toggle('mobile-open');
-        }
-
-        // Add loading indicator for images
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('Reservations page loaded');
-            console.log('Total reservations on page:', <?php echo count($reservations); ?>);
-        });
-    </script>
-
-    <script>
         function confirmReservation(reservationID) {
             if (!confirm("Are you sure you want to confirm and move this reservation to Completed?")) {
                 return;
@@ -1078,114 +1147,62 @@ unset($reservation); // Break reference
                 alert("⚠️ Request failed: " + err);
             });
         }
-    </script>
 
-    <script>
-        function cancelReservation(reservationID) {
-            if (!confirm("Are you sure you want to cancel this reservation?")) return;
+        let selectedReservationId = null;
 
+        function openCancelModal(reservationId) {
+            selectedReservationId = reservationId;
+            document.getElementById('cancelReason').value = '';
+            document.getElementById('cancelModal').style.display = 'block';
+        }
+
+        function closeCancelModal() {
+            document.getElementById('cancelModal').style.display = 'none';
+        }
+
+        function confirmCancelAction() {
+            const reason = document.getElementById('cancelReason').value.trim();
+
+            if (reason === '') {
+                alert('Please input a reason for canceling.');
+                return;
+            }
+
+            // Send POST request to cancel_reservation.php
             fetch('cancel_reservation.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'reservation_id=' + encodeURIComponent(reservationID)
+                body: new URLSearchParams({
+                    reservation_id: selectedReservationId,
+                    reason: reason
+                })
             })
-            .then(res => res.json())
+            .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert("❌ Reservation successfully canceled!");
+                    alert('Reservation canceled successfully!');
+                    closeCancelModal();
                     location.reload();
                 } else {
-                    alert("⚠️ Error: " + data.message);
+                    alert('Error: ' + data.message);
                 }
             })
-            .catch(err => alert("⚠️ Request failed: " + err));
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Something went wrong while canceling.');
+            });
         }
-    </script>
 
-
-    <!-- Cancel Reason Modal -->
-    <div id="cancelModal" class="modal">
-    <div class="modal-content" style="max-width:500px;">
-        <div class="modal-header">
-        <h3><i class="fas fa-ban"></i> Input Reason for Canceling</h3>
-        <button class="close-modal" onclick="closeCancelModal()">&times;</button>
-        </div>
-        <div class="modal-body">
-        <label for="cancelReason" style="display:block; font-weight:600; margin-bottom:8px; color:#2d3748;">
-            Reason for canceling:
-        </label>
-        <textarea id="cancelReason" rows="4" 
-            style="width:100%; padding:10px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px; resize:none;"
-            placeholder="Type your reason here..."></textarea>
-        </div>
-        <div class="modal-actions">
-        <button class="btn cancel-btn" onclick="closeCancelModal()">
-            <i class="fas fa-times"></i> Close
-        </button>
-        <button class="btn confirm-btn" onclick="confirmCancelAction()">
-            <i class="fas fa-check"></i> Confirm
-        </button>
-        </div>
-    </div>
-    </div>
-
-    <script>
-    let selectedReservationId = null;
-
-    function openCancelModal(reservationId) {
-    selectedReservationId = reservationId;
-    document.getElementById('cancelReason').value = '';
-    document.getElementById('cancelModal').style.display = 'block';
-    }
-
-    function closeCancelModal() {
-    document.getElementById('cancelModal').style.display = 'none';
-    }
-
-    function confirmCancelAction() {
-    const reason = document.getElementById('cancelReason').value.trim();
-
-    if (reason === '') {
-        alert('Please input a reason for canceling.');
-        return;
-    }
-
-    // Send POST request to your existing cancel_reservation.php
-    fetch('cancel_reservation.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-        reservation_id: selectedReservationId, // ✅ matches your PHP
-        reason: reason // optional, in case you add it later
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-        alert('Reservation canceled successfully!');
-        closeCancelModal();
-        location.reload();
-        } else {
-        alert('Error: ' + data.message);
+        // Mobile sidebar toggle
+        function toggleMobileSidebar() {
+            document.querySelector('.sidebar').classList.toggle('mobile-open');
         }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Something went wrong while canceling.');
-    });
-    }
 
-    // Optional: close modal when clicking outside
-    window.onclick = function(event) {
-    const modal = document.getElementById('cancelModal');
-    if (event.target === modal) {
-        closeCancelModal();
-    }
-    };
+        // Add loading indicator for images
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Reservations page loaded');
+            console.log('Total reservations on page:', <?php echo count($reservations); ?>);
+        });
     </script>
-
-
-
-
 </body>
 </html>
