@@ -763,7 +763,7 @@ mysqli_stmt_close($user_stmt);
             </div>
             <div class="stat-card" onclick="filterReservations('rescheduled')" data-filter="rescheduled">
                 <div class="stat-number"><?php echo $reschedule_count; ?></div>
-                <div class="stat-label">Reschedule Request</div>
+                <div class="stat-label">Rescheduled</div>
             </div>
             <div class="stat-card" onclick="filterReservations('completed')" data-filter="completed">
                 <div class="stat-number"><?php echo $completed_count; ?></div>
@@ -992,7 +992,7 @@ mysqli_stmt_close($user_stmt);
                         </div>
                         <div style="display: flex; flex-direction: column; gap: 5px; align-items: flex-end;">
                             <span class="status-badge ${status}">
-                                ${status.toUpperCase()}
+                                ${status === 'rescheduled' ? 'REQUESTING' : status.toUpperCase()}
                             </span>
                             ${status === 'active' ? `<span class="payment-badge ${paymentStatus.toLowerCase()}">${paymentStatus.toUpperCase()}</span>` : ''}
                         </div>
