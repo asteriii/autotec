@@ -15,6 +15,9 @@ if ($conn->connect_error) {
 
 $conn->set_charset("utf8mb4");
 
+// Include audit trail functions
+require_once 'audit_trail.php';
+
 // Check if user is already logged in
 if (isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true) {
     header('Location: adminDash.php');
@@ -34,23 +37,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $error_message = 'Please enter both username and password.';
     } else {
         try {
-             $pdo = new PDO(
-        "mysql:host=$servername;dbname=$dbname;port=$port;charset=utf8mb4",
-        $username,
-        $password,
-        [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::ATTR_EMULATE_PREPARES => false,
-        ]);
+            $pdo = new PDO(
+                "mysql:host=$servername;dbname=$dbname;port=$port;charset=utf8mb4",
+                $username,
+                $password,
+                [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                    PDO::ATTR_EMULATE_PREPARES => false,
+                ]
+            );
             
-            // Prepare and execute query to find admin user
+            // Query matches your schema: admin_id, username, Email, password, BranchName
             $stmt = $pdo->prepare("SELECT admin_id, username, Email, password, BranchName FROM admin WHERE username = ? OR Email = ?");
             $stmt->execute([$input_username, $input_username]);
             $admin = $stmt->fetch();
             
             if (!$admin) {
                 $error_message = "Invalid username/email or password.";
+                
+                // Log failed login attempt
+                logAction($input_username, 'Failed Login', "Failed login attempt for username/email: $input_username");
             } else {
                 // Verify password
                 $password_verified = false;
@@ -78,6 +85,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     // Validate that admin has a valid branch
                     if (!$branch_filter) {
                         $error_message = "Your account is not assigned to a valid branch (Autotec Shaw or Autotec Subic).";
+                        
+                        // Log invalid branch attempt
+                        logAction($admin['username'], 'Login Failed', "Login attempt with invalid branch assignment: $branch_name");
                     } else {
                         // Login successful
                         $_SESSION['admin_logged_in'] = true;
@@ -85,7 +95,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $_SESSION['admin_username'] = $admin['username'];
                         $_SESSION['admin_email'] = $admin['Email'];
                         $_SESSION['admin_branch'] = $branch_name;
-                        $_SESSION['branch_filter'] = $branch_filter; // This is used for filtering queries
+                        $_SESSION['branch_filter'] = $branch_filter;
                         $_SESSION['login_time'] = time();
                         
                         // Set remember me cookie if checked
@@ -94,16 +104,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             setcookie('admin_remember', $cookie_token, time() + (86400 * 30), '/', '', false, true);
                         }
                         
-                        // Update last login time (note: your database doesn't have this column, so this will fail)
-                        // You may want to add this column or remove this code
-                        /*
-                        try {
-                            $update_stmt = $pdo->prepare("UPDATE admin SET last_login = NOW() WHERE admin_id = ?");
-                            $update_stmt->execute([$admin['admin_id']]);
-                        } catch (PDOException $e) {
-                            error_log("Last login update failed: " . $e->getMessage());
-                        }
-                        */
+                        // Log successful login
+                        logLogin($admin['username']);
                         
                         // Redirect to dashboard
                         header('Location: adminDash.php');
@@ -111,12 +113,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
                 } else {
                     $error_message = "Invalid username/email or password.";
+                    
+                    // Log failed password attempt
+                    logAction($admin['username'], 'Failed Login', "Failed login attempt - incorrect password for username: {$admin['username']}");
                 }
             }
             
         } catch (PDOException $e) {
             error_log("Database error: " . $e->getMessage());
             $error_message = 'Database connection failed. Please try again later.';
+            
+            // Log database error
+            logAction($input_username, 'System Error', "Database connection error during login attempt");
         }
     }
 }
