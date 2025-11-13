@@ -868,9 +868,10 @@ unset($reservation); // Break reference
                             <button class="btn confirm-btn" onclick="confirmReservation(<?php echo $reservation['ReservationID']; ?>)">
                                 <i class="fas fa-check"></i> Confirm
                             </button>
-                            <button class="btn cancel-btn" onclick="cancelReservation(<?php echo $reservation['ReservationID']; ?>)">
-                                <i class="fas fa-times"></i> Cancel
+                            <button class="btn cancel-btn" onclick="openCancelModal(<?php echo $reservation['ReservationID']; ?>)">
+                            <i class="fas fa-ban"></i> Cancel
                             </button>
+                            
                         </div>
                     </div>
                 <?php endforeach; ?>
@@ -1099,6 +1100,89 @@ unset($reservation); // Break reference
             .catch(err => alert("⚠️ Request failed: " + err));
         }
     </script>
+
+
+    <!-- Cancel Reason Modal -->
+    <div id="cancelModal" class="modal">
+    <div class="modal-content" style="max-width:500px;">
+        <div class="modal-header">
+        <h3><i class="fas fa-ban"></i> Input Reason for Canceling</h3>
+        <button class="close-modal" onclick="closeCancelModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+        <label for="cancelReason" style="display:block; font-weight:600; margin-bottom:8px; color:#2d3748;">
+            Reason for canceling:
+        </label>
+        <textarea id="cancelReason" rows="4" 
+            style="width:100%; padding:10px; border:1px solid #e2e8f0; border-radius:8px; font-size:14px; resize:none;"
+            placeholder="Type your reason here..."></textarea>
+        </div>
+        <div class="modal-actions">
+        <button class="btn cancel-btn" onclick="closeCancelModal()">
+            <i class="fas fa-times"></i> Close
+        </button>
+        <button class="btn confirm-btn" onclick="confirmCancelAction()">
+            <i class="fas fa-check"></i> Confirm
+        </button>
+        </div>
+    </div>
+    </div>
+
+    <script>
+    let selectedReservationId = null;
+
+    function openCancelModal(reservationId) {
+    selectedReservationId = reservationId;
+    document.getElementById('cancelReason').value = '';
+    document.getElementById('cancelModal').style.display = 'block';
+    }
+
+    function closeCancelModal() {
+    document.getElementById('cancelModal').style.display = 'none';
+    }
+
+    function confirmCancelAction() {
+    const reason = document.getElementById('cancelReason').value.trim();
+
+    if (reason === '') {
+        alert('Please input a reason for canceling.');
+        return;
+    }
+
+    // Send POST request to your existing cancel_reservation.php
+    fetch('cancel_reservation.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+        reservation_id: selectedReservationId, // ✅ matches your PHP
+        reason: reason // optional, in case you add it later
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+        alert('Reservation canceled successfully!');
+        closeCancelModal();
+        location.reload();
+        } else {
+        alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Something went wrong while canceling.');
+    });
+    }
+
+    // Optional: close modal when clicking outside
+    window.onclick = function(event) {
+    const modal = document.getElementById('cancelModal');
+    if (event.target === modal) {
+        closeCancelModal();
+    }
+    };
+    </script>
+
 
 
 

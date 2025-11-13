@@ -1,9 +1,10 @@
-<?php // needed for reservation.php
+<?php
 require_once '../db.php';
 header('Content-Type: application/json');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $reservation_id = $_POST['reservation_id'] ?? null;
+    $reason = $_POST['reason'] ?? ''; // ✅ capture reason
 
     if (!$reservation_id) {
         echo json_encode(['success' => false, 'message' => 'Missing reservation ID']);
@@ -21,18 +22,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
-        // Insert into canceled table
+        // Insert into canceled table with Reason included
         $insert = $pdo->prepare("
             INSERT INTO canceled (
                 ReservationID, UserID, PlateNo, Brand, TypeID, CategoryID,
                 Fname, Lname, Mname, PhoneNum, Email,
                 Date, Time, Address, BranchName, PaymentMethod,
-                PaymentStatus, PaymentReceipt, Price, ReferenceNumber, CreatedAt
+                PaymentStatus, PaymentReceipt, Price, ReferenceNumber, CreatedAt, Reason
             ) VALUES (
                 :ReservationID, :UserID, :PlateNo, :Brand, :TypeID, :CategoryID,
                 :Fname, :Lname, :Mname, :PhoneNum, :Email,
                 :Date, :Time, :Address, :BranchName, :PaymentMethod,
-                :PaymentStatus, :PaymentReceipt, :Price, :ReferenceNumber, :CreatedAt
+                :PaymentStatus, :PaymentReceipt, :Price, :ReferenceNumber, :CreatedAt, :Reason
             )
         ");
 
@@ -57,7 +58,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ':PaymentReceipt' => $res['PaymentReceipt'],
             ':Price' => $res['Price'],
             ':ReferenceNumber' => $res['ReferenceNumber'],
-            ':CreatedAt' => $res['CreatedAt']
+            ':CreatedAt' => $res['CreatedAt'],
+            ':Reason' => $reason // ✅ renamed field
         ]);
 
         // Delete the reservation
