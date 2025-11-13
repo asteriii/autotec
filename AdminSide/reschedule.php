@@ -710,9 +710,10 @@ unset($reschedule); // Break reference
                     <div class="reschedule-card">
                         <div class="card-header">
                             <div class="reschedule-id">ID: <?php echo $reschedule['RescheduleID']; ?></div>
-                            <div class="status-badge status-<?php echo $paymentStatus; ?>">
-                                <?php echo ucfirst($paymentStatus); ?>
+                            <div class="status-badge status-pending">
+                                Requesting Reschedule
                             </div>
+
                         </div>
                         
                         <div class="card-content">

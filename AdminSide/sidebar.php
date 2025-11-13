@@ -139,8 +139,9 @@
                 <a href="completed-list.php"><i class="fas fa-check-circle"></i> Reserved List </a>
             </li>
             <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'canceled-list.php') ? 'active' : ''; ?>">
-                <a href="canceled-list.php"><i class="fas fa-check-circle"></i> Reserved List </a>
+                <a href="canceled-list.php"><i class="fas fa-check-circle"></i> Canceled List </a>
             </li>
+            
         </ul>
     </div>
     

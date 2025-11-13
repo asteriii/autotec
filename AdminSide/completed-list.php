@@ -99,7 +99,7 @@ unset($completed); // Break reference
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Completed List - AutoTec Admin</title>
+    <title>Reserved List - AutoTec Admin</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet"/>
     <style>
@@ -471,9 +471,9 @@ unset($completed); // Break reference
         }
 
         .status-pending {
-            background: #fff3cd;
-            color: #856404;
-            border: 1px solid #ffeaa7;
+            background: #d8ffcdff;
+            color: #228504ff;
+            border: 1px solid #adffa7ff;
         }
 
         .status-confirmed {
@@ -747,7 +747,7 @@ unset($completed); // Break reference
         </div>
 
         <div class="content">
-            <h2><i class="fas fa-calendar-check"></i> Completed List </h2>
+            <h2><i class="fas fa-calendar-check"></i> Reserved List </h2>
 
             <div class="search-pagination">
                 <form method="GET" class="search-box">
@@ -790,8 +790,8 @@ unset($completed); // Break reference
                     <div class="completed-card">
                         <div class="card-header">
                             <div class="completed-id">ID: <?php echo $completed['CompletedID']; ?></div>
-                            <div class="status-badge <?php echo $completed['PaymentStatus'] === 'confirmed' ? 'status-confirmed' : 'status-pending'; ?>">
-                                <?php echo ucfirst($completed['PaymentStatus'] ?? 'Pending'); ?>
+                            <div class="status-badge status-pending">
+                                Canceled
                             </div>
                         </div>
                         

@@ -471,9 +471,9 @@ unset($canceled); // Break reference
         }
 
         .status-pending {
-            background: #fff3cd;
-            color: #856404;
-            border: 1px solid #ffeaa7;
+            background: #ffcdcdff;
+            color: #850404ff;
+            border: 1px solid #ffa7a7ff;
         }
 
         .status-confirmed {
@@ -790,8 +790,8 @@ unset($canceled); // Break reference
                     <div class="canceled-card">
                         <div class="card-header">
                             <div class="canceled-id">ID: <?php echo $canceled['CanceledID']; ?></div>
-                            <div class="status-badge <?php echo $canceled['PaymentStatus'] === 'confirmed' ? 'status-confirmed' : 'status-pending'; ?>">
-                                <?php echo ucfirst($canceled['PaymentStatus'] ?? 'Pending'); ?>
+                            <div class="status-badge status-pending">
+                                Canceled
                             </div>
                         </div>
                         
