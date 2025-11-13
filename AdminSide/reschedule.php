@@ -814,8 +814,8 @@ unset($reschedule); // Break reference
                             
                             <div class="info-section">
                                 <h4><i class="fas fa-calendar-alt"></i> Appointment Details</h4>
-                                <p><strong>Old Date:</strong> <?php echo date('M d, Y', strtotime($reschedule['OldDate'])); ?></p>
-                                <p><strong>Old Time:</strong> <?php echo date('g:i A', strtotime($reschedule['OldTime'])); ?></p>
+                                <p><strong>Old Date:</strong> <?php echo date('M d, Y', strtotime($reschedule['Date'])); ?></p>
+                                <p><strong>Old Time:</strong> <?php echo date('g:i A', strtotime($reschedule['Time'])); ?></p>
                                 <p><strong>New Date:</strong> <?php echo $reschedule['NewDate'] ? date('M d, Y', strtotime($reschedule['NewDate'])) : 'N/A'; ?></p>
                                 <p><strong>New Time:</strong> <?php echo $reschedule['NewTime'] ? date('g:i A', strtotime($reschedule['NewTime'])) : 'N/A'; ?></p>
                                 <br>
