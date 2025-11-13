@@ -142,15 +142,6 @@ if ($branchesResult && $branchesResult->num_rows > 0) {
     * { box-sizing: border-box; font-family: 'Inter', sans-serif; margin:0; padding:0; }
     body { display:flex; min-height:100vh; background:#f4f4f4; color:#2d3748; }
 
-    /* Sidebar original look - unchanged layout */
-    .sidebar { width:250px; background:#a93226; color:#fff; padding-top:20px; flex-shrink:0; }
-    .sidebar .section { padding:0 20px; }
-    .sidebar .section-title { padding:10px 0; cursor:pointer; font-weight:bold; display:flex; justify-content:space-between; align-items:center; }
-    .sidebar .submenu { list-style:none; padding-left:15px; display:none; margin-top:6px; }
-    .sidebar .submenu li { padding:8px 0; font-size:14px; cursor:pointer; }
-    .sidebar .submenu li a { color:white; text-decoration:none; display:block; }
-    .sidebar .submenu li:hover { text-decoration:underline; }
-    .sidebar .active { background:#922b20; padding:6px 10px; border-radius:6px; }
 
     /* Main and topbar */
     .main { flex:1; display:flex; flex-direction:column; background:#f9f9f9; }
