@@ -1,22 +1,7 @@
 <?php
 session_start();
 
-$servername = getenv('MYSQLHOST') ?: 'mysql.railway.internal';
-$username = getenv('MYSQLUSER') ?: 'root';
-$password = getenv('MYSQLPASSWORD') ?: 'OUJHNoEzFNhsIgRFuduLzLFWunvvMrrP';
-$dbname = getenv('MYSQLDATABASE') ?: 'railway';
-$port = getenv('MYSQLPORT') ?: '3306';
-
-$conn = new mysqli($servername, $username, $password, $dbname, $port);
-
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
-
-$conn->set_charset("utf8mb4");
-
-// Include audit trail functions
-require_once 'audit_trail.php';
+require_once '../db.php';
 
 // Check if user is already logged in
 if (isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true) {
@@ -31,33 +16,32 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $input_username = trim($_POST['username']);
     $input_password = trim($_POST['password']);
     $remember = isset($_POST['remember']);
+    $selected_role = isset($_POST['role']) ? $_POST['role'] : ''; // Get selected role from form
     
     // Basic validation
     if (empty($input_username) || empty($input_password)) {
         $error_message = 'Please enter both username and password.';
+    } elseif (empty($selected_role)) {
+        $error_message = 'Please select your role (Admin or Staff).';
     } else {
         try {
-            $pdo = new PDO(
-                "mysql:host=$servername;dbname=$dbname;port=$port;charset=utf8mb4",
-                $username,
-                $password,
-                [
-                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                    PDO::ATTR_EMULATE_PREPARES => false,
-                ]
-            );
+             $pdo = new PDO(
+        "mysql:host=$servername;dbname=$dbname;port=$port;charset=utf8mb4",
+        $username,
+        $password,
+        [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES => false,
+        ]);
             
-            // Query matches your schema: admin_id, username, Email, password, BranchName
-            $stmt = $pdo->prepare("SELECT admin_id, username, Email, password, BranchName FROM admin WHERE username = ? OR Email = ?");
-            $stmt->execute([$input_username, $input_username]);
+            // Prepare and execute query to find admin user with role filtering
+            $stmt = $pdo->prepare("SELECT admin_id, username, Email, password, BranchName, role FROM admin WHERE (username = ? OR Email = ?) AND role = ?");
+            $stmt->execute([$input_username, $input_username, $selected_role]);
             $admin = $stmt->fetch();
             
             if (!$admin) {
-                $error_message = "Invalid username/email or password.";
-                
-                // Log failed login attempt
-                logAction($input_username, 'Failed Login', "Failed login attempt for username/email: $input_username");
+                $error_message = "Invalid credentials or you don't have access as " . ucfirst($selected_role) . ".";
             } else {
                 // Verify password
                 $password_verified = false;
@@ -85,9 +69,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     // Validate that admin has a valid branch
                     if (!$branch_filter) {
                         $error_message = "Your account is not assigned to a valid branch (Autotec Shaw or Autotec Subic).";
-                        
-                        // Log invalid branch attempt
-                        logAction($admin['username'], 'Login Failed', "Login attempt with invalid branch assignment: $branch_name");
                     } else {
                         // Login successful
                         $_SESSION['admin_logged_in'] = true;
@@ -96,6 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $_SESSION['admin_email'] = $admin['Email'];
                         $_SESSION['admin_branch'] = $branch_name;
                         $_SESSION['branch_filter'] = $branch_filter;
+                        $_SESSION['role'] = $admin['role']; // Store the role (admin or staff)
                         $_SESSION['login_time'] = time();
                         
                         // Set remember me cookie if checked
@@ -104,27 +86,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             setcookie('admin_remember', $cookie_token, time() + (86400 * 30), '/', '', false, true);
                         }
                         
-                        // Log successful login
-                        logLogin($admin['username']);
-                        
                         // Redirect to dashboard
                         header('Location: adminDash.php');
                         exit();
                     }
                 } else {
                     $error_message = "Invalid username/email or password.";
-                    
-                    // Log failed password attempt
-                    logAction($admin['username'], 'Failed Login', "Failed login attempt - incorrect password for username: {$admin['username']}");
                 }
             }
             
         } catch (PDOException $e) {
             error_log("Database error: " . $e->getMessage());
             $error_message = 'Database connection failed. Please try again later.';
-            
-            // Log database error
-            logAction($input_username, 'System Error', "Database connection error during login attempt");
         }
     }
 }
@@ -208,6 +181,61 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             border-color: #ff4d6d;
             box-shadow: 0 0 0 3px rgba(255, 77, 109, 0.1);
             transform: translateY(-1px);
+        }
+
+        .role-selection {
+            display: flex;
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        .role-option {
+            flex: 1;
+            position: relative;
+        }
+
+        .role-option input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .role-label {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #fff;
+        }
+
+        .role-option input[type="radio"]:checked + .role-label {
+            border-color: #ff4d6d;
+            background: rgba(255, 77, 109, 0.05);
+        }
+
+        .role-label:hover {
+            border-color: #ff4d6d;
+            transform: translateY(-2px);
+        }
+
+        .role-icon {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .role-text {
+            font-size: 14px;
+            font-weight: 500;
+            color: #666;
+        }
+
+        .role-option input[type="radio"]:checked + .role-label .role-text {
+            color: #ff4d6d;
         }
 
         .btn-login {
@@ -354,6 +382,29 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         <?php endif; ?>
 
         <form method="POST" action="" id="loginForm">
+            <!-- Role Selection -->
+            <div class="form-group">
+                <label>Select Your Role</label>
+                <div class="role-selection">
+                    <div class="role-option">
+                        <input type="radio" name="role" id="role_admin" value="admin" 
+                               <?php echo (isset($_POST['role']) && $_POST['role'] == 'admin') ? 'checked' : ''; ?>>
+                        <label for="role_admin" class="role-label">
+                            <div class="role-icon">👔</div>
+                            <div class="role-text">Admin</div>
+                        </label>
+                    </div>
+                    <div class="role-option">
+                        <input type="radio" name="role" id="role_staff" value="staff"
+                               <?php echo (isset($_POST['role']) && $_POST['role'] == 'staff') ? 'checked' : ''; ?>>
+                        <label for="role_staff" class="role-label">
+                            <div class="role-icon">👥</div>
+                            <div class="role-text">Staff</div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
             <div class="form-group">
                 <label for="username">Username or Email</label>
                 <input type="text" 
@@ -380,7 +431,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     <input type="checkbox" name="remember" id="remember">
                     Remember me
                 </label>
-                <a href="#" class="forgot-password">Forgot Password?</a>
             </div>
 
             <button type="submit" class="btn-login" id="loginBtn">
@@ -390,7 +440,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     </div>
 
     <script>
-        document.getElementById('loginForm').addEventListener('submit', function() {
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            const roleSelected = document.querySelector('input[name="role"]:checked');
+            if (!roleSelected) {
+                e.preventDefault();
+                alert('Please select your role (Admin or Staff)');
+                return false;
+            }
+            
             const loginBtn = document.getElementById('loginBtn');
             loginBtn.innerHTML = '<span class="loading"></span>Signing In...';
             loginBtn.disabled = true;
