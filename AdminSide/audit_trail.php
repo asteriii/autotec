@@ -61,11 +61,11 @@ function logDeniedRequest($username, $rescheduleID, $customerName) {
    HOMEPAGE ACTIVITIES
    ============================================================ */
 function logServiceImage($username, $serviceImage) {
-    logAction($username, 'Update Service', "Updated service: $serviceImage");
+    logAction($username, 'Update Service Image ', "Updated service: $serviceImage");
 }
 
 function logAnnouncementImage($username) {
-    logAction($username, 'Update Announcement', "Updated announcement/promotion content.");
+    logAction($username, 'Update Announcement Image', "Updated announcement/promotion content.");
 }
 
 function logHomepageUpdate($username, $section) {

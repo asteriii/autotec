@@ -29,11 +29,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $conn->prepare("
             SELECT r.*, 
                    vt.TypeName as VehicleTypeName,
-                   c.CategoryName,
+                   vc.CategoryName,
                    b.BranchName
             FROM reservations r
             LEFT JOIN vehicle_types vt ON r.TypeID = vt.TypeID
-            LEFT JOIN categories c ON r.CategoryID = c.CategoryID
+            LEFT JOIN vehicle_categories vc ON r.CategoryID = vc.CategoryID
             LEFT JOIN branches b ON r.BranchID = b.BranchID
             WHERE r.ReservationID = ?
         ");
