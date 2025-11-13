@@ -1,6 +1,17 @@
 <?php
 session_start();
+
+// Check if user is logged in
+if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
+    header('Location: login.php');
+    exit;
+}
+
 require_once '../db.php';
+
+// Get session variables for branch filtering
+$username = $_SESSION['admin_username'] ?? 'Unknown Admin';
+$admin_branch = $_SESSION['branch_filter'] ?? null;
 
 // Pagination setup
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
@@ -12,20 +23,35 @@ $search = isset($_GET['search']) ? $_GET['search'] : '';
 $search_condition = '';
 $params = [];
 
+// Build WHERE clause with branch filter
+$where_clauses = [];
+
+// Add branch filter if admin has one assigned
+if ($admin_branch) {
+    $where_clauses[] = "r.BranchName = ?";
+    $params[] = $admin_branch;
+}
+
+// Add search condition if search term exists
 if (!empty($search)) {
-    $search_condition = "WHERE Fname LIKE ? OR Lname LIKE ? OR PlateNo LIKE ? OR Email LIKE ?";
+    $where_clauses[] = "(Fname LIKE ? OR Lname LIKE ? OR PlateNo LIKE ? OR Email LIKE ?)";
     $search_param = "%$search%";
-    $params = [$search_param, $search_param, $search_param, $search_param];
+    $params = array_merge($params, [$search_param, $search_param, $search_param, $search_param]);
+}
+
+// Combine WHERE clauses
+if (!empty($where_clauses)) {
+    $search_condition = "WHERE " . implode(" AND ", $where_clauses);
 }
 
 // Get total records for pagination
-$count_sql = "SELECT COUNT(*) as total FROM completed $search_condition";
+$count_sql = "SELECT COUNT(*) as total FROM completed r $search_condition";
 $count_stmt = $pdo->prepare($count_sql);
 $count_stmt->execute($params);
 $total_records = $count_stmt->fetch(PDO::FETCH_ASSOC)['total'];
 $total_pages = ceil($total_records / $records_per_page);
 
-// Fetch completed with vehicle type information
+// Fetch completed with vehicle type information and branch filter
 $sql = "SELECT r.*, vt.Name as VehicleTypeName, vt.Price as VehiclePrice 
         FROM completed r 
         LEFT JOIN vehicle_types vt ON r.TypeID = vt.VehicleTypeID 
@@ -35,6 +61,13 @@ $sql = "SELECT r.*, vt.Name as VehicleTypeName, vt.Price as VehiclePrice
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $completeds = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Debug logging
+error_log("=== RESERVED LIST BRANCH FILTER ===");
+error_log("Admin Username: " . $username);
+error_log("Branch Filter: " . ($admin_branch ?? 'None (Super Admin)'));
+error_log("Total Reserved Found: " . $total_records);
+error_log("===================================");
 
 // Fetch vehicle types from database
 $vehicle_types_sql = "SELECT VehicleTypeID, Name, Price FROM vehicle_types";
@@ -115,6 +148,16 @@ unset($completed); // Break reference
             display: flex;
             min-height: 100vh;
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        }
+
+        .sidebar {
+            width: 280px;
+            background: linear-gradient(180deg, #c0392b 0%, #a93226 100%);
+            color: white;
+            padding-top: 20px;
+            box-shadow: 4px 0 15px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
         }
 
         .sidebar::before {
@@ -240,6 +283,17 @@ unset($completed); // Break reference
             color: #2d3748;
             font-weight: 700;
             font-size: 28px;
+        }
+
+        .branch-info-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #4299e1, #3182ce);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-left: 15px;
         }
 
         .search-pagination {
@@ -475,12 +529,6 @@ unset($completed); // Break reference
             background: #d8ffcdff;
             color: #228504ff;
             border: 1px solid #adffa7ff;
-        }
-
-        .status-confirmed {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
         }
 
         .receipt-status {
@@ -748,7 +796,14 @@ unset($completed); // Break reference
         </div>
 
         <div class="content">
-            <h2><i class="fas fa-calendar-check"></i> Reserved List </h2>
+            <h2>
+                <i class="fas fa-check-circle"></i> Reserved List
+                <?php if ($admin_branch): ?>
+                    <span class="branch-info-badge">
+                        <i class="fas fa-map-marker-alt"></i> <?php echo htmlspecialchars($admin_branch); ?>
+                    </span>
+                <?php endif; ?>
+            </h2>
 
             <div class="search-pagination">
                 <form method="GET" class="search-box">
@@ -772,8 +827,8 @@ unset($completed); // Break reference
             <?php if (empty($completeds)): ?>
                 <div class="no-completed">
                     <i class="fas fa-calendar-times"></i>
-                    <h3>No completed found</h3>
-                    <p>There are currently no completed matching your criteria.</p>
+                    <h3>No reserved appointments found</h3>
+                    <p>There are currently no reserved appointments matching your criteria.</p>
                 </div>
             <?php else: ?>
                 <?php foreach ($completeds as $completed): ?>
@@ -792,7 +847,7 @@ unset($completed); // Break reference
                         <div class="card-header">
                             <div class="completed-id">ID: <?php echo $completed['CompletedID']; ?></div>
                             <div class="status-badge status-pending">
-                                Canceled
+                                Reserved
                             </div>
                         </div>
                         
@@ -841,11 +896,11 @@ unset($completed); // Break reference
                             <?php if ($isGcash && $hasReceipt && $receiptExists): ?>
                                 <button class="btn view-receipt-btn" 
                                         type="button"
-                                        onclick="viewReceipt('/<?php echo addslashes($receiptPath); ?>', 
-                                                             '<?php echo addslashes($completed['ReferenceNumber'] ?? 'N/A'); ?>', 
-                                                             '<?php echo addslashes($completed['PaymentMethod']); ?>', 
-                                                             '<?php echo addslashes($completed['PaymentStatus'] ?? 'pending'); ?>',
-                                                             '<?php echo addslashes($completed['Fname'] . ' ' . $completed['Lname']); ?>',
+                                        onclick="viewReceipt('/<?php echo htmlspecialchars($receiptPath); ?>', 
+                                                             '<?php echo htmlspecialchars($completed['ReferenceNumber'] ?? 'N/A'); ?>', 
+                                                             '<?php echo htmlspecialchars($completed['PaymentMethod']); ?>', 
+                                                             '<?php echo htmlspecialchars($completed['PaymentStatus'] ?? 'pending'); ?>',
+                                                             '<?php echo htmlspecialchars($completed['Fname'] . ' ' . $completed['Lname']); ?>',
                                                              '₱<?php echo number_format($completed['VehiclePrice'] ?? 0, 2); ?>')">
                                     <i class="fas fa-receipt"></i> View Receipt
                                 </button>
@@ -1087,9 +1142,8 @@ unset($completed); // Break reference
 
         // Page load handler
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('Completed page loaded');
-            console.log('Total Completed on page:', <?php echo count($completeds); ?>);
-            console.log('viewReceipt function defined:', typeof viewReceipt === 'function');
+            console.log('Reserved list page loaded');
+            console.log('Total Reserved on page:', <?php echo count($completeds); ?>);
         });
     </script>
 

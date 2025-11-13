@@ -43,6 +43,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $reservation = $result->fetch_assoc();
         $stmt->close();
         
+        // Update payment status to 'paid' when admin confirms
+        $reservation['PaymentStatus'] = 'paid';
+        
         // Fetch Vehicle Type Name - try different possible column names
         try {
             $stmt = $conn->prepare("SELECT Name FROM vehicle_types WHERE VehicleTypeID = ?");
