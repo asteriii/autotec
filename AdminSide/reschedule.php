@@ -868,10 +868,10 @@ unset($reschedule); // Break reference
                                 </button>
                             <?php endif; ?>
                             
-                            <button class="btn confirm-btn" onclick="confirmReschedule(<?php echo $reschedule['RescheduleID']; ?>)">
+                            <button class="btn confirm-btn" onclick="handleReschedule('confirm', <?php echo $reschedule['RescheduleID']; ?>)">
                                 <i class="fas fa-check"></i> Confirm
                             </button>
-                            <button class="btn cancel-btn" onclick="cancelReschedule(<?php echo $reschedule['RescheduleID']; ?>)">
+                            <button class="btn cancel-btn" onclick="handleReschedule('deny', <?php echo $reschedule['RescheduleID']; ?>)">
                                 <i class="fas fa-times"></i> Deny
                             </button>
                         </div>
@@ -1054,5 +1054,34 @@ unset($reschedule); // Break reference
             console.log('Total Reschedule on page:', <?php echo count($reschedules); ?>);
         });
     </script>
+
+    <script>
+    function handleReschedule(action, rescheduleID) {
+        const confirmationText = action === 'confirm'
+            ? "Are you sure you want to CONFIRM this reschedule (use NEW date/time)?"
+            : "Are you sure you want to DENY this reschedule (keep OLD date/time)?";
+
+        if (!confirm(confirmationText)) return;
+
+        fetch('process_reschedule_action.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+                action: action,
+                rescheduleID: rescheduleID
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            alert(data.message);
+            if (data.success) location.reload();
+        })
+        .catch(err => {
+            console.error(err);
+            alert('An error occurred.');
+        });
+    }
+    </script>
+
 </body>
 </html>
