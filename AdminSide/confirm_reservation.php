@@ -4,6 +4,7 @@ header('Content-Type: application/json');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $reservation_id = $_POST['reservation_id'] ?? null;
+    $username = $_POST['username'] ?? null ;
 
     if (!$reservation_id) {
         echo json_encode(['success' => false, 'message' => 'Missing reservation ID']);
@@ -69,6 +70,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt_delete->execute();
         $stmt_delete->close();
 
+          // 🧾 Log the audit trail
+        $customerName = $reservation['Fname'] . ' ' . $reservation['Lname'];
+        logConfirmReservation($username, $reservation_id, $customerName);
+        
         echo json_encode(['success' => true, 'message' => 'Reservation moved to completed successfully.']);
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'message' => $e->getMessage()]);
