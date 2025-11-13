@@ -1,6 +1,19 @@
+
 <?php
 session_start();
+
+// Check if user is logged in
+if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
+    header('Location: login.php');
+    exit;
+}
+
 require_once '../db.php';
+require_once 'audit_trail.php';
+
+// Get session variables
+$username = $_SESSION['admin_username'] ?? 'Unknown Admin';
+$admin_branch = $_SESSION['branch_filter'] ?? null;
 
 // Define upload directory - USE ABSOLUTE PATHS FOR RAILWAY
 define('UPLOAD_DIR', '/var/www/html/uploads/branches/');
@@ -20,101 +33,146 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
         $mapLink = $_POST['MapLink'];
         $description = $_POST['Description'];
         
-        // Create upload directory if it doesn't exist
-        if (!file_exists(UPLOAD_DIR)) {
-            if (!mkdir(UPLOAD_DIR, 0755, true)) {
-                error_log("Failed to create directory: " . UPLOAD_DIR);
-                $error_message = "Failed to create upload directory.";
+        try {
+            // Get current branch data for comparison and branch validation
+            $stmt = $pdo->prepare("SELECT BranchName, Picture, MapLink, Description FROM about_us WHERE AboutID = ?");
+            $stmt->execute([$aboutID]);
+            $oldData = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$oldData) {
+                throw new Exception('Branch not found');
             }
-        }
-        
-        // Handle file upload
-        $pictureFileName = null;
-        if (isset($_FILES['Picture']) && $_FILES['Picture']['error'] == UPLOAD_ERR_OK) {
             
-            $fileTmpPath = $_FILES['Picture']['tmp_name'];
-            $fileName = $_FILES['Picture']['name'];
-            $fileSize = $_FILES['Picture']['size'];
-            $fileNameCmps = explode(".", $fileName);
-            $fileExtension = strtolower(end($fileNameCmps));
+            $oldBranchName = $oldData['BranchName'];
             
-            // Allowed extensions
-            $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif'];
+            // Check if admin has permission for this branch
+            if ($admin_branch && $oldBranchName !== $admin_branch) {
+                logAction($username, 'Unauthorized Access', "Attempted to edit $oldBranchName but assigned to $admin_branch");
+                throw new Exception('You can only edit information for your assigned branch');
+            }
             
-            if (in_array($fileExtension, $allowedExtensions)) {
-                if ($fileSize <= 5 * 1024 * 1024) { // 5MB max
-                    // Validate it's actually an image
-                    $imageInfo = @getimagesize($fileTmpPath);
-                    if ($imageInfo !== false) {
-                        // Generate unique filename
-                        $newFileName = 'branch_' . $aboutID . '_' . time() . '.' . $fileExtension;
-                        $destPath = UPLOAD_DIR . $newFileName;  // Absolute path
-                        
-                        // Get old picture to delete
-                        $oldPictureSql = "SELECT Picture FROM about_us WHERE AboutID = ?";
-                        $oldStmt = $pdo->prepare($oldPictureSql);
-                        $oldStmt->execute([$aboutID]);
-                        $oldPicture = $oldStmt->fetchColumn();
-                        
-                        // Move uploaded file
-                        if (move_uploaded_file($fileTmpPath, $destPath)) {
-                            @chmod($destPath, 0644);
-                            $pictureFileName = UPLOAD_DIR_RELATIVE . $newFileName;  // Relative path for database
+            // Track changes for audit log
+            $changes = [];
+            
+            // Create upload directory if it doesn't exist
+            if (!file_exists(UPLOAD_DIR)) {
+                if (!mkdir(UPLOAD_DIR, 0755, true)) {
+                    error_log("Failed to create directory: " . UPLOAD_DIR);
+                    throw new Exception("Failed to create upload directory.");
+                }
+            }
+            
+            // Handle file upload
+            $pictureFileName = null;
+            if (isset($_FILES['Picture']) && $_FILES['Picture']['error'] == UPLOAD_ERR_OK) {
+                
+                $fileTmpPath = $_FILES['Picture']['tmp_name'];
+                $fileName = $_FILES['Picture']['name'];
+                $fileSize = $_FILES['Picture']['size'];
+                $fileNameCmps = explode(".", $fileName);
+                $fileExtension = strtolower(end($fileNameCmps));
+                
+                // Allowed extensions
+                $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif'];
+                
+                if (in_array($fileExtension, $allowedExtensions)) {
+                    if ($fileSize <= 5 * 1024 * 1024) { // 5MB max
+                        // Validate it's actually an image
+                        $imageInfo = @getimagesize($fileTmpPath);
+                        if ($imageInfo !== false) {
+                            // Generate unique filename
+                            $newFileName = 'branch_' . $aboutID . '_' . time() . '.' . $fileExtension;
+                            $destPath = UPLOAD_DIR . $newFileName;  // Absolute path
                             
-                            // Delete old picture if exists (construct absolute path)
-                            if ($oldPicture) {
-                                $oldPictureAbsPath = '/var/www/html/' . $oldPicture;
-                                if (file_exists($oldPictureAbsPath)) {
-                                    @unlink($oldPictureAbsPath);
-                                    error_log("Deleted old branch image: " . $oldPictureAbsPath);
+                            $oldPicture = $oldData['Picture'];
+                            
+                            // Move uploaded file
+                            if (move_uploaded_file($fileTmpPath, $destPath)) {
+                                @chmod($destPath, 0644);
+                                $pictureFileName = UPLOAD_DIR_RELATIVE . $newFileName;  // Relative path for database
+                                
+                                // Delete old picture if exists (construct absolute path)
+                                if ($oldPicture) {
+                                    $oldPictureAbsPath = '/var/www/html/' . $oldPicture;
+                                    if (file_exists($oldPictureAbsPath)) {
+                                        @unlink($oldPictureAbsPath);
+                                        error_log("Deleted old branch image: " . $oldPictureAbsPath);
+                                    }
                                 }
+                                
+                                error_log("Branch image uploaded: " . $pictureFileName);
+                                $changes[] = 'Image';
+                            } else {
+                                error_log("Failed to move uploaded file");
+                                throw new Exception("Failed to upload image.");
                             }
-                            
-                            error_log("Branch image uploaded: " . $pictureFileName);
                         } else {
-                            error_log("Failed to move uploaded file");
-                            $error_message = "Failed to upload image.";
+                            throw new Exception("Invalid image file.");
                         }
                     } else {
-                        $error_message = "Invalid image file.";
+                        throw new Exception("Image size must be less than 5MB.");
                     }
                 } else {
-                    $error_message = "Image size must be less than 5MB.";
+                    throw new Exception("Invalid file type. Only JPG, JPEG, PNG, and GIF allowed.");
                 }
+            }
+            
+            // Check what else changed
+            if ($oldData['MapLink'] !== $mapLink) {
+                $changes[] = 'Map Link';
+            }
+            if ($oldData['Description'] !== $description) {
+                $changes[] = 'Description';
+            }
+            
+            // Update database
+            if ($pictureFileName) {
+                // Update with new picture
+                $sql = "UPDATE about_us SET BranchName = ?, Picture = ?, MapLink = ?, Description = ? WHERE AboutID = ?";
+                $stmt = $pdo->prepare($sql);
+                $stmt->execute([$branchName, $pictureFileName, $mapLink, $description, $aboutID]);
             } else {
-                $error_message = "Invalid file type. Only JPG, JPEG, PNG, and GIF allowed.";
+                // Update without changing picture
+                $sql = "UPDATE about_us SET BranchName = ?, MapLink = ?, Description = ? WHERE AboutID = ?";
+                $stmt = $pdo->prepare($sql);
+                $stmt->execute([$branchName, $mapLink, $description, $aboutID]);
             }
-        }
-        
-        // Update database
-        if (!isset($error_message)) {
-            try {
-                if ($pictureFileName) {
-                    // Update with new picture
-                    $sql = "UPDATE about_us SET BranchName = ?, Picture = ?, MapLink = ?, Description = ? WHERE AboutID = ?";
-                    $stmt = $pdo->prepare($sql);
-                    $stmt->execute([$branchName, $pictureFileName, $mapLink, $description, $aboutID]);
-                } else {
-                    // Update without changing picture
-                    $sql = "UPDATE about_us SET BranchName = ?, MapLink = ?, Description = ? WHERE AboutID = ?";
-                    $stmt = $pdo->prepare($sql);
-                    $stmt->execute([$branchName, $mapLink, $description, $aboutID]);
-                }
-                
-                $success_message = "Branch information updated successfully!";
-                error_log("Branch updated successfully - AboutID: " . $aboutID);
-            } catch(PDOException $e) {
-                $error_message = "Error updating branch: " . $e->getMessage();
-                error_log("Database error: " . $e->getMessage());
+            
+            // 🧾 Log specific changes to audit trail
+            if (in_array('Image', $changes)) {
+                logAboutUsImage($username, $branchName);
             }
+            if (in_array('Map Link', $changes)) {
+                logAboutUsMap($username, $branchName);
+            }
+            if (in_array('Description', $changes)) {
+                logAboutUsDesc($username, $branchName);
+            }
+            
+            $success_message = "Branch information updated successfully!";
+            error_log("Branch updated successfully - AboutID: " . $aboutID);
+            
+        } catch(Exception $e) {
+            $error_message = $e->getMessage();
+            error_log("Error updating branch: " . $e->getMessage());
+            
+            // Log error to audit trail
+            logAction($username, 'Error', "Failed to update branch information: " . $e->getMessage());
         }
     }
 }
 
-// Fetch all branches
-$sql = "SELECT * FROM about_us ORDER BY AboutID";
-$stmt = $pdo->prepare($sql);
-$stmt->execute();
+// Fetch branches based on admin's branch filter
+if ($admin_branch) {
+    $sql = "SELECT * FROM about_us WHERE BranchName = ? ORDER BY AboutID";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([$admin_branch]);
+} else {
+    // Super admin or no branch restriction - show all branches
+    $sql = "SELECT * FROM about_us ORDER BY AboutID";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute();
+}
 $branches = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 

@@ -3,6 +3,9 @@ session_start();
 
 require_once '../db.php';
 
+// Include audit trail functions
+require_once 'audit_trail.php';
+
 // Check if user is already logged in
 if (isset($_SESSION['admin_logged_in']) && $_SESSION['admin_logged_in'] === true) {
     header('Location: adminDash.php');
@@ -42,6 +45,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             
             if (!$admin) {
                 $error_message = "Invalid credentials or you don't have access as " . ucfirst($selected_role) . ".";
+                
+                // Log failed login attempt
+                logAction($input_username, 'Failed Login', "Failed login attempt for username/email: $input_username (Role: $selected_role)");
             } else {
                 // Verify password
                 $password_verified = false;
@@ -69,6 +75,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     // Validate that admin has a valid branch
                     if (!$branch_filter) {
                         $error_message = "Your account is not assigned to a valid branch (Autotec Shaw or Autotec Subic).";
+                        
+                        // Log invalid branch attempt
+                        logAction($admin['username'], 'Login Failed', "Login attempt with invalid branch assignment: $branch_name (Role: {$admin['role']})");
                     } else {
                         // Login successful
                         $_SESSION['admin_logged_in'] = true;
@@ -86,18 +95,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             setcookie('admin_remember', $cookie_token, time() + (86400 * 30), '/', '', false, true);
                         }
                         
+                        // Log successful login
+                        logLogin($admin['username']);
+                        
                         // Redirect to dashboard
                         header('Location: adminDash.php');
                         exit();
                     }
                 } else {
                     $error_message = "Invalid username/email or password.";
+                    
+                    // Log failed password attempt
+                    logAction($admin['username'], 'Failed Login', "Failed login attempt - incorrect password for username: {$admin['username']} (Role: {$admin['role']})");
                 }
             }
             
         } catch (PDOException $e) {
             error_log("Database error: " . $e->getMessage());
             $error_message = 'Database connection failed. Please try again later.';
+            
+            // Log database error
+            logAction($input_username, 'System Error', "Database connection error during login attempt");
         }
     }
 }
