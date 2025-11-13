@@ -26,12 +26,12 @@ function logAction($username, $action, $description) {
 /* ============================================================
    ACCOUNT ACTIVITIES
    ============================================================ */
-function logLogin($username) {
-    logAction($username, 'Login', "$username logged into the system.");
+function logLogin($username, $branch ) {
+    logAction($username, 'Login', "$username logged into the $branch system.");
 }
 
-function logLogout($username) {
-    logAction($username, 'Logout', "$username logged out of the system.");
+function logLogout($username, $branch) {
+    logAction($username, 'Logout', "$username logged out of the $branch system.");
 }
 
 /* ============================================================
@@ -107,4 +107,18 @@ function logGcashQR($username, $branch){
     logAction($username, 'Update GcashQR', "Update Gcash QR code for $branch");
 }
 
+/* ============================================================
+   CONTACT US ACTIVITIES
+   ============================================================ */
+function logContactUsRead($username, $customerName) {
+    logAction($username, 'Marked as Read', "Marked as Read a Feedback for $customerName");
+}
+
+function logContactUsUnread($username, $customerName) {
+    logAction($username, 'Marked as Unread', "Marked as Unread a Feedback for $customerName");
+}
+
+function logContactUsAll($username, $customerName) {
+    logAction($username, 'Marked as All Read', "Marked as Read all the Feedback for $customerName");
+}
 ?>

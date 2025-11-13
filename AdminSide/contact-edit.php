@@ -2,19 +2,64 @@
 session_start();
 require_once '../db.php';
 
-// Handle status updates
-if (isset($_POST['action']) && $_POST['action'] == 'mark_read' && isset($_POST['message_id'])) {
-    $message_id = $_POST['message_id'];
-    $update_sql = "UPDATE contact_us SET status = 'read' WHERE id = ?";
-    $update_stmt = $pdo->prepare($update_sql);
-    $update_stmt->execute([$message_id]);
+// Include audit trail functions
+require_once 'audit_trail.php';
+
+// Check if admin is logged in
+if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
+    header('Location: login.php');
+    exit();
 }
 
-if (isset($_POST['action']) && $_POST['action'] == 'mark_unread' && isset($_POST['message_id'])) {
+// Get session variables
+$admin_username = $_SESSION['admin_username'];
+$branch_filter = $_SESSION['branch_filter']; // "Autotec Shaw" or "Autotec Subic"
+
+// Handle status updates
+if (isset($_POST['action']) && isset($_POST['message_id'])) {
     $message_id = $_POST['message_id'];
-    $update_sql = "UPDATE contact_us SET status = 'unread' WHERE id = ?";
-    $update_stmt = $pdo->prepare($update_sql);
-    $update_stmt->execute([$message_id]);
+    
+    // Get the message details
+    $check_sql = "SELECT first_name, last_name FROM contact_us WHERE id = ?";
+    $check_stmt = $pdo->prepare($check_sql);
+    $check_stmt->execute([$message_id]);
+    $message_data = $check_stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if ($message_data) {
+        $customer_name = $message_data['first_name'] . ' ' . $message_data['last_name'];
+        
+        if ($_POST['action'] == 'mark_read') {
+            $update_sql = "UPDATE contact_us SET status = 'read' WHERE id = ?";
+            $update_stmt = $pdo->prepare($update_sql);
+            $update_stmt->execute([$message_id]);
+            
+            // Log the action
+            logContactUsRead($admin_username, $customer_name);
+            
+        } elseif ($_POST['action'] == 'mark_unread') {
+            $update_sql = "UPDATE contact_us SET status = 'unread' WHERE id = ?";
+            $update_stmt = $pdo->prepare($update_sql);
+            $update_stmt->execute([$message_id]);
+            
+            // Log the action
+            logContactUsUnread($admin_username, $customer_name, $branch_filter);
+        }
+    }
+}
+
+// Handle mark all as read
+if (isset($_POST['action']) && $_POST['action'] == 'mark_all_read') {
+    // Mark all unread messages as read
+    $update_all_sql = "UPDATE contact_us SET status = 'read' WHERE status = 'unread'";
+    $update_all_stmt = $pdo->prepare($update_all_sql);
+    $update_all_stmt->execute();
+    
+    $affected_rows = $update_all_stmt->rowCount();
+    
+    if ($affected_rows > 0) {
+        // Log the action
+        logContactUsAll($admin_username, "All Customers", $branch_filter);
+    }
 }
 
 // Get filter parameter
@@ -22,13 +67,14 @@ $filter = isset($_GET['filter']) ? $_GET['filter'] : 'all';
 
 // Build SQL based on filter
 $where_clause = "";
+
 if ($filter == 'read') {
     $where_clause = "WHERE status = 'read'";
 } elseif ($filter == 'unread') {
     $where_clause = "WHERE status = 'unread'";
 }
 
-// Get contact messages
+// Get all contact messages
 $messages_sql = "SELECT * FROM contact_us $where_clause ORDER BY created_at DESC";
 $messages_stmt = $pdo->prepare($messages_sql);
 $messages_stmt->execute();
@@ -220,6 +266,22 @@ $read_count = $read_stmt->fetch(PDO::FETCH_ASSOC)['count'];
             font-size: 16px;
         }
 
+        .branch-indicator {
+            display: inline-block;
+            background: linear-gradient(135deg, #c0392b, #a93226);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(192, 57, 43, 0.3);
+        }
+
+        .branch-indicator i {
+            margin-right: 8px;
+        }
+
         .filter-tabs {
             display: flex;
             gap: 15px;
@@ -265,6 +327,30 @@ $read_count = $read_stmt->fetch(PDO::FETCH_ASSOC)['count'];
 
         .filter-tab.active .badge {
             background: rgba(255,255,255,0.2);
+        }
+
+        .bulk-actions {
+            margin-bottom: 20px;
+        }
+
+        .bulk-action-btn {
+            padding: 10px 20px;
+            background: #38a169;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .bulk-action-btn:hover {
+            background: #2f855a;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(56, 161, 105, 0.3);
         }
 
         .messages-container {
@@ -427,6 +513,25 @@ $read_count = $read_stmt->fetch(PDO::FETCH_ASSOC)['count'];
             color: #4a5568;
         }
 
+        .alert {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .alert-error {
+            background: #fed7d7;
+            color: #c53030;
+            border: 1px solid #fc8181;
+        }
+
+        .alert i {
+            font-size: 20px;
+        }
+
         @media (max-width: 768px) {
             .sidebar {
                 transform: translateX(-100%);
@@ -464,14 +569,28 @@ $read_count = $read_stmt->fetch(PDO::FETCH_ASSOC)['count'];
             <div class="logo">
                 <i class="fa-solid fa-envelope" aria-hidden="true"></i> Contact Messages
             </div>
-            <button class="logout-btn">
+            <button class="logout-btn" onclick="window.location.href='logout.php'">
                 <i class="fas fa-sign-out-alt"></i> Logout
             </button>
         </div>
 
         <div class="content">
+            <div class="branch-indicator">
+                <i class="fas fa-building"></i> <?php echo htmlspecialchars($branch_filter); ?>
+            </div>
+            
             <br>
-            <p class="subtitle">Manage and respond to customer inquiries and messages.</p>
+            <p class="subtitle">Manage and respond to customer inquiries.</p>
+
+            <?php if (isset($_SESSION['error_message'])): ?>
+                <div class="alert alert-error">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <?php 
+                        echo htmlspecialchars($_SESSION['error_message']); 
+                        unset($_SESSION['error_message']);
+                    ?>
+                </div>
+            <?php endif; ?>
 
             <!-- Filter Tabs -->
             <div class="filter-tabs">
@@ -491,6 +610,19 @@ $read_count = $read_stmt->fetch(PDO::FETCH_ASSOC)['count'];
                     <span class="badge"><?php echo $read_count; ?></span>
                 </a>
             </div>
+
+            <!-- Bulk Actions -->
+            <?php if ($unread_count > 0): ?>
+                <div class="bulk-actions">
+                    <form method="POST" style="display: inline;">
+                        <input type="hidden" name="action" value="mark_all_read">
+                        <button type="submit" class="bulk-action-btn" onclick="return confirm('Mark all unread messages as read?')">
+                            <i class="fas fa-check-double"></i>
+                            Mark All as Read (<?php echo $unread_count; ?>)
+                        </button>
+                    </form>
+                </div>
+            <?php endif; ?>
 
             <!-- Messages Container -->
             <div class="messages-container">

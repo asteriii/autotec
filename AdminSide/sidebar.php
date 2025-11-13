@@ -206,9 +206,8 @@ echo "<!-- ================================================== -->";
             <i class="fas fa-chevron-down"></i>
         </div>
         <ul class="submenu" id="activity-logs">
-            <li><a href="page-edits.php"><i class="fas fa-edit"></i> Page Edits Logs</a></li>
-            <li><a href="confirmed-logs.php"><i class="fas fa-check"></i> Admin Control Logs</a></li>
-            <li><a href="ongoing-logs.php"><i class="fas fa-clock"></i> Account Management Logs</a></li>
+            <li><a href="page-edits.php"><i class="fas fa-edit"></i> Audit Logs</a></li>
+            
         </ul>
     </div>
     
