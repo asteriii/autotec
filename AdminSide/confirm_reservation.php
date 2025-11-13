@@ -43,29 +43,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $reservation = $result->fetch_assoc();
         $stmt->close();
         
-        // Fetch Vehicle Type Name (for email only, not for database insert)
-        $stmt = $conn->prepare("SELECT TypeName FROM vehicle_types WHERE TypeID = ?");
-        $stmt->bind_param("i", $reservation['TypeID']);
-        $stmt->execute();
-        $typeResult = $stmt->get_result();
-        if ($typeRow = $typeResult->fetch_assoc()) {
-            $reservation['VehicleTypeName'] = $typeRow['TypeName'];
-        } else {
+        // Fetch Vehicle Type Name - try different possible column names
+        try {
+            $stmt = $conn->prepare("SELECT Name FROM vehicle_types WHERE VehicleTypeID = ?");
+            $stmt->bind_param("i", $reservation['TypeID']);
+            $stmt->execute();
+            $typeResult = $stmt->get_result();
+            if ($typeRow = $typeResult->fetch_assoc()) {
+                $reservation['VehicleTypeName'] = $typeRow['Name'];
+            } else {
+                $reservation['VehicleTypeName'] = 'N/A';
+            }
+            $stmt->close();
+        } catch (Exception $e) {
+            error_log("Error fetching vehicle type: " . $e->getMessage());
             $reservation['VehicleTypeName'] = 'N/A';
         }
-        $stmt->close();
         
-        // Fetch Category Name (for email only, not for database insert)
-        $stmt = $conn->prepare("SELECT CategoryName FROM vehicle_categories WHERE CategoryID = ?");
-        $stmt->bind_param("i", $reservation['CategoryID']);
-        $stmt->execute();
-        $catResult = $stmt->get_result();
-        if ($catRow = $catResult->fetch_assoc()) {
-            $reservation['CategoryName'] = $catRow['CategoryName'];
-        } else {
+        // Fetch Category Name - try different possible column names
+        try {
+            $stmt = $conn->prepare("SELECT Name FROM vehicle_categories WHERE CategoryID = ?");
+            $stmt->bind_param("i", $reservation['CategoryID']);
+            $stmt->execute();
+            $catResult = $stmt->get_result();
+            if ($catRow = $catResult->fetch_assoc()) {
+                $reservation['CategoryName'] = $catRow['Name'];
+            } else {
+                $reservation['CategoryName'] = 'N/A';
+            }
+            $stmt->close();
+        } catch (Exception $e) {
+            error_log("Error fetching category: " . $e->getMessage());
             $reservation['CategoryName'] = 'N/A';
         }
-        $stmt->close();
 
         // Check if branch matches admin's branch (branch-specific access control)
         if ($admin_branch && $reservation['BranchName'] !== $admin_branch) {
@@ -79,7 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
-        // Prepare insert into completed table (WITHOUT VehicleTypeName and CategoryName)
+        // Prepare insert into completed table
         $sql_insert = "INSERT INTO completed (
             ReservationID, UserID, PlateNo, Brand, TypeID, CategoryID, 
             Fname, Lname, Mname, PhoneNum, Email, Date, Time, Address, BranchName, 

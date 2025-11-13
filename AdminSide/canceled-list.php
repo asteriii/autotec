@@ -1,6 +1,17 @@
 <?php
 session_start();
+
+// Check if user is logged in
+if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
+    header('Location: login.php');
+    exit;
+}
+
 require_once '../db.php';
+
+// Get session variables for branch filtering
+$username = $_SESSION['admin_username'] ?? 'Unknown Admin';
+$admin_branch = $_SESSION['branch_filter'] ?? null;
 
 // Pagination setup
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
@@ -12,20 +23,35 @@ $search = isset($_GET['search']) ? $_GET['search'] : '';
 $search_condition = '';
 $params = [];
 
+// Build WHERE clause with branch filter
+$where_clauses = [];
+
+// Add branch filter if admin has one assigned
+if ($admin_branch) {
+    $where_clauses[] = "r.BranchName = ?";
+    $params[] = $admin_branch;
+}
+
+// Add search condition if search term exists
 if (!empty($search)) {
-    $search_condition = "WHERE Fname LIKE ? OR Lname LIKE ? OR PlateNo LIKE ? OR Email LIKE ?";
+    $where_clauses[] = "(Fname LIKE ? OR Lname LIKE ? OR PlateNo LIKE ? OR Email LIKE ?)";
     $search_param = "%$search%";
-    $params = [$search_param, $search_param, $search_param, $search_param];
+    $params = array_merge($params, [$search_param, $search_param, $search_param, $search_param]);
+}
+
+// Combine WHERE clauses
+if (!empty($where_clauses)) {
+    $search_condition = "WHERE " . implode(" AND ", $where_clauses);
 }
 
 // Get total records for pagination
-$count_sql = "SELECT COUNT(*) as total FROM canceled $search_condition";
+$count_sql = "SELECT COUNT(*) as total FROM canceled r $search_condition";
 $count_stmt = $pdo->prepare($count_sql);
 $count_stmt->execute($params);
 $total_records = $count_stmt->fetch(PDO::FETCH_ASSOC)['total'];
 $total_pages = ceil($total_records / $records_per_page);
 
-// Fetch canceled with vehicle type information
+// Fetch canceled with vehicle type information and branch filter
 $sql = "SELECT r.*, vt.Name as VehicleTypeName, vt.Price as VehiclePrice 
         FROM canceled r 
         LEFT JOIN vehicle_types vt ON r.TypeID = vt.VehicleTypeID 
@@ -35,6 +61,13 @@ $sql = "SELECT r.*, vt.Name as VehicleTypeName, vt.Price as VehiclePrice
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $canceleds = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Debug logging
+error_log("=== CANCELED LIST BRANCH FILTER ===");
+error_log("Admin Username: " . $username);
+error_log("Branch Filter: " . ($admin_branch ?? 'None (Super Admin)'));
+error_log("Total Canceled Found: " . $total_records);
+error_log("====================================");
 
 // Fetch vehicle types from database
 $vehicle_types_sql = "SELECT VehicleTypeID, Name, Price FROM vehicle_types";
@@ -115,6 +148,16 @@ unset($canceled); // Break reference
             display: flex;
             min-height: 100vh;
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        }
+
+        .sidebar {
+            width: 280px;
+            background: linear-gradient(180deg, #c0392b 0%, #a93226 100%);
+            color: white;
+            padding-top: 20px;
+            box-shadow: 4px 0 15px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
         }
 
         .sidebar::before {
@@ -240,6 +283,17 @@ unset($canceled); // Break reference
             color: #2d3748;
             font-weight: 700;
             font-size: 28px;
+        }
+
+        .branch-info-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #4299e1, #3182ce);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-left: 15px;
         }
 
         .search-pagination {
@@ -412,28 +466,6 @@ unset($canceled); // Break reference
             gap: 8px;
         }
 
-        .confirm-btn {
-            background: linear-gradient(135deg, #48bb78, #38a169);
-            color: white;
-            box-shadow: 0 2px 8px rgba(72, 187, 120, 0.3);
-        }
-
-        .confirm-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(72, 187, 120, 0.4);
-        }
-
-        .cancel-btn {
-            background: linear-gradient(135deg, #f56565, #e53e3e);
-            color: white;
-            box-shadow: 0 2px 8px rgba(245, 101, 101, 0.3);
-        }
-
-        .cancel-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(245, 101, 101, 0.4);
-        }
-
         .view-receipt-btn {
             background: linear-gradient(135deg, #4299e1, #3182ce);
             color: white;
@@ -475,12 +507,6 @@ unset($canceled); // Break reference
             background: #ffcdcdff;
             color: #850404ff;
             border: 1px solid #ffa7a7ff;
-        }
-
-        .status-confirmed {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
         }
 
         .receipt-status {
@@ -748,7 +774,14 @@ unset($canceled); // Break reference
         </div>
 
         <div class="content">
-            <h2><i class="fas fa-calendar-check"></i> Canceled List </h2>
+            <h2>
+                <i class="fas fa-ban"></i> Canceled List
+                <?php if ($admin_branch): ?>
+                    <span class="branch-info-badge">
+                        <i class="fas fa-map-marker-alt"></i> <?php echo htmlspecialchars($admin_branch); ?>
+                    </span>
+                <?php endif; ?>
+            </h2>
 
             <div class="search-pagination">
                 <form method="GET" class="search-box">
@@ -773,7 +806,7 @@ unset($canceled); // Break reference
                 <div class="no-canceled">
                     <i class="fas fa-calendar-times"></i>
                     <h3>No cancellations found</h3>
-                    <p>There are currently no canceled matching your criteria.</p>
+                    <p>There are currently no canceled reservations matching your criteria.</p>
                 </div>
             <?php else: ?>
                 <?php foreach ($canceleds as $canceled): ?>
@@ -841,11 +874,11 @@ unset($canceled); // Break reference
                             <?php if ($isGcash && $hasReceipt && $receiptExists): ?>
                                 <button class="btn view-receipt-btn" 
                                         type="button"
-                                        onclick="viewReceipt('/<?php echo addslashes($receiptPath); ?>', 
-                                                             '<?php echo addslashes($canceled['ReferenceNumber'] ?? 'N/A'); ?>', 
-                                                             '<?php echo addslashes($canceled['PaymentMethod']); ?>', 
-                                                             '<?php echo addslashes($canceled['PaymentStatus'] ?? 'pending'); ?>',
-                                                             '<?php echo addslashes($canceled['Fname'] . ' ' . $canceled['Lname']); ?>',
+                                        onclick="viewReceipt('/<?php echo htmlspecialchars($receiptPath); ?>', 
+                                                             '<?php echo htmlspecialchars($canceled['ReferenceNumber'] ?? 'N/A'); ?>', 
+                                                             '<?php echo htmlspecialchars($canceled['PaymentMethod']); ?>', 
+                                                             '<?php echo htmlspecialchars($canceled['PaymentStatus'] ?? 'pending'); ?>',
+                                                             '<?php echo htmlspecialchars($canceled['Fname'] . ' ' . $canceled['Lname']); ?>',
                                                              '₱<?php echo number_format($canceled['VehiclePrice'] ?? 0, 2); ?>')">
                                     <i class="fas fa-receipt"></i> View Receipt
                                 </button>
@@ -866,7 +899,6 @@ unset($canceled); // Break reference
                                     <i class="fas fa-receipt"></i> N/A
                                 </button>
                             <?php endif; ?>
-                            
                         </div>
                     </div>
                 <?php endforeach; ?>
@@ -1032,9 +1064,8 @@ unset($canceled); // Break reference
 
         // Page load handler
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('Completed page loaded');
-            console.log('Total Completed on page:', <?php echo count($completeds); ?>);
-            console.log('viewReceipt function defined:', typeof viewReceipt === 'function');
+            console.log('Canceled list page loaded');
+            console.log('Total Canceled on page:', <?php echo count($canceleds); ?>);
         });
     </script>
 
