@@ -1,4 +1,5 @@
 <?php
+session_start();
 // admin_acc_manage.php
 // Requires: db.php (must create $conn as mysqli connection)
 include 'db.php';

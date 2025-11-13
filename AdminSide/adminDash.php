@@ -1,7 +1,6 @@
 <?php
- 
+session_start();
 require_once '../db.php';
-
 
 // Get current date for filtering
 $today = date('Y-m-d');

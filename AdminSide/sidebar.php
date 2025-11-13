@@ -1,12 +1,27 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet"/>
-    <!-- Sidebar Component -->
-<!-- Sidebar Component -->
+<?php
+// DON'T start session here - it should be started in the parent page
+// Just check if session variables exist
+
+// FORCE CHECK - Make sure session exists
+if (!isset($_SESSION)) {
+    die("ERROR: Session not started! Please start session in parent page.");
+}
+
+// Get user role from session, default to 'staff' if not set
+$user_role = isset($_SESSION['role']) ? trim(strtolower($_SESSION['role'])) : 'staff';
+$is_admin = ($user_role === 'admin');
+
+// DEBUG - Check what's happening
+echo "<!-- ==================== SIDEBAR DEBUG ==================== -->";
+echo "<!-- Session Exists: " . (isset($_SESSION) ? 'YES' : 'NO') . " -->";
+echo "<!-- Raw Session Role: '" . (isset($_SESSION['role']) ? $_SESSION['role'] : 'NOT SET') . "' -->";
+echo "<!-- Processed User Role: '" . $user_role . "' -->";
+echo "<!-- Is Admin Result: " . ($is_admin ? 'YES' : 'NO') . " -->";
+echo "<!-- String Comparison: '" . $user_role . "' === 'admin' = " . ($user_role === 'admin' ? 'TRUE' : 'FALSE') . " -->";
+echo "<!-- ================================================== -->";
+?>
+
+<!-- Sidebar Component Styles -->
 <style>
     .sidebar {
         width: 280px;
@@ -115,14 +130,16 @@
 </style>
 
 <div class="sidebar">
+    <!-- Dashboard - Available to ALL (Admin + Staff) -->
     <div class="section">
-        <div class="section-title <?php echo (basename($_SERVER['PHP_SELF']) == 'index.php') ? 'active' : ''; ?>">
+        <div class="section-title <?php echo (basename($_SERVER['PHP_SELF']) == 'adminDash.php') ? 'active' : ''; ?>">
             <a href="adminDash.php" style="color: white; text-decoration: none; display: flex; align-items: center; width: 100%;">
                 <span><i class="fas fa-tachometer-alt"></i> Dashboard</span>
             </a>
         </div>
     </div>
     
+    <!-- Admin Controls - Available to ALL (Admin + Staff) -->
     <div class="section">
         <div class="section-title" onclick="toggleMenu('admin-controls')">
             <span><i class="fas fa-cogs"></i> Admin Controls</span>
@@ -136,25 +153,28 @@
                 <a href="reschedule.php"><i class="fas fa-clock"></i> Reschedule Request</a>
             </li>
             <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'completed-list.php') ? 'active' : ''; ?>">
-                <a href="completed-list.php"><i class="fas fa-check-circle"></i> Reserved List </a>
+                <a href="completed-list.php"><i class="fas fa-check-circle"></i> Reserved List</a>
             </li>
             <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'canceled-list.php') ? 'active' : ''; ?>">
-                <a href="canceled-list.php"><i class="fas fa-check-circle"></i> Canceled List </a>
+                <a href="canceled-list.php"><i class="fas fa-times-circle"></i> Canceled List</a>
             </li>
-            
         </ul>
     </div>
     
+    <?php if ($is_admin): ?>
+    <!-- EVERYTHING BELOW HERE IS ADMIN ONLY -->
+    
+    <!-- Page Settings - ADMIN ONLY -->
     <div class="section">
         <div class="section-title" onclick="toggleMenu('page-settings')">
             <span><i class="fas fa-edit"></i> Page Settings</span>
             <i class="fas fa-chevron-down"></i>
         </div>
-        <ul class="submenu <?php echo (in_array(basename($_SERVER['PHP_SELF']), ['homepage-edit.php', 'contact-edit.php', 'about-edit.php'])) ? 'show' : ''; ?>" id="page-settings">
+        <ul class="submenu <?php echo (in_array(basename($_SERVER['PHP_SELF']), ['homepage-edit.php', 'contact-edit.php', 'about-edit.php', 'reservation-edit.php'])) ? 'show' : ''; ?>" id="page-settings">
             <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'homepage-edit.php') ? 'active' : ''; ?>">
                 <a href="homepage-edit.php"><i class="fas fa-home"></i> Home Page</a>
             </li>
-              <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'reservation-edit.php') ? 'active' : ''; ?>">
+            <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'reservation-edit.php') ? 'active' : ''; ?>">
                 <a href="reservation-edit.php"><i class="fas fa-clock"></i> Reservation Page</a>
             </li>
             <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'contact-edit.php') ? 'active' : ''; ?>">
@@ -166,6 +186,7 @@
         </ul>
     </div>
 
+    <!-- Master Controls - ADMIN ONLY -->
     <div class="section">
         <div class="section-title" onclick="toggleMenu('master-controls')">
             <span><i class="fas fa-user-shield"></i> Master Controls</span>
@@ -178,6 +199,7 @@
         </ul>
     </div>
 
+    <!-- Activity Logs - ADMIN ONLY -->
     <div class="section">
         <div class="section-title" onclick="toggleMenu('activity-logs')">
             <span><i class="fas fa-history"></i> Activity Logs</span>
@@ -189,6 +211,9 @@
             <li><a href="ongoing-logs.php"><i class="fas fa-clock"></i> Account Management Logs</a></li>
         </ul>
     </div>
+    
+    <?php endif; ?>
+    <!-- END OF ADMIN ONLY SECTIONS -->
 </div>
 
 <script>
@@ -197,5 +222,3 @@
         menu.classList.toggle('show');
     }
 </script>
-</body>
-</html>
