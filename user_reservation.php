@@ -2,7 +2,7 @@
 session_start();
 
 if (!isset($_SESSION['user_id'])) {
-    header("Location: index.php");
+    header("Location: login.php");
     exit();
 }
 
@@ -30,37 +30,16 @@ while ($row = mysqli_fetch_assoc($result)) {
 }
 mysqli_stmt_close($stmt);
 
-// Fetch cancelled reservations
-$cancel_sql = "SELECT c.*, vt.Name AS VehicleType, vc.Name AS Category, 
-        vt.Price, vt.Name AS VehicleTypeName, vc.Name AS CategoryName,
-        c.PaymentMethod, c.PaymentStatus, c.PaymentReceipt, c.ReferenceNumber,
-        c.CreatedAt, c.CanceledAt, 'cancelled' as Status
-        FROM canceled c
-        LEFT JOIN vehicle_types vt ON c.TypeID = vt.VehicleTypeID 
-        LEFT JOIN vehicle_categories vc ON c.CategoryID = vc.CategoryID 
-        WHERE c.UserID = ? 
-        ORDER BY c.CanceledAt DESC";
-
-$cancel_stmt = mysqli_prepare($conn, $cancel_sql);
-mysqli_stmt_bind_param($cancel_stmt, "i", $_SESSION['user_id']);
-mysqli_stmt_execute($cancel_stmt);
-$cancel_result = mysqli_stmt_get_result($cancel_stmt);
-$cancelled_reservations = [];
-while ($row = mysqli_fetch_assoc($cancel_result)) {
-    $cancelled_reservations[] = $row;
-}
-mysqli_stmt_close($cancel_stmt);
-
 // Fetch rescheduled reservations
 $reschedule_sql = "SELECT r.*, vt.Name AS VehicleType, vc.Name AS Category, 
         vt.Price, vt.Name AS VehicleTypeName, vc.Name AS CategoryName,
         r.PaymentMethod, r.PaymentStatus, r.PaymentReceipt, r.ReferenceNumber,
-        r.CreatedAt, r.CreatedAt, r.NewDate, r.NewTime, r.Reason, 'rescheduled' as Status
+        r.CreatedAt, r.RescheduledAt, r.NewDate, r.NewTime, r.Reason, 'rescheduled' as Status
         FROM reschedule r
         LEFT JOIN vehicle_types vt ON r.TypeID = vt.VehicleTypeID 
         LEFT JOIN vehicle_categories vc ON r.CategoryID = vc.CategoryID 
         WHERE r.UserID = ? 
-        ORDER BY r.CreatedAt DESC";
+        ORDER BY r.RescheduledAt DESC";
 
 $reschedule_stmt = mysqli_prepare($conn, $reschedule_sql);
 mysqli_stmt_bind_param($reschedule_stmt, "i", $_SESSION['user_id']);
@@ -95,10 +74,9 @@ mysqli_stmt_close($completed_stmt);
 
 // Calculate totals
 $active_count = count($active_reservations);
-$cancel_count = count($cancelled_reservations);
 $reschedule_count = count($rescheduled_reservations);
 $completed_count = count($completed_reservations);
-$total_count = $active_count + $cancel_count + $reschedule_count + $completed_count;
+$total_count = $active_count + $reschedule_count + $completed_count;
 
 // Get user name for display
 $user_sql = "SELECT Fname FROM users WHERE UserID = ?";
@@ -289,10 +267,6 @@ mysqli_stmt_close($user_stmt);
         }
 
         /* Status-specific colors */
-        .reservation-card.cancelled::before {
-            background: linear-gradient(135deg, #dc3545, #c82333);
-        }
-
         .reservation-card.rescheduled::before {
             background: linear-gradient(135deg, #ffc107, #ff9800);
         }
@@ -338,11 +312,6 @@ mysqli_stmt_close($user_stmt);
         .status-badge.active {
             background: #d1ecf1;
             color: #0c5460;
-        }
-
-        .status-badge.cancelled {
-            background: #f8d7da;
-            color: #721c24;
         }
 
         .status-badge.rescheduled {
@@ -408,12 +377,6 @@ mysqli_stmt_close($user_stmt);
             color: #0c5460;
         }
 
-        .payment-info-box.cancelled-info {
-            background: #f8d7da;
-            border-left-color: #dc3545;
-            color: #721c24;
-        }
-
         .payment-info-box.rescheduled-info {
             background: #fff3cd;
             border-left-color: #ffc107;
@@ -471,16 +434,6 @@ mysqli_stmt_close($user_stmt);
 
         .action-btn.primary:hover {
             background: #a01a45;
-        }
-
-        .action-btn.cancel {
-            border-color: #dc3545;
-            color: #dc3545;
-        }
-
-        .action-btn.cancel:hover {
-            background: #dc3545;
-            color: white;
         }
 
         .action-btn:disabled {
@@ -668,15 +621,6 @@ mysqli_stmt_close($user_stmt);
             background: #a01a45;
         }
 
-        .btn-danger {
-            background: #dc3545;
-            color: white;
-        }
-
-        .btn-danger:hover {
-            background: #c82333;
-        }
-
         /* Success/Error Messages */
         .message {
             position: fixed;
@@ -813,17 +757,17 @@ mysqli_stmt_close($user_stmt);
                 <div class="stat-number"><?php echo $total_count; ?></div>
                 <div class="stat-label">Total</div>
             </div>
-            <div class="stat-card" onclick="filterReservations('cancelled')" data-filter="cancelled">
-                <div class="stat-number"><?php echo $cancel_count; ?></div>
-                <div class="stat-label">Cancelled</div>
+            <div class="stat-card" onclick="filterReservations('pending')" data-filter="pending">
+                <div class="stat-number"><?php echo $active_count; ?></div>
+                <div class="stat-label">Pending</div>
             </div>
             <div class="stat-card" onclick="filterReservations('rescheduled')" data-filter="rescheduled">
                 <div class="stat-number"><?php echo $reschedule_count; ?></div>
-                <div class="stat-label">Rescheduled</div>
+                <div class="stat-label">Reschedule Request</div>
             </div>
             <div class="stat-card" onclick="filterReservations('completed')" data-filter="completed">
                 <div class="stat-number"><?php echo $completed_count; ?></div>
-                <div class="stat-label">Completed</div>
+                <div class="stat-label">Reserved</div>
             </div>
         </div>
 
@@ -878,32 +822,6 @@ mysqli_stmt_close($user_stmt);
         </div>
     </div>
 
-    <!-- Cancel Modal -->
-    <div id="cancelModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 class="modal-title">Cancel Appointment</h2>
-                <p style="color: #dc3545; font-size: 14px;">⚠️ This action cannot be undone</p>
-            </div>
-            <div class="modal-body">
-                <p style="margin-bottom: 20px;">Are you sure you want to cancel this appointment?</p>
-                <form id="cancelForm">
-                    <input type="hidden" id="cancelReservationId" name="reservationId">
-                    
-                    <div class="form-group">
-                        <label for="cancelReason">Reason for Cancellation</label>
-                        <textarea id="cancelReason" name="reason" rows="3" required
-                                  placeholder="Please tell us why you're cancelling..."></textarea>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="closeCancelModal()">Keep Appointment</button>
-                <button type="button" class="btn btn-danger" onclick="submitCancel()">Yes, Cancel</button>
-            </div>
-        </div>
-    </div>
-
     <!-- Message Toast -->
     <div id="messageToast" class="message"></div>
 
@@ -913,7 +831,6 @@ mysqli_stmt_close($user_stmt);
         // Store all reservations data
         const allReservations = {
             active: <?php echo json_encode($active_reservations); ?>,
-            cancelled: <?php echo json_encode($cancelled_reservations); ?>,
             rescheduled: <?php echo json_encode($rescheduled_reservations); ?>,
             completed: <?php echo json_encode($completed_reservations); ?>
         };
@@ -922,6 +839,7 @@ mysqli_stmt_close($user_stmt);
         
         // Initialize page
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('All reservations:', allReservations);
             displayReservations('all');
         });
 
@@ -936,13 +854,12 @@ mysqli_stmt_close($user_stmt);
                 case 'all':
                     reservationsToShow = [
                         ...allReservations.active,
-                        ...allReservations.cancelled,
                         ...allReservations.rescheduled,
                         ...allReservations.completed
                     ];
                     break;
-                case 'cancelled':
-                    reservationsToShow = allReservations.cancelled;
+                case 'pending':
+                    reservationsToShow = allReservations.active;
                     break;
                 case 'rescheduled':
                     reservationsToShow = allReservations.rescheduled;
@@ -951,6 +868,8 @@ mysqli_stmt_close($user_stmt);
                     reservationsToShow = allReservations.completed;
                     break;
             }
+            
+            console.log('Filter:', filter, 'Count:', reservationsToShow.length);
             
             if (reservationsToShow.length === 0) {
                 grid.innerHTML = `
@@ -1029,13 +948,6 @@ mysqli_stmt_close($user_stmt);
                         </div>
                     `;
                 }
-            } else if (status === 'cancelled') {
-                statusInfoBox = `
-                    <div class="payment-info-box cancelled-info">
-                        <strong>❌ Reservation Cancelled</strong>
-                        This appointment was cancelled on ${formatDate(data.CanceledAt || data.CreatedAt)}.
-                    </div>
-                `;
             } else if (status === 'rescheduled') {
                 statusInfoBox = `
                     <div class="payment-info-box rescheduled-info">
@@ -1063,9 +975,6 @@ mysqli_stmt_close($user_stmt);
                 actionButtons += `
                     <button class="action-btn" onclick="openRescheduleModal(${data.ReservationID}, '${data.BranchName}')">
                         📅 Reschedule
-                    </button>
-                    <button class="action-btn cancel" onclick="confirmCancel(${data.ReservationID})">
-                        ❌ Cancel
                     </button>
                 `;
             }
@@ -1175,12 +1084,13 @@ mysqli_stmt_close($user_stmt);
             } else {
                 filterInfo.classList.add('active');
                 const filterLabels = {
-                    'cancelled': 'Showing cancelled reservations',
+                    'pending': 'Showing pending reservations',
                     'rescheduled': 'Showing rescheduled reservations',
                     'completed': 'Showing completed reservations'
                 };
                 
-                const count = allReservations[filter].length;
+                const filterKey = filter === 'pending' ? 'active' : filter;
+                const count = allReservations[filterKey].length;
                 filterText.textContent = `${filterLabels[filter]} (${count} found)`;
             }
         }
@@ -1346,67 +1256,6 @@ mysqli_stmt_close($user_stmt);
                 showMessage('An error occurred. Please try again.', 'error');
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Confirm Reschedule';
-            });
-        }
-
-        // Function to confirm cancel
-        function confirmCancel(reservationId) {
-            document.getElementById('cancelReservationId').value = reservationId;
-            document.getElementById('cancelReason').value = '';
-            document.getElementById('cancelModal').classList.add('active');
-        }
-
-        // Function to close cancel modal
-        function closeCancelModal() {
-            document.getElementById('cancelModal').classList.remove('active');
-        }
-
-        // Function to submit cancel
-        function submitCancel() {
-            const reservationId = document.getElementById('cancelReservationId').value;
-            const reason = document.getElementById('cancelReason').value;
-            
-            if (!reason.trim()) {
-                showMessage('Please provide a reason for cancellation', 'error');
-                return;
-            }
-            
-            // Disable submit button
-            const submitBtn = event.target;
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Cancelling...';
-            
-            // Create form data
-            const formData = new FormData();
-            formData.append('reservationId', reservationId);
-            formData.append('reason', reason);
-            
-            // Submit cancellation request
-            fetch('cancel_reservation.php', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    showMessage('Appointment cancelled successfully', 'success');
-                    closeCancelModal();
-                    
-                    // Reload page after short delay
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 1500);
-                } else {
-                    showMessage(data.message || 'Failed to cancel appointment', 'error');
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = 'Yes, Cancel';
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                showMessage('An error occurred. Please try again.', 'error');
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Yes, Cancel';
             });
         }
 
