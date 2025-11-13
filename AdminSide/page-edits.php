@@ -284,6 +284,10 @@ $result = $stmt->get_result();
     </style>
 </head>
 <body>
+
+ <!-- Sidebar -->
+    <?php include 'sidebar.php'; ?>
+
     <div class="container">
         <div class="header">
             <h1>🔍 Audit Trail - Activity Logs</h1>

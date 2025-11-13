@@ -7,7 +7,7 @@ if ($isLocal) {
     $servername = 'localhost';
     $username = 'root';
     $password = '';
-    $dbname = 'dbannya'; // your local database name
+    $dbname = 'autotec'; // your local database name
     $port = '3306';
 } else {
     // Railway / production settings

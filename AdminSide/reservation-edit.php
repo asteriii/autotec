@@ -1,6 +1,24 @@
 <?php
 // reservation-edit.php
+session_start();
+
+// Check if user is logged in
+if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'error' => 'Unauthorized access']);
+        exit;
+    }
+    header('Location: login.php');
+    exit;
+}
+
 include 'db.php'; // uses mysqli $conn
+require_once 'audit_trail.php';
+
+// Get session variables
+$username = $_SESSION['admin_username'] ?? 'Unknown Admin';
+$admin_branch = $_SESSION['branch_filter'] ?? null;
 
 // Define upload directory with absolute path for Railway
 define('UPLOAD_DIR_QRCODES', '/var/www/html/uploads/qrcodes/');
@@ -20,6 +38,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         
         if ($branchId <= 0) {
             throw new Exception('Invalid branch ID');
+        }
+        
+        // Get branch name from database
+        $stmt = $conn->prepare("SELECT BranchName FROM about_us WHERE AboutID = ?");
+        $stmt->bind_param("i", $branchId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $branchData = $result->fetch_assoc();
+        $stmt->close();
+        
+        if (!$branchData) {
+            throw new Exception('Branch not found');
+        }
+        
+        $branchName = $branchData['BranchName'];
+        
+        // Check if admin has permission for this branch
+        if ($admin_branch && $branchName !== $admin_branch) {
+            logAction($username, 'Unauthorized Access', "Attempted to upload QR code for $branchName but assigned to $admin_branch");
+            throw new Exception('You can only update QR codes for your assigned branch');
         }
         
         // Check if file was uploaded
@@ -93,6 +131,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             unlink('/var/www/html/' . $oldQR);
         }
         
+        // 🧾 Log the audit trail
+        logGcashQR($username, $branchName);
+        
         echo json_encode([
             'success' => true,
             'message' => 'QR code updated successfully',
@@ -100,33 +141,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         ]);
         
     } catch (Exception $e) {
+        // Log error
+        logAction($username, 'Error', "Failed to update GCash QR code: " . $e->getMessage());
+        
         echo json_encode([
             'success' => false,
             'error' => $e->getMessage()
         ]);
     }
     exit;
-}
-
-// Fetch vehicle types (initial server render)
-$sql = "SELECT VehicleTypeID, Name, Price FROM vehicle_types ORDER BY VehicleTypeID ASC";
-$result = $conn->query($sql);
-
-$vehicle_types = [];
-if ($result && $result->num_rows > 0) {
-    while ($r = $result->fetch_assoc()) {
-        $vehicle_types[] = $r;
-    }
-}
-
-// Fetch branches with QR codes
-$branchesSql = "SELECT AboutID, BranchName, GcashQR FROM about_us ORDER BY AboutID";
-$branchesResult = $conn->query($branchesSql);
-$branches = [];
-if ($branchesResult && $branchesResult->num_rows > 0) {
-    while ($b = $branchesResult->fetch_assoc()) {
-        $branches[] = $b;
-    }
 }
 ?>
 <!DOCTYPE html>

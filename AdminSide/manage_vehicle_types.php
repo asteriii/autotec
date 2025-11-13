@@ -1,7 +1,20 @@
 <?php
-// manage_vehicle_types.php needed to for reservation-edit.php
+session_start();
+
 header('Content-Type: application/json; charset=utf-8');
+
+// Check if user is logged in
+if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
+    http_response_code(401);
+    echo json_encode(['success' => false, 'error' => 'Unauthorized access']);
+    exit;
+}
+
 require 'db.php'; // expects $conn (mysqli)
+require_once 'audit_trail.php';
+
+// Get session variables
+$username = $_SESSION['admin_username'] ?? 'Unknown Admin';
 
 // Read raw input first (JSON). If that's empty, fall back to $_POST.
 $raw = file_get_contents('php://input');
@@ -56,6 +69,9 @@ try {
         $res = $conn->query("SELECT VehicleTypeID, Name, Price FROM vehicle_types WHERE VehicleTypeID = " . (int)$newId);
         $row = $res ? $res->fetch_assoc() : null;
 
+        // 🧾 Log the audit trail
+        logAddVehicleType($username, "$name (₱$price)");
+
         echo json_encode(['success' => true, 'inserted' => $row]);
         exit;
     }
@@ -67,6 +83,20 @@ try {
         if ($id <= 0) {
             http_response_code(400);
             echo json_encode(['success' => false, 'error' => 'Invalid id']);
+            exit;
+        }
+
+        // Get vehicle type name before deleting for audit log
+        $stmt = $conn->prepare("SELECT Name, Price FROM vehicle_types WHERE VehicleTypeID = ?");
+        $stmt->bind_param('i', $id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $vehicleData = $result->fetch_assoc();
+        $stmt->close();
+
+        if (!$vehicleData) {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'error' => 'Vehicle type not found']);
             exit;
         }
 
@@ -83,6 +113,9 @@ try {
         $stmt->close();
 
         if ($affected > 0) {
+            // 🧾 Log the audit trail
+            logRemoveVehicleType($username, $vehicleData['Name'] . " (₱" . $vehicleData['Price'] . ")");
+            
             echo json_encode(['success' => true, 'deleted_id' => $id]);
         } else {
             echo json_encode(['success' => false, 'error' => 'No row deleted (id may not exist)']);
@@ -96,7 +129,11 @@ try {
         exit;
     }
 } catch (Exception $e) {
+    // Log error
+    logAction($username, 'Error', "Vehicle type management error: " . $e->getMessage());
+    
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     exit;
 }
+?>

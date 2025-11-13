@@ -45,8 +45,9 @@ function logConfirmReschedule($username, $rescheduleID, $customerName) {
     logAction($username, 'Rescheduled', "Rescheduled reservation ID $rescheduleID for customer $customerName.");
 }
 
-function logCancelReservation($username, $reservationID, $customerName) {
-    $desc = "Cancelled reservation ID $reservationID for customer $customerName.";
+function logCancelReservation($username, $reservationID, $customerName, $reason = '') {
+    $reasonText = !empty($reason) ? " Reason: $reason" : "";
+    $desc = "Cancelled reservation ID $reservationID for customer $customerName.$reasonText";
     logAction($username, 'Cancel Reservation', $desc);
 }
 
@@ -82,5 +83,24 @@ function logAboutUsMap($username, $branch){
     logAction($username, 'Update About Us Map link', "Updated Maplink for $branch");
 }
 
+/* ============================================================
+ Reservation edit page  ACTIVITIES
+   ============================================================ */
+
+function logAddVehicleType($username, $vehicletype){
+    logAction($username, 'Add Vehicle Type', "Added new $vehicletype");
+}
+
+function logRemoveVehicleType($username, $vehicletype){
+    logAction($username, 'Remove Vehicle Type', "Removed new $vehicletype");
+}
+
+function logVehiclePrice($username, $vehicleprice){
+    logAction($username, 'Edit Vehicle Price', "Added new $vehicleprice");
+}
+
+function logGcashQR($username, $branch){
+    logAction($username, 'Update GcashQR', "Update Gcash QR code for $branch");
+}
 
 ?>
