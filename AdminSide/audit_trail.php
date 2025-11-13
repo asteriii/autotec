@@ -79,6 +79,10 @@ function logAboutUsImage($username, $branch) {
     logAction($username, 'Update About Us Image', "Updated branch image for $branch");
 }
 
+function logAboutUsDesc($username, $branch) {
+    logAction($username, 'Update About Us Description', "Updated branch description for $branch");
+}
+
 function logAboutUsMap($username, $branch){
     logAction($username, 'Update About Us Map link', "Updated Maplink for $branch");
 }

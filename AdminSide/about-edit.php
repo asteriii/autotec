@@ -242,12 +242,12 @@ $branches = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         .logo {
             font-size: 24px;
-            color: #a4133c;
+            color: #c0392b;
             font-weight: 600;
         }
 
         .logout-btn {
-            background: linear-gradient(135deg, #a4133c, #ff4d6d);
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
             color: white;
             border: none;
             padding: 10px 20px;
@@ -603,7 +603,7 @@ $branches = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <div class="main">
         <div class="topbar">
             <div class="logo">
-                <i class="fas fa-info-circle"></i> About Page Management
+                <i class="fas fa-car"></i> AutoTec Admin
             </div>
             <button class="logout-btn">
                 <i class="fas fa-sign-out-alt"></i> Logout
@@ -611,6 +611,7 @@ $branches = $stmt->fetchAll(PDO::FETCH_ASSOC);
         </div>
 
         <div class="content">
+            <h2><i class="fas fa-info-circle"></i> About Page Management</h2>
 
             <?php if (isset($success_message)): ?>
                 <div class="alert success">
