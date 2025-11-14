@@ -196,6 +196,9 @@ echo "<!-- ================================================== -->";
             <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'admin_acc_manage.php') ? 'active' : ''; ?>">
                 <a href="admin_acc_manage.php"><i class="fas fa-users-cog"></i> Admin Accounts Manager</a>
             </li>
+            <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'user_acc_manage.php') ? 'active' : ''; ?>">
+                <a href="user_acc_manage.php"><i class="fas fa-users-cog"></i> User Accounts Manager</a>
+            </li>
         </ul>
     </div>
 
