@@ -800,7 +800,7 @@ mysqli_stmt_close($user_stmt);
             </div>
             <div class="stat-card" onclick="filterReservations('rescheduled')" data-filter="rescheduled">
                 <div class="stat-number"><?php echo $reschedule_count; ?></div>
-                <div class="stat-label">Rescheduled</div>
+                <div class="stat-label">Reschedule Request</div>
             </div>
             <div class="stat-card" onclick="filterReservations('completed')" data-filter="completed">
                 <div class="stat-number"><?php echo $completed_count; ?></div>
