@@ -258,7 +258,7 @@ unset($canceled); // Break reference
         }
 
         .logout-btn {
-            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            background: linear-gradient(135deg, #a4133c, #ff4d6d);
             color: white;
             border: none;
             padding: 10px 20px;
@@ -766,7 +766,7 @@ unset($canceled); // Break reference
     <div class="main">
         <div class="topbar">
             <div class="logo">
-                <i class="fas fa-car"></i> AutoTec Admin
+                <i class="fas fa-ban"></i> Canceled List
             </div>
             <button class="logout-btn" onclick="window.location.href='logout.php'">
                 <i class="fas fa-sign-out-alt"></i> Logout
@@ -774,8 +774,7 @@ unset($canceled); // Break reference
         </div>
 
         <div class="content">
-            <h2>
-                <i class="fas fa-ban"></i> Canceled List
+                
                 <?php if ($admin_branch): ?>
                     <span class="branch-info-badge">
                         <i class="fas fa-map-marker-alt"></i> <?php echo htmlspecialchars($admin_branch); ?>

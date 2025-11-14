@@ -305,7 +305,7 @@ $branches = $stmt->fetchAll(PDO::FETCH_ASSOC);
         }
 
         .logout-btn {
-            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            background: linear-gradient(135deg, #a4133c, #ff4d6d);
             color: white;
             border: none;
             padding: 10px 20px;

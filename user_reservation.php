@@ -72,11 +72,33 @@ while ($row = mysqli_fetch_assoc($completed_result)) {
 }
 mysqli_stmt_close($completed_stmt);
 
+// Fetch cancelled reservations
+$canceled_sql = "SELECT c.*, vt.Name AS VehicleType, vc.Name AS Category, 
+        vt.Price, vt.Name AS VehicleTypeName, vc.Name AS CategoryName,
+        c.PaymentMethod, c.PaymentStatus, c.PaymentReceipt, c.ReferenceNumber,
+        c.CreatedAt, c.CanceledAt, c.Reason, 'canceled' as Status
+        FROM canceled c
+        LEFT JOIN vehicle_types vt ON c.TypeID = vt.VehicleTypeID 
+        LEFT JOIN vehicle_categories vc ON c.CategoryID = vc.CategoryID 
+        WHERE c.UserID = ? 
+        ORDER BY c.CanceledAt DESC";
+
+$canceled_stmt = mysqli_prepare($conn, $canceled_sql);
+mysqli_stmt_bind_param($canceled_stmt, "i", $_SESSION['user_id']);
+mysqli_stmt_execute($canceled_stmt);
+$canceled_result = mysqli_stmt_get_result($canceled_stmt);
+$canceled_reservations = [];
+while ($row = mysqli_fetch_assoc($canceled_result)) {
+    $canceled_reservations[] = $row;
+}
+mysqli_stmt_close($canceled_stmt);
+
 // Calculate totals
 $active_count = count($active_reservations);
 $reschedule_count = count($rescheduled_reservations);
 $completed_count = count($completed_reservations);
-$total_count = $active_count + $reschedule_count + $completed_count;
+$canceled_count = count($canceled_reservations);
+$total_count = $active_count + $reschedule_count + $completed_count + $canceled_count;
 
 // Get user name for display
 $user_sql = "SELECT Fname FROM users WHERE UserID = ?";
@@ -148,7 +170,7 @@ mysqli_stmt_close($user_stmt);
         /* Stats Cards */
         .stats-section {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 20px;
             margin-bottom: 30px;
         }
@@ -275,6 +297,10 @@ mysqli_stmt_close($user_stmt);
             background: linear-gradient(135deg, #28a745, #20c997);
         }
 
+        .reservation-card.canceled::before {
+            background: linear-gradient(135deg, #dc3545, #c82333);
+        }
+
         .reservation-card:hover {
             transform: translateY(-3px);
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
@@ -322,6 +348,11 @@ mysqli_stmt_close($user_stmt);
         .status-badge.completed {
             background: #d4edda;
             color: #155724;
+        }
+
+        .status-badge.canceled {
+            background: #f8d7da;
+            color: #721c24;
         }
 
         /* Payment Status Badge */
@@ -387,6 +418,12 @@ mysqli_stmt_close($user_stmt);
             background: #d4edda;
             border-left-color: #28a745;
             color: #155724;
+        }
+
+        .payment-info-box.canceled-info {
+            background: #f8d7da;
+            border-left-color: #dc3545;
+            color: #721c24;
         }
 
         .payment-info-box strong {
@@ -763,11 +800,15 @@ mysqli_stmt_close($user_stmt);
             </div>
             <div class="stat-card" onclick="filterReservations('rescheduled')" data-filter="rescheduled">
                 <div class="stat-number"><?php echo $reschedule_count; ?></div>
-                <div class="stat-label">Reschedule Request</div>
+                <div class="stat-label">Rescheduled</div>
             </div>
             <div class="stat-card" onclick="filterReservations('completed')" data-filter="completed">
                 <div class="stat-number"><?php echo $completed_count; ?></div>
                 <div class="stat-label">Reserved</div>
+            </div>
+            <div class="stat-card" onclick="filterReservations('canceled')" data-filter="canceled">
+                <div class="stat-number"><?php echo $canceled_count; ?></div>
+                <div class="stat-label">Cancelled</div>
             </div>
         </div>
 
@@ -832,7 +873,8 @@ mysqli_stmt_close($user_stmt);
         const allReservations = {
             active: <?php echo json_encode($active_reservations); ?>,
             rescheduled: <?php echo json_encode($rescheduled_reservations); ?>,
-            completed: <?php echo json_encode($completed_reservations); ?>
+            completed: <?php echo json_encode($completed_reservations); ?>,
+            canceled: <?php echo json_encode($canceled_reservations); ?>
         };
 
         let currentFilter = 'all';
@@ -855,7 +897,8 @@ mysqli_stmt_close($user_stmt);
                     reservationsToShow = [
                         ...allReservations.active,
                         ...allReservations.rescheduled,
-                        ...allReservations.completed
+                        ...allReservations.completed,
+                        ...allReservations.canceled
                     ];
                     break;
                 case 'pending':
@@ -866,6 +909,9 @@ mysqli_stmt_close($user_stmt);
                     break;
                 case 'completed':
                     reservationsToShow = allReservations.completed;
+                    break;
+                case 'canceled':
+                    reservationsToShow = allReservations.canceled;
                     break;
             }
             
@@ -960,6 +1006,17 @@ mysqli_stmt_close($user_stmt);
                     <div class="payment-info-box completed-info">
                         <strong>✅ Service Completed</strong>
                         This emission test was completed successfully on ${formatDate(data.CompletedAt || data.Date)}.
+                    </div>
+                `;
+            } else if (status === 'canceled') {
+                const cancelReason = data.Reason && data.Reason.trim() !== '' ? data.Reason : 'No reason provided';
+                statusInfoBox = `
+                    <div class="payment-info-box canceled-info">
+                        <strong>❌ Reservation Cancelled</strong>
+                        <div style="margin-top: 5px;">
+                            <strong>Reason:</strong> ${cancelReason}
+                        </div>
+                        ${data.CanceledAt ? '<div style="margin-top: 3px; font-size: 10px;">Cancelled on: ' + formatDate(data.CanceledAt.split(' ')[0]) + '</div>' : ''}
                     </div>
                 `;
             }
@@ -1086,7 +1143,8 @@ mysqli_stmt_close($user_stmt);
                 const filterLabels = {
                     'pending': 'Showing pending reservations',
                     'rescheduled': 'Showing rescheduled reservations',
-                    'completed': 'Showing completed reservations'
+                    'completed': 'Showing completed reservations',
+                    'canceled': 'Showing cancelled reservations'
                 };
                 
                 const filterKey = filter === 'pending' ? 'active' : filter;
