@@ -121,4 +121,21 @@ function logContactUsUnread($username, $customerName) {
 function logContactUsAll($username, $customerName) {
     logAction($username, 'Marked as All Read', "Marked as Read all the Feedback for $customerName");
 }
+
+/* ============================================================
+   ADMIN ACCOUNT MANAGEMENT ACTIVITIES
+   ============================================================ */
+function logCreateAdminAccount($username, $newAdminUsername, $branch, $role) {
+    $branchText = $branch ? " for branch $branch" : " (no branch assigned)";
+    $roleText = $role ? " with role '$role'" : "";
+    logAction($username, 'Create Admin Account', "Created new admin account '$newAdminUsername'$branchText$roleText");
+}
+
+function logUpdateAdminAccount($username, $targetAdmin, $changes) {
+    logAction($username, 'Update Admin Account', "Updated admin account '$targetAdmin': $changes");
+}
+
+function logDeleteAdminAccount($username, $deletedAdminUsername) {
+    logAction($username, 'Delete Admin Account', "Deleted admin account '$deletedAdminUsername'");
+}
 ?>
