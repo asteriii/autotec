@@ -186,6 +186,22 @@ echo "<!-- ================================================== -->";
         </ul>
     </div>
 
+    <!-- Reports & Analytics - ADMIN ONLY -->
+    <div class="section">
+        <div class="section-title" onclick="toggleMenu('reports-analytics')">
+            <span><i class="fas fa-chart-line"></i> Reports & Analytics</span>
+            <i class="fas fa-chevron-down"></i>
+        </div>
+        <ul class="submenu <?php echo (in_array(basename($_SERVER['PHP_SELF']), ['reservationreports.php', 'paymentreports.php'])) ? 'show' : ''; ?>" id="reports-analytics">
+            <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'reservationreports.php') ? 'active' : ''; ?>">
+                <a href="reservationreports.php"><i class="fas fa-chart-bar"></i> Reservation Reports</a>
+            </li>
+            <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'paymentreports.php') ? 'active' : ''; ?>">
+                <a href="paymentreports.php"><i class="fas fa-file-invoice-dollar"></i> Payment Reports</a>
+            </li>
+        </ul>
+    </div>
+
     <!-- Master Controls - ADMIN ONLY -->
     <div class="section">
         <div class="section-title" onclick="toggleMenu('master-controls')">
@@ -196,9 +212,6 @@ echo "<!-- ================================================== -->";
             <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'admin_acc_manage.php') ? 'active' : ''; ?>">
                 <a href="admin_acc_manage.php"><i class="fas fa-users-cog"></i> Admin Accounts Manager</a>
             </li>
-            <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'user_acc_manage.php') ? 'active' : ''; ?>">
-                <a href="user_acc_manage.php"><i class="fas fa-users-cog"></i> User Accounts Manager</a>
-            </li>
         </ul>
     </div>
 
@@ -208,9 +221,10 @@ echo "<!-- ================================================== -->";
             <span><i class="fas fa-history"></i> Activity Logs</span>
             <i class="fas fa-chevron-down"></i>
         </div>
-        <ul class="submenu" id="activity-logs">
-            <li><a href="page-edits.php"><i class="fas fa-edit"></i> Audit Logs</a></li>
-            
+        <ul class="submenu <?php echo (basename($_SERVER['PHP_SELF']) == 'page-edits.php') ? 'show' : ''; ?>" id="activity-logs">
+            <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'page-edits.php') ? 'active' : ''; ?>">
+                <a href="page-edits.php"><i class="fas fa-edit"></i> Audit Logs</a>
+            </li>
         </ul>
     </div>
     
