@@ -656,7 +656,7 @@ unset($reschedule); // Break reference
             border-top: 1px solid #e2e8f0;
         }
 
-        .modal-actions a {
+        .modal-actions a, .modal-actions button {
             padding: 10px 20px;
             border-radius: 8px;
             text-decoration: none;
@@ -665,6 +665,8 @@ unset($reschedule); // Break reference
             display: flex;
             align-items: center;
             gap: 8px;
+            border: none;
+            cursor: pointer;
         }
 
         .download-btn {
@@ -726,7 +728,8 @@ unset($reschedule); // Break reference
         </div>
 
         <div class="content">
-                
+            <h2>
+                Reschedule Requests
                 <?php if ($admin_branch): ?>
                     <span class="branch-info-badge">
                         <i class="fas fa-map-marker-alt"></i> <?php echo htmlspecialchars($admin_branch); ?>
@@ -919,7 +922,39 @@ unset($reschedule); // Break reference
         </div>
     </div>
 
+    <!-- Cancel Reason Modal -->
+    <div id="cancelReasonModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3><i class="fas fa-ban"></i> Input Reason for Canceling</h3>
+                <button class="close-modal" onclick="closeCancelModal()">&times;</button>
+            </div>
+            
+            <div style="margin: 25px 0;">
+                <label for="cancelReasonInput" style="display: block; margin-bottom: 10px; font-weight: 600; color: #2d3748;">
+                    Reason for canceling:
+                </label>
+                <textarea 
+                    id="cancelReasonInput" 
+                    placeholder="Type your reason here..."
+                    style="width: 100%; min-height: 120px; padding: 12px; border: 2px solid #e2e8f0; border-radius: 10px; font-size: 14px; font-family: 'Inter', sans-serif; resize: vertical;"
+                ></textarea>
+            </div>
+            
+            <div class="modal-actions">
+                <button onclick="closeCancelModal()" class="btn cancel-btn" style="background: #e2e8f0; color: #4a5568;">
+                    <i class="fas fa-times"></i> Close
+                </button>
+                <button onclick="submitCancellation()" class="btn confirm-btn" style="background: linear-gradient(135deg, #48bb78, #38a169);">
+                    <i class="fas fa-check"></i> Confirm
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
+        let currentRescheduleID = null;
+
         function viewReceipt(receiptPath, referenceNumber, paymentMethod, paymentStatus, customerName, amount) {
             console.log('=== Opening Receipt Modal ===');
             console.log('Receipt Path:', receiptPath);
@@ -988,45 +1023,103 @@ unset($reschedule); // Break reference
             document.getElementById('receiptError').style.display = 'none';
         }
 
-        // Close modal when clicking outside of it
-        window.onclick = function(event) {
-            const modal = document.getElementById('receiptModal');
-            if (event.target === modal) {
-                closeReceiptModal();
-            }
+        function closeCancelModal() {
+            document.getElementById('cancelReasonModal').style.display = 'none';
+            document.getElementById('cancelReasonInput').value = '';
+            currentRescheduleID = null;
         }
 
-        // Close modal with Escape key
-        document.addEventListener('keydown', function(event) {
-            if (event.key === 'Escape') {
-                closeReceiptModal();
+        function openCancelModal(rescheduleID) {
+            currentRescheduleID = rescheduleID;
+            document.getElementById('cancelReasonModal').style.display = 'block';
+            document.getElementById('cancelReasonInput').focus();
+        }
+
+        function submitCancellation() {
+            const reason = document.getElementById('cancelReasonInput').value.trim();
+            
+            if (!reason) {
+                alert('Please provide a reason for cancellation.');
+                return;
             }
-        });
 
-        function handleReschedule(action, rescheduleID) {
-            const confirmationText = action === 'confirm'
-                ? "Are you sure you want to CONFIRM this reschedule (use NEW date/time)?"
-                : "Are you sure you want to DENY this reschedule (keep OLD date/time)?";
+            if (!currentRescheduleID) {
+                alert('Invalid request.');
+                return;
+            }
 
-            if (!confirm(confirmationText)) return;
-
+            // Send cancellation request
             fetch('process_reschedule_action.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: new URLSearchParams({
-                    action: action,
-                    rescheduleID: rescheduleID
+                    action: 'deny',
+                    rescheduleID: currentRescheduleID,
+                    cancelReason: reason
                 })
             })
             .then(res => res.json())
             .then(data => {
                 alert(data.message);
-                if (data.success) location.reload();
+                if (data.success) {
+                    closeCancelModal();
+                    location.reload();
+                }
             })
             .catch(err => {
                 console.error(err);
                 alert('An error occurred.');
             });
+        }
+
+        // Close modals when clicking outside of them
+        window.onclick = function(event) {
+            const receiptModal = document.getElementById('receiptModal');
+            const cancelModal = document.getElementById('cancelReasonModal');
+            
+            if (event.target === receiptModal) {
+                closeReceiptModal();
+            }
+            if (event.target === cancelModal) {
+                closeCancelModal();
+            }
+        }
+
+        // Close modals with Escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeReceiptModal();
+                closeCancelModal();
+            }
+        });
+
+        function handleReschedule(action, rescheduleID) {
+            if (action === 'confirm') {
+                if (!confirm("Are you sure you want to CONFIRM this reschedule (use NEW date/time)?")) {
+                    return;
+                }
+
+                fetch('process_reschedule_action.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({
+                        action: 'confirm',
+                        rescheduleID: rescheduleID
+                    })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    alert(data.message);
+                    if (data.success) location.reload();
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert('An error occurred.');
+                });
+            } else if (action === 'deny') {
+                // Open cancel reason modal
+                openCancelModal(rescheduleID);
+            }
         }
 
         // Page load logging
