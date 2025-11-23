@@ -48,7 +48,8 @@ try {
             r.CreatedAt,
             u.Username,
             u.Email as UserEmail,
-            vt.Name as VehicleType
+            vt.Name as VehicleType,
+            'reservation' as SourceTable
         FROM reservations r
         LEFT JOIN users u ON r.UserID = u.UserID
         LEFT JOIN vehicle_types vt ON r.TypeID = vt.VehicleTypeID
@@ -58,6 +59,105 @@ try {
     
     $stmt->execute([$loggedInBranch]);
     $payments = $stmt->fetchAll();
+    
+    // Query to get completed transactions
+    $completedStmt = $pdo->prepare("
+        SELECT 
+            c.CompletedID as ReservationID,
+            c.UserID,
+            c.ReferenceNumber,
+            c.Date,
+            c.Time,
+            c.Fname,
+            c.Lname,
+            c.PlateNo,
+            c.Brand,
+            c.BranchName,
+            c.PaymentMethod,
+            c.PaymentStatus,
+            c.PaymentReceipt,
+            c.Price,
+            c.Email,
+            c.CreatedAt,
+            u.Username,
+            u.Email as UserEmail,
+            vt.Name as VehicleType,
+            'completed' as SourceTable
+        FROM completed c
+        LEFT JOIN users u ON c.UserID = u.UserID
+        LEFT JOIN vehicle_types vt ON c.TypeID = vt.VehicleTypeID
+        WHERE c.BranchName = ?
+        ORDER BY c.CompletedAt DESC
+    ");
+    
+    $completedStmt->execute([$loggedInBranch]);
+    $completedPayments = $completedStmt->fetchAll();
+    
+    // Query to get records
+    $recordsStmt = $pdo->prepare("
+        SELECT 
+            rec.RecordID as ReservationID,
+            rec.UserID,
+            rec.ReferenceNumber,
+            rec.Date,
+            rec.Time,
+            rec.Fname,
+            rec.Lname,
+            rec.PlateNo,
+            rec.Brand,
+            rec.BranchName,
+            rec.PaymentMethod,
+            rec.PaymentStatus,
+            rec.PaymentReceipt,
+            rec.Price,
+            rec.Email,
+            rec.CreatedAt,
+            u.Username,
+            u.Email as UserEmail,
+            vt.Name as VehicleType,
+            'records' as SourceTable
+        FROM records rec
+        LEFT JOIN users u ON rec.UserID = u.UserID
+        LEFT JOIN vehicle_types vt ON rec.TypeID = vt.VehicleTypeID
+        WHERE rec.BranchName = ?
+        ORDER BY rec.RecordedAt DESC
+    ");
+    
+    $recordsStmt->execute([$loggedInBranch]);
+    $recordsPayments = $recordsStmt->fetchAll();
+    
+    // Query to get reschedule transactions
+    $rescheduleStmt = $pdo->prepare("
+        SELECT 
+            res.RescheduleID as ReservationID,
+            res.UserID,
+            res.ReferenceNumber,
+            res.Date,
+            res.Time,
+            res.Fname,
+            res.Lname,
+            res.PlateNo,
+            res.Brand,
+            res.BranchName,
+            res.PaymentMethod,
+            res.PaymentStatus,
+            res.PaymentReceipt,
+            res.Price,
+            res.Email,
+            res.CreatedAt,
+            u.Username,
+            u.Email as UserEmail,
+            vt.Name as VehicleType,
+            'reschedule' as SourceTable
+        FROM reschedule res
+        LEFT JOIN users u ON res.UserID = u.UserID
+        LEFT JOIN vehicle_types vt ON res.TypeID = vt.VehicleTypeID
+        WHERE res.BranchName = ?
+        ORDER BY res.RescheduledAt DESC
+    ");
+    
+    $rescheduleStmt->execute([$loggedInBranch]);
+    $reschedulePayments = $rescheduleStmt->fetchAll();
     
     // Get unique users who have made reservations at this branch
     $userStmt = $pdo->prepare("
@@ -77,6 +177,9 @@ try {
 } catch (PDOException $e) {
     error_log("Database error: " . $e->getMessage());
     $payments = [];
+    $completedPayments = [];
+    $recordsPayments = [];
+    $reschedulePayments = [];
     $users = [];
 }
 ?>
@@ -857,7 +960,6 @@ try {
                             <option value="">All Status</option>
                             <option value="pending">Pending</option>
                             <option value="paid">Paid</option>
-                            <option value="verified">Verified</option>
                         </select>
                     </div>
 
@@ -1016,6 +1118,9 @@ try {
 
     <script>
         const payments = <?php echo json_encode($payments); ?>;
+        const completedPayments = <?php echo json_encode($completedPayments); ?>;
+        const recordsPayments = <?php echo json_encode($recordsPayments); ?>;
+        const reschedulePayments = <?php echo json_encode($reschedulePayments); ?>;
         const loggedInBranch = "<?php echo htmlspecialchars($loggedInBranch); ?>";
         
         let filteredData = [...payments];
@@ -1045,7 +1150,18 @@ try {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
 
-            filteredData = payments.filter(payment => {
+            // Determine which data source to use based on payment status filter
+            let dataSource = [...payments];
+            
+            if (paymentStatus === 'paid') {
+                // When filtering for paid status, combine completed and records tables
+                dataSource = [...completedPayments, ...recordsPayments];
+            } else if (paymentStatus === 'pending') {
+                // When filtering for pending status, combine reservations and reschedule tables
+                dataSource = [...payments, ...reschedulePayments];
+            }
+
+            filteredData = dataSource.filter(payment => {
                 const createdDate = new Date(payment.CreatedAt);
                 let dateMatch = true;
 

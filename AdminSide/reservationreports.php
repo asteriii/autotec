@@ -46,7 +46,8 @@ try {
             r.Email,
             r.CreatedAt,
             u.Username,
-            u.Email as UserEmail
+            u.Email as UserEmail,
+            'reservation' as SourceTable
         FROM reservations r
         LEFT JOIN users u ON r.UserID = u.UserID
         WHERE r.BranchName = ?
@@ -55,6 +56,96 @@ try {
     
     $stmt->execute([$loggedInBranch]);
     $reservations = $stmt->fetchAll();
+    
+    // Query to get completed reservations for the specific branch
+    $completedStmt = $pdo->prepare("
+        SELECT 
+            c.CompletedID as ReservationID,
+            c.UserID,
+            c.ReferenceNumber,
+            c.Date,
+            c.Time,
+            c.Fname,
+            c.Lname,
+            c.PlateNo,
+            c.Brand,
+            c.BranchName,
+            c.PaymentMethod,
+            c.PaymentStatus,
+            c.Price,
+            c.Email,
+            c.CreatedAt,
+            u.Username,
+            u.Email as UserEmail,
+            'completed' as SourceTable
+        FROM completed c
+        LEFT JOIN users u ON c.UserID = u.UserID
+        WHERE c.BranchName = ?
+        ORDER BY c.Date DESC, c.Time DESC
+    ");
+    
+    $completedStmt->execute([$loggedInBranch]);
+    $completedReservations = $completedStmt->fetchAll();
+    
+    // Query to get records for the specific branch
+    $recordsStmt = $pdo->prepare("
+        SELECT 
+            rec.RecordID as ReservationID,
+            rec.UserID,
+            rec.ReferenceNumber,
+            rec.Date,
+            rec.Time,
+            rec.Fname,
+            rec.Lname,
+            rec.PlateNo,
+            rec.Brand,
+            rec.BranchName,
+            rec.PaymentMethod,
+            rec.PaymentStatus,
+            rec.Price,
+            rec.Email,
+            rec.CreatedAt,
+            u.Username,
+            u.Email as UserEmail,
+            'records' as SourceTable
+        FROM records rec
+        LEFT JOIN users u ON rec.UserID = u.UserID
+        WHERE rec.BranchName = ?
+        ORDER BY rec.Date DESC, rec.Time DESC
+    ");
+    
+    $recordsStmt->execute([$loggedInBranch]);
+    $recordsData = $recordsStmt->fetchAll();
+    
+    // Query to get reschedule reservations for the specific branch
+    $rescheduleStmt = $pdo->prepare("
+        SELECT 
+            r.RescheduleID as ReservationID,
+            r.UserID,
+            r.ReferenceNumber,
+            r.NewDate as Date,
+            r.NewTime as Time,
+            r.Fname,
+            r.Lname,
+            r.PlateNo,
+            r.Brand,
+            r.BranchName,
+            r.PaymentMethod,
+            r.PaymentStatus,
+            r.Price,
+            r.Email,
+            r.CreatedAt,
+            u.Username,
+            u.Email as UserEmail,
+            'reschedule' as SourceTable
+        FROM reschedule r
+        LEFT JOIN users u ON r.UserID = u.UserID
+        WHERE r.BranchName = ?
+        ORDER BY r.NewDate DESC, r.NewTime DESC
+    ");
+    
+    $rescheduleStmt->execute([$loggedInBranch]);
+    $rescheduleData = $rescheduleStmt->fetchAll();
     
     // Get unique users who have made reservations at this branch
     $userStmt = $pdo->prepare("
@@ -74,6 +165,9 @@ try {
 } catch (PDOException $e) {
     error_log("Database error: " . $e->getMessage());
     $reservations = [];
+    $completedReservations = [];
+    $recordsData = [];
+    $rescheduleData = [];
     $users = [];
 }
 ?>
@@ -795,7 +889,6 @@ try {
                             <option value="">All Status</option>
                             <option value="pending">Pending</option>
                             <option value="paid">Paid</option>
-                            <option value="verified">Verified</option>
                         </select>
                     </div>
                 </div>
@@ -949,9 +1042,12 @@ try {
 
     <script>
         const reservations = <?php echo json_encode($reservations); ?>;
+        const completedReservations = <?php echo json_encode($completedReservations); ?>;
+        const recordsData = <?php echo json_encode($recordsData); ?>;
+        const rescheduleData = <?php echo json_encode($rescheduleData); ?>;
         const loggedInBranch = "<?php echo htmlspecialchars($loggedInBranch); ?>";
         
-        let filteredData = [...reservations];
+        let filteredData = [];
 
         // Filter type change handler
         document.getElementById('filterType').addEventListener('change', function() {
@@ -977,7 +1073,21 @@ try {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
 
-            filteredData = reservations.filter(res => {
+            // Determine which data sources to use based on payment status
+            let dataToFilter = [];
+            
+            if (paymentStatus === 'paid') {
+                // When filtering for 'paid', use completed and records tables (both have paid status)
+                dataToFilter = [...completedReservations, ...recordsData];
+            } else if (paymentStatus === 'pending') {
+                // When filtering for 'pending', use reservations and reschedule tables
+                dataToFilter = [...reservations, ...rescheduleData];
+            } else {
+                // When no payment status filter, use all tables
+                dataToFilter = [...reservations, ...completedReservations, ...recordsData, ...rescheduleData];
+            }
+
+            filteredData = dataToFilter.filter(res => {
                 const resDate = new Date(res.Date);
                 let dateMatch = true;
 
@@ -1131,9 +1241,7 @@ try {
             document.getElementById('startDateGroup').style.display = 'none';
             document.getElementById('endDateGroup').style.display = 'none';
 
-            filteredData = [...reservations];
-            renderTable();
-            updateStats();
+            applyFilters();
         }
 
         // Keep the dropdown open if it contains an active item
