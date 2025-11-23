@@ -920,7 +920,6 @@ try {
             <div class="results-section">
                 <div class="results-header">
                     <h2 class="results-title">
-                        <span>💳</span>
                         Payment Transactions
                     </h2>
                     <div class="record-count">
@@ -1116,7 +1115,7 @@ try {
 
             const tableRows = filteredData.map(payment => {
                 const createdDate = new Date(payment.CreatedAt);
-                const receiptStatus = payment.PaymentReceipt && payment.PaymentReceipt !== '0' ? '✅ Yes' : '❌ No';
+                const receiptStatus = payment.PaymentReceipt && payment.PaymentReceipt !== '0' ? ' Yes' : 'No';
                 const username = payment.Username || 'Walk-in';
                 
                 return `

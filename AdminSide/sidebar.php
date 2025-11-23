@@ -158,6 +158,9 @@ echo "<!-- ================================================== -->";
             <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'canceled-list.php') ? 'active' : ''; ?>">
                 <a href="canceled-list.php"><i class="fas fa-times-circle"></i> Canceled List</a>
             </li>
+            <li class="<?php echo (basename($_SERVER['PHP_SELF']) == 'record-list.php') ? 'active' : ''; ?>">
+                <a href="record-list.php"><i class="fas fa-times-circle"></i> Record List</a>
+            </li>
         </ul>
     </div>
     

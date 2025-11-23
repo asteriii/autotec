@@ -921,12 +921,14 @@ unset($completed); // Break reference
                                 </button>
                             <?php endif; ?>
                             
-                            <button class="btn confirm-btn" type="button" onclick="confirmCompleted(<?php echo $completed['CompletedID']; ?>)">
-                                <i class="fas fa-check"></i> Mark as Done
+                            <button class="btn confirm-btn" type="button" onclick="accomplishRecord(<?php echo $completed['CompletedID']; ?>)">
+                                <i class="fas fa-check"></i> Accomplish
                             </button>
-                            <button class="btn cancel-btn" type="button" onclick="deleteCompleted(<?php echo $completed['CompletedID']; ?>)">
-                                <i class="fas fa-trash"></i> Delete
+
+                            <button class="btn cancel-btn" type="button" onclick="markNoShow(<?php echo $completed['CompletedID']; ?>)">
+                                <i class="fas fa-times"></i> Mark as No Show
                             </button>
+
                         </div>
                     </div>
                 <?php endforeach; ?>
@@ -1144,6 +1146,51 @@ unset($completed); // Break reference
             console.log('Reserved list page loaded');
             console.log('Total Reserved on page:', <?php echo count($completeds); ?>);
         });
+
+
+
+        // TRANSFER TO RECORDS → STATUS = Accomplished
+        function accomplishRecord(completedID) {
+            if (!confirm("Mark this record as ACCOMPLISHED and move it to Records?")) return;
+
+            fetch('completed_transfer.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'completed_id=' + encodeURIComponent(completedID) + '&status=Accomplished'
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert("✅ Successfully marked as ACCOMPLISHED and moved to Records.");
+                    location.reload();
+                } else {
+                    alert("❌ Error: " + data.message);
+                }
+            })
+            .catch(err => alert("⚠️ Request failed: " + err));
+        }
+
+        // TRANSFER TO RECORDS → STATUS = No Show
+        function markNoShow(completedID) {
+            if (!confirm("Mark this record as NO SHOW and move it to Records?")) return;
+
+            fetch('completed_transfer.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'completed_id=' + encodeURIComponent(completedID) + '&status=No Show'
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert("⚠️ Marked as NO SHOW and moved to Records.");
+                    location.reload();
+                } else {
+                    alert("❌ Error: " + data.message);
+                }
+            })
+            .catch(err => alert("⚠️ Request failed: " + err));
+        }
+
     </script>
 
 </body>
